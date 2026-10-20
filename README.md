@@ -4,8 +4,8 @@ AI-powered competitive intelligence for JFrog. A daily pipeline collects industr
 feeds, GitHub, pricing-page changes), enriches and verifies them with LLMs, and stores everything in one
 data model that powers the Morning Brief, battlecards, cited chat, research missions and an MCP server.
 
-> Status: foundation in place (FastAPI + Postgres/pgvector schema, validated config, seed, LLM gateway).
-> Collectors and the daily pipeline are next.
+> Status: foundation in place (FastAPI + Postgres/pgvector schema, validated config, seed, LLM gateway,
+> collectors). Dedup, enrichment and verification are next.
 
 ## Quick start
 
@@ -29,6 +29,8 @@ curl localhost:8000/health
 | `make test` | Backend tests, incl. migrations and seed on a real throwaway Postgres DB (LLM calls faked) |
 | `make test-live` | Tests marked `live`: real provider calls (needs keys in `.env`, costs < 1 cent). The only way they run. |
 | `make llm-smoke` | One tiny call per LLM tier + one embedding; prints model, latency, tokens, cost |
+| `make collect` | Collect new items from all active sources (`SOURCE="Snyk Blog"` or `SOURCE=12` for one) |
+| `make backfill` | Page back through history (`SINCE=90d` default, or `SINCE=2026-01-01`) |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -50,6 +52,39 @@ confidence, evidence quote, verification, embedding) · `signal_entities` · `in
 `page_snapshots` · `watch_topics` · `pipeline_runs` · `llm_calls` (tokens, cost, latency, prompt version) ·
 `llm_cache` (validated LLM outputs and embeddings by content hash; also feeds demo mode) · `reports`
 (stored briefs, battlecards, digests). Models: `backend/app/db/models/`.
+
+## Collectors (`backend/app/pipeline/collectors/`)
+
+`make collect` reads every active source and stores raw signals (no LLM calls):
+
+- **RSS/Atom** (feedparser). Teaser items (< 500 chars) get the article fetched and the main text extracted
+  (trafilatura); articles already stored are not fetched again.
+- **GitHub releases** for the repos listed in `options.repos` (REST API; set `GITHUB_TOKEN` for 5000 instead of
+  60 requests/hour). Drafts skipped, pre-releases flagged in `signals.meta`.
+- **page_diff / web**: stubs for now (page diffs arrive with the page-change watcher).
+
+Good citizenship: identifying User-Agent, robots.txt per host, ≥1s between requests to one host (Crawl-delay
+honoured), conditional GET, timeouts. A failing source never stops the run; every run writes a `pipeline_runs`
+row with per-source counts (new / updated / duplicate / failed / too old) and errors.
+
+**History limits.** RSS feeds only list their most recent items (often 10–50), so a backfill can't reach further
+back than the feed does; GitHub releases page back as far as `--since`. The collect/backfill report says per
+source whether it covered the whole window or "only back to <date>". First 90-day backfill (2026-10-20):
+
+| Coverage | Sources |
+|---|---|
+| Full 90 days | all 10 GitHub sources; Snyk, Chainguard, Cloudsmith, Hugging Face blogs; GitLab and Artifact Registry release notes |
+| ~7 weeks | JFrog Blog (from 2 Sep), Azure DevOps Blog (from 11 Aug) |
+| 2–4 weeks | Sonatype Blog, GitLab Blog, Endor Labs Blog, GitHub Blog, Socket Blog |
+| Days | GitHub Changelog, The New Stack, InfoQ, BleepingComputer (high-volume feeds list only the latest items) |
+| Not collected | Docker, OpenSSF and CNCF blogs block our HTTP client (403); we don't work around bot protection |
+
+Feeds whose items are `#anchors` on one page (release notes) need `options.keep_fragment: true` so each entry
+stays its own signal.
+
+**Collected text is for analysis only.** `signals.raw_text` feeds enrichment, verification and search; it is never
+shown in the UI or returned verbatim by the API/MCP. Users see a summary, a short evidence quote and a link to
+the original.
 
 ## LLM gateway (`backend/app/core/llm/`)
 
@@ -95,6 +130,13 @@ Each line: what we chose – why – what we rejected.
 - **D19 Versioned prompt files** – `app/prompts/<name>.v<N>.md`, `$var` placeholders; `prompt_version` stored on every call so evals map to prompt versions – rejected prompts in code and Jinja.
 - **D20 LiteLLM supply chain** – `litellm>=1.106.0,!=1.82.7,!=1.82.8` (versions compromised on PyPI in March 2026); `uv.lock` carries sha256 hashes; Docker installs with `uv sync --frozen` – rejected unpinned latest.
 - **D21 Tests can't reach a provider** – LiteLLM never auto-loads `.env` or downloads its price table (`LITELLM_MODE=PRODUCTION`, `LITELLM_LOCAL_MODEL_COST_MAP=True`); non-live tests run with provider keys removed and `litellm.completion/embedding` replaced by a failing guard; live tests need `-m live` and `RUN_LIVE_TESTS=1` (`make test-live`) – rejected relying on the marker alone.
+- **D22 One polite collector client** – httpx with identifying User-Agent, robots.txt per host (4xx → allowed, 5xx → stay away; GitHub API exempt), ≥1s per host, redirects checked hop by hop, conditional GET; sources run sequentially and each fails alone; one `pipeline_runs` row with per-source counts – rejected feedparser's own fetching and concurrency for now.
+- **D23 Signal identity** – unique (source_id, canonical_url) within a source; same URL with new text updates the signal in place (`meta.revisions`, re-enrich) and counts as "updated"; content_hash (title + text) catches copies across sources; `options.keep_fragment` for feeds of #anchors – rejected content-hash-only identity and insert-only.
+- **D24 RSS full text** – fetch and extract (trafilatura) only teaser items, never re-fetch stored articles, keep feed text if extraction fails – rejected always/never fetching articles.
+- **D25 raw_text is never shown** – collected text is for analysis; UI/API/MCP show summary + short evidence quote + link – rejected a full-text view (republishing others' content).
+- **D26 GitHub repos listed explicitly** – `options.repos` required per GitHub source (15 repos) – rejected scanning whole orgs (API quota, noise).
+- **D27 Backfill semantics** – `--since` (default 90d) everywhere; backfill pages GitHub until older than `--since`, RSS gives what the feed lists; report shows real coverage per source – rejected scraping blog archives.
+- **D28 No evasion of bot protection** – Docker/OpenSSF/CNCF feeds 403 our client by fingerprint; they stay failed in the run report until there is a sanctioned route – rejected imitating curl/browser fingerprints and silently deactivating them.
 
 ## Repository layout
 
