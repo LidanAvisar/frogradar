@@ -20,8 +20,8 @@ class Pong(BaseModel):
 
 @pytest.fixture(autouse=True)
 def _need_keys():
-    # LiteLLM reads keys from os.environ. (It also calls load_dotenv() on import, but we pass
-    # --env-file explicitly rather than rely on that.)
+    # LiteLLM reads keys from os.environ only (LITELLM_MODE=PRODUCTION disables its own
+    # load_dotenv), so keys must come from `uv run --env-file ../.env` (make test-live).
     missing = [k for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY") if not os.environ.get(k)]
     if missing:
         pytest.skip(f"{missing} not in the environment; use `uv run --env-file ../.env`")

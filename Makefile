@@ -25,7 +25,7 @@ test: db-up
 
 # Real provider calls (costs a few cents). LiteLLM reads keys from the environment, so pass .env.
 test-live: db-up
-	cd backend && uv run --env-file ../.env pytest -m live
+	cd backend && RUN_LIVE_TESTS=1 uv run --env-file ../.env pytest -m live
 
 # One tiny call per LLM tier + one embedding; prints model, latency and cost per call.
 llm-smoke: migrate

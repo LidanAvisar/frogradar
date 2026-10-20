@@ -27,7 +27,7 @@ curl localhost:8000/health
 | `make migrate` | Apply Alembic migrations (`backend/app/db/migrations`) |
 | `make seed` | Upsert entities, sources, capabilities from `config/` (safe to re-run) |
 | `make test` | Backend tests, incl. migrations and seed on a real throwaway Postgres DB (LLM calls faked) |
-| `make test-live` | Tests marked `live`: real provider calls (needs keys in `.env`, costs < 1 cent) |
+| `make test-live` | Tests marked `live`: real provider calls (needs keys in `.env`, costs < 1 cent). The only way they run. |
 | `make llm-smoke` | One tiny call per LLM tier + one embedding; prints model, latency, tokens, cost |
 | `make lint` | ruff check + format check |
 
@@ -94,6 +94,7 @@ Each line: what we chose – why – what we rejected.
 - **D18 Budget guard** – before each provider call: today's (UTC) spend vs `LLM_DAILY_BUDGET_USD` → `BudgetExceeded`; mission spend vs `missions.budget_usd` → `MissionBudgetExceeded`; callers decide what to do – the crossing call may overshoot slightly – rejected pre-call cost estimates.
 - **D19 Versioned prompt files** – `app/prompts/<name>.v<N>.md`, `$var` placeholders; `prompt_version` stored on every call so evals map to prompt versions – rejected prompts in code and Jinja.
 - **D20 LiteLLM supply chain** – `litellm>=1.106.0,!=1.82.7,!=1.82.8` (versions compromised on PyPI in March 2026); `uv.lock` carries sha256 hashes; Docker installs with `uv sync --frozen` – rejected unpinned latest.
+- **D21 Tests can't reach a provider** – LiteLLM never auto-loads `.env` or downloads its price table (`LITELLM_MODE=PRODUCTION`, `LITELLM_LOCAL_MODEL_COST_MAP=True`); non-live tests run with provider keys removed and `litellm.completion/embedding` replaced by a failing guard; live tests need `-m live` and `RUN_LIVE_TESTS=1` (`make test-live`) – rejected relying on the marker alone.
 
 ## Repository layout
 

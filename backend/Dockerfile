@@ -12,6 +12,8 @@ COPY backend/app ./app
 # --- Runtime stage: slim image, non-root user ---
 FROM python:3.12-slim-bookworm AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
+# LiteLLM: never load a .env by itself; use its bundled price table (no download on import).
+ENV LITELLM_MODE=PRODUCTION LITELLM_LOCAL_MODEL_COST_MAP=True
 RUN groupadd --system app && useradd --system --gid app --no-create-home app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app

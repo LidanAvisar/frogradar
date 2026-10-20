@@ -174,3 +174,24 @@ def test_shipped_smoke_prompt_loads():
     prompt = load_prompt("smoke")
     assert prompt.id.startswith("smoke.v")
     assert "bulk" in prompt.messages(tier="bulk")[-1]["content"]
+
+
+# ---------- the test-suite guard itself ----------
+
+
+def test_provider_keys_are_absent_in_normal_tests():
+    import os
+
+    from tests.conftest import PROVIDER_KEYS
+
+    assert not [k for k in PROVIDER_KEYS if os.environ.get(k)]
+
+
+def test_real_litellm_call_fails_the_test():
+    import litellm
+    from _pytest.outcomes import Failed
+
+    with pytest.raises(Failed, match="real provider call"):
+        litellm.completion(model="openai/gpt-5.4-mini", messages=[])
+    with pytest.raises(Failed, match="real provider call"):
+        litellm.embedding(model="openai/text-embedding-3-small", input=["x"])

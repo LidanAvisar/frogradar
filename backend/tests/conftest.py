@@ -4,23 +4,68 @@ If Postgres is unreachable, DB tests are skipped, unless REQUIRE_DB=1 (CI), wher
 """
 
 import os
-import shutil
-import uuid
-from collections.abc import Callable, Iterator
-from pathlib import Path
 
-import pytest
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import Engine, create_engine, text
-from sqlalchemy.engine import URL, make_url
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
+# Before anything imports LiteLLM: no implicit .env loading, no price-table download.
+os.environ["LITELLM_MODE"] = "PRODUCTION"
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-from app.core import catalog
-from app.core.config import get_settings
+import shutil  # noqa: E402
+import uuid  # noqa: E402
+from collections.abc import Callable, Iterator  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import litellm  # noqa: E402
+import pytest  # noqa: E402
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
+from sqlalchemy import Engine, create_engine, text  # noqa: E402
+from sqlalchemy.engine import URL, make_url  # noqa: E402
+from sqlalchemy.exc import OperationalError  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
+
+from app.core import catalog  # noqa: E402
+from app.core.config import get_settings  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+PROVIDER_KEYS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "TAVILY_API_KEY")
+_LITELLM_ENTRYPOINTS = ("completion", "acompletion", "embedding", "aembedding")
+
+
+# ---------- no real provider calls outside `live` tests ----------
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Live tests need two opt-ins: `-m live` and RUN_LIVE_TESTS=1 (set by `make test-live`)."""
+    if os.environ.get("RUN_LIVE_TESTS") == "1":
+        return
+    skip = pytest.mark.skip(reason="live test: run with `make test-live` (sets RUN_LIVE_TESTS=1)")
+    for item in items:
+        if item.get_closest_marker("live"):
+            item.add_marker(skip)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_providers(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Non-live tests run without provider keys, and any real LiteLLM call fails the test.
+
+    Tests that need LiteLLM behaviour patch these functions again with fakes (their fixtures run
+    after this autouse one). pytest.fail raises a BaseException, so the gateway's retry loop
+    can't swallow it.
+    """
+    if request.node.get_closest_marker("live"):
+        return
+    for key in PROVIDER_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+    def _guard(name: str) -> Callable[..., None]:
+        def guard(*args: object, **kwargs: object) -> None:
+            pytest.fail(f"real provider call: litellm.{name}() in a non-live test")
+
+        return guard
+
+    for name in _LITELLM_ENTRYPOINTS:
+        monkeypatch.setattr(litellm, name, _guard(name))
 
 
 def _admin_url() -> URL:
