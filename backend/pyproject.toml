@@ -3,9 +3,12 @@ name = "frogradar-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.0",
     "fastapi>=0.152.0",
+    "pgvector>=0.5.1",
     "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.1",
+    "pyyaml>=6.0.3",
     "sqlalchemy>=2",
     "uvicorn[standard]>=0.54.0",
 ]
@@ -24,5 +27,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+# Alembic migrations are generated; long column definitions are fine there.
+"app/db/migrations/versions/*" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["db: needs the docker Postgres (skipped if unreachable, unless REQUIRE_DB=1)"]

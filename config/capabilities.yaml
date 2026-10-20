@@ -1,0 +1,48 @@
+# Capability taxonomy for battlecards and the capability matrix (entity x capability -> level).
+# Validated by app/core/catalog.py (CapabilitiesFile). Slugs must be unique across segments.
+
+segments:
+  artifact_management:
+    - {slug: universal-repository, name: Universal multi-format repository, description: "One repository manager for many package types (Maven, npm, PyPI, Go, NuGet, Helm, Docker, generic)."}
+    - {slug: oci-registry, name: OCI / Docker registry, description: "Stores and serves container images and other OCI artifacts."}
+    - {slug: remote-proxy-cache, name: Remote proxy and caching, description: "Proxies and caches public registries (npm, PyPI, Docker Hub) for speed and resilience."}
+    - {slug: virtual-repositories, name: Virtual repositories, description: "One endpoint that aggregates several local and remote repositories."}
+    - {slug: multi-site-replication, name: Multi-site replication and HA, description: "Replication across regions or data centers and high-availability clustering."}
+    - {slug: retention-cleanup, name: Retention and cleanup policies, description: "Automated rules that delete or archive old artifacts to control storage."}
+    - {slug: build-info-promotion, name: Build metadata and promotion, description: "Records what went into a build and promotes artifacts through environments."}
+    - {slug: artifact-search-metadata, name: Artifact search and metadata, description: "Search and custom properties on artifacts (checksums, tags, queries)."}
+    - {slug: deployment-options, name: "SaaS, self-hosted and air-gapped deployment", description: "Available as managed SaaS, self-managed, and in disconnected environments."}
+    - {slug: access-control-sso, name: Fine-grained access control and SSO, description: "Permissions per repository/team with SAML/OIDC single sign-on and tokens."}
+  supply_chain_security:
+    - {slug: sca-vulnerability-scanning, name: SCA vulnerability scanning, description: "Finds known vulnerabilities (CVEs) in open-source dependencies."}
+    - {slug: license-compliance, name: License compliance, description: "Detects open-source licenses and enforces license policies."}
+    - {slug: malicious-package-detection, name: Malicious package detection, description: "Detects malware, typosquats and protestware in public packages."}
+    - {slug: reachability-analysis, name: Contextual / reachability analysis, description: "Determines whether a vulnerability is actually reachable or exploitable in context."}
+    - {slug: package-curation, name: Package curation (block at entry), description: "Blocks risky open-source packages before they enter the organization."}
+    - {slug: sbom, name: SBOM generation and import, description: "Produces and ingests SBOMs (CycloneDX, SPDX)."}
+    - {slug: container-scanning, name: Container image scanning, description: "Scans OS packages and layers in container images."}
+    - {slug: secrets-detection, name: Secrets detection, description: "Finds leaked credentials and keys in code or binaries."}
+    - {slug: sast, name: Static application security testing, description: "Analyzes first-party source code for security flaws."}
+    - {slug: iac-scanning, name: IaC scanning, description: "Finds misconfigurations in Terraform, Kubernetes manifests and similar."}
+    - {slug: signing-attestation, name: Signing and attestation, description: "Artifact signing and provenance (Sigstore, SLSA, in-toto)."}
+    - {slug: hardened-base-images, name: Hardened / minimal base images, description: "Curated low-CVE container images and libraries maintained by the vendor."}
+    - {slug: policy-engine, name: Policy engine and gates, description: "Central security/compliance policies enforced in CI and at release gates."}
+  mlops:
+    - {slug: model-registry, name: Model registry, description: "Stores, versions and governs ML models alongside other artifacts."}
+    - {slug: hf-proxy-cache, name: Hugging Face proxy and caching, description: "Proxies and caches models and datasets from Hugging Face."}
+    - {slug: model-scanning, name: Malicious model scanning, description: "Detects unsafe serialization and malicious code in ML models."}
+    - {slug: ai-bom, name: AI-BOM, description: "Bill of materials for models, datasets and AI dependencies."}
+    - {slug: model-serving, name: Model serving and deployment, description: "Deploys models to inference endpoints."}
+    - {slug: ai-gateway, name: AI gateway / LLM governance, description: "Controls and audits access to LLMs and AI services."}
+  cicd:
+    - {slug: hosted-pipelines, name: Hosted CI/CD pipelines, description: "Managed pipeline execution for build, test and deploy."}
+    - {slug: self-hosted-runners, name: Self-hosted runners, description: "Run pipeline jobs on customer-managed infrastructure."}
+    - {slug: release-lifecycle, name: Release lifecycle management, description: "Immutable release candidates tracked from build to production."}
+    - {slug: cli-api-automation, name: CLI and API automation, description: "First-class CLI and REST/GraphQL APIs for automation."}
+    - {slug: ide-integration, name: IDE integration, description: "Security and artifact insights inside developer IDEs."}
+  distribution:
+    - {slug: edge-distribution, name: Edge / CDN distribution, description: "Pushes artifacts to edge nodes or a CDN close to consumers."}
+    - {slug: p2p-download, name: P2P download, description: "Peer-to-peer artifact distribution for large fleets."}
+    - {slug: air-gapped-transfer, name: Air-gapped transfer, description: "Moves artifacts into disconnected environments in a controlled way."}
+    - {slug: signed-release-bundles, name: Signed release bundles, description: "Immutable, signed sets of artifacts distributed as one unit."}
+    - {slug: iot-ota-updates, name: IoT / OTA device updates, description: "Delivers software updates to edge and IoT devices."}

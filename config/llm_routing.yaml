@@ -1,0 +1,31 @@
+# Which model handles which task. LiteLLM model ids ("provider/model").
+# Validated by app/core/catalog.py (LLMRoutingFile). Env vars override the model ids:
+#   LLM_MODEL_BULK, LLM_MODEL_SYNTHESIS, LLM_MODEL_VERIFY, EMBEDDING_MODEL
+# Rule: the verify provider must differ from both bulk and synthesis providers
+# (a second model family checks the writer's work).
+# Model ids checked against LiteLLM's model registry on 2026-10-20.
+
+tasks:
+  bulk:        # classification / enrichment of every signal: cheap and fast
+    model: anthropic/claude-haiku-5-5
+    max_tokens: 1024
+    temperature: 0.0
+  synthesis:   # morning brief, insight fusion, battlecards, research agent
+    model: anthropic/claude-sonnet-5-5
+    max_tokens: 4096
+    temperature: 0.2
+  verify:      # checks summaries against the source text
+    model: openai/gpt-5.4-mini
+    max_tokens: 1024
+    temperature: 0.0
+
+embedding:
+  model: openai/text-embedding-3-small
+  # Fixed size of signals.embedding (pgvector). Changing it needs a DB migration and a full
+  # re-embed; see README "Design decisions" (embedding model and dimension).
+  dimensions: 1536
+
+# Fallback prices (USD per 1M tokens) for models LiteLLM doesn't know. Example:
+#   pricing:
+#     openai/some-new-model: {input_per_mtok_usd: 0.5, output_per_mtok_usd: 2.0}
+pricing: {}

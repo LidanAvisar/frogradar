@@ -1,0 +1,220 @@
+# Companies FrogRadar tracks, their products, and where to watch them.
+# Validated by app/core/catalog.py (CompetitorsFile). Loaded into the DB by `make seed`.
+#
+# relationship: self | competitor | partner | coopetition   (exactly one "self")
+# segments:     artifact_management | supply_chain_security | mlops | cicd | distribution
+# sources:      kind official|press|community|github, fetch_method rss|github|page_diff|web
+#               trust_score optional (defaults: official 0.9, github 0.85, press 0.7, community 0.5)
+#               is_active: false = keep the row but don't fetch it
+#
+# Every URL below was checked on 2026-10-20 (HTTP 200; RSS URLs return a feed; GitHub orgs exist),
+# except where marked "TODO verify".
+# Aliases are used for entity linking: keep them specific. Broad names that would match unrelated
+# news (e.g. "Amazon", "Microsoft", "Google") are deliberately left out.
+
+companies:
+  - slug: jfrog
+    name: JFrog
+    relationship: self
+    aliases: [JFrog Ltd]
+    segments: [artifact_management, supply_chain_security, mlops, cicd, distribution]
+    website: https://jfrog.com
+    products:
+      - {slug: jfrog-artifactory, name: JFrog Artifactory, aliases: [Artifactory], segments: [artifact_management]}
+      - {slug: jfrog-xray, name: JFrog Xray, aliases: [Xray], segments: [supply_chain_security]}
+      - {slug: jfrog-curation, name: JFrog Curation, segments: [supply_chain_security]}
+      - {slug: jfrog-advanced-security, name: JFrog Advanced Security, segments: [supply_chain_security]}
+      - {slug: jfrog-ml, name: JFrog ML, aliases: [Qwak], segments: [mlops]}
+      - {slug: jfrog-distribution, name: JFrog Distribution, segments: [distribution]}
+      - {slug: jfrog-connect, name: JFrog Connect, segments: [distribution]}
+      - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd]}
+    sources:
+      - {name: JFrog Blog, url: https://jfrog.com/blog/feed/, kind: official, fetch_method: rss}
+      - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github}
+      - {name: JFrog Pricing, url: https://jfrog.com/pricing/, kind: official, fetch_method: page_diff}
+
+  - slug: sonatype
+    name: Sonatype
+    relationship: competitor
+    aliases: [Sonatype Inc]
+    segments: [artifact_management, supply_chain_security]
+    website: https://www.sonatype.com
+    products:
+      - {slug: sonatype-nexus-repository, name: Nexus Repository, aliases: [Nexus Repository Manager, Nexus Repo, NXRM], segments: [artifact_management]}
+      - {slug: sonatype-lifecycle, name: Sonatype Lifecycle, aliases: [Nexus Lifecycle, Nexus IQ], segments: [supply_chain_security]}
+      - {slug: sonatype-firewall, name: Sonatype Repository Firewall, aliases: [Nexus Firewall], segments: [supply_chain_security]}
+    sources:
+      - {name: Sonatype Blog, url: https://www.sonatype.com/blog/rss.xml, kind: official, fetch_method: rss}
+      - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github}
+      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff}
+
+  - slug: github
+    name: GitHub
+    relationship: coopetition
+    aliases: [GitHub Inc]
+    segments: [artifact_management, supply_chain_security, cicd]
+    website: https://github.com
+    products:
+      - {slug: github-packages, name: GitHub Packages, aliases: [GitHub Container Registry, GHCR], segments: [artifact_management]}
+      - {slug: github-advanced-security, name: GitHub Advanced Security, aliases: [GHAS, Dependabot, CodeQL], segments: [supply_chain_security]}
+      - {slug: github-actions, name: GitHub Actions, segments: [cicd]}
+    sources:
+      - {name: GitHub Changelog, url: https://github.blog/changelog/feed/, kind: official, fetch_method: rss}
+      - {name: GitHub Blog, url: https://github.blog/feed/, kind: official, fetch_method: rss}
+      - {name: GitHub Pricing, url: https://github.com/pricing, kind: official, fetch_method: page_diff}
+      - {name: GitHub Advanced Security page, url: https://github.com/security/advanced-security, kind: official, fetch_method: page_diff}
+
+  - slug: gitlab
+    name: GitLab
+    relationship: competitor
+    aliases: [GitLab Inc]
+    segments: [artifact_management, supply_chain_security, cicd]
+    website: https://about.gitlab.com
+    products:
+      - {slug: gitlab-package-registry, name: GitLab Package Registry, aliases: [GitLab Container Registry], segments: [artifact_management]}
+      - {slug: gitlab-ultimate-security, name: GitLab Application Security, aliases: [GitLab Ultimate, GitLab Dependency Scanning], segments: [supply_chain_security]}
+      - {slug: gitlab-ci, name: GitLab CI/CD, aliases: [GitLab CI], segments: [cicd]}
+    sources:
+      - {name: GitLab Blog, url: https://about.gitlab.com/atom.xml, kind: official, fetch_method: rss}
+      - {name: GitLab Releases, url: https://docs.gitlab.com/releases/releases.xml, kind: official, fetch_method: rss}
+      - {name: GitLab GitHub mirror, url: https://github.com/gitlabhq, kind: github, fetch_method: github}
+      - {name: GitLab Pricing, url: https://about.gitlab.com/pricing/, kind: official, fetch_method: page_diff}
+
+  - slug: snyk
+    name: Snyk
+    relationship: competitor
+    aliases: [Snyk Ltd]
+    segments: [supply_chain_security]
+    website: https://snyk.io
+    products:
+      - {slug: snyk-open-source, name: Snyk Open Source, segments: [supply_chain_security]}
+      - {slug: snyk-container, name: Snyk Container, segments: [supply_chain_security]}
+      - {slug: snyk-code, name: Snyk Code, segments: [supply_chain_security]}
+    sources:
+      - {name: Snyk Blog, url: https://snyk.io/blog/feed/, kind: official, fetch_method: rss}
+      - {name: Snyk GitHub, url: https://github.com/snyk, kind: github, fetch_method: github}
+      - {name: Snyk Plans, url: https://snyk.io/plans/, kind: official, fetch_method: page_diff}
+
+  - slug: cloudsmith
+    name: Cloudsmith
+    relationship: competitor
+    aliases: []
+    segments: [artifact_management, supply_chain_security, distribution]
+    website: https://cloudsmith.com
+    sources:
+      - {name: Cloudsmith Blog, url: https://cloudsmith.com/rss/blog.xml, kind: official, fetch_method: rss}
+      - {name: Cloudsmith GitHub, url: https://github.com/cloudsmith-io, kind: github, fetch_method: github}
+      # TODO verify: returned HTTP 429 (rate limited) during the config check.
+      - {name: Cloudsmith Pricing, url: https://cloudsmith.com/pricing, kind: official, fetch_method: page_diff, is_active: false}
+
+  # Cloud providers: tracked only through their artifact products. No company-level aliases or
+  # company-wide feeds, so general AWS/Microsoft/Google news doesn't flood the pipeline.
+  - slug: aws
+    name: Amazon Web Services
+    relationship: competitor
+    aliases: []
+    segments: [artifact_management]
+    website: https://aws.amazon.com
+    products:
+      - slug: aws-codeartifact
+        name: AWS CodeArtifact
+        aliases: [CodeArtifact, Amazon CodeArtifact]
+        segments: [artifact_management]
+        sources:
+          - {name: AWS CodeArtifact Pricing, url: https://aws.amazon.com/codeartifact/pricing/, kind: official, fetch_method: page_diff}
+          - {name: AWS CodeArtifact Features, url: https://aws.amazon.com/codeartifact/features/, kind: official, fetch_method: page_diff}
+
+  - slug: microsoft
+    name: Microsoft
+    relationship: competitor
+    aliases: []
+    segments: [artifact_management, cicd]
+    website: https://azure.microsoft.com
+    products:
+      - slug: azure-artifacts
+        name: Azure Artifacts
+        aliases: [Azure DevOps Artifacts]
+        segments: [artifact_management]
+        sources:
+          - {name: Azure DevOps Blog, url: https://devblogs.microsoft.com/devops/feed/, kind: official, fetch_method: rss}
+          - {name: Azure DevOps Features Timeline, url: https://learn.microsoft.com/en-us/azure/devops/release-notes/features-timeline, kind: official, fetch_method: page_diff}
+          - {name: Azure DevOps Pricing, url: https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/, kind: official, fetch_method: page_diff}
+
+  - slug: google
+    name: Google Cloud
+    relationship: competitor
+    aliases: []
+    segments: [artifact_management]
+    website: https://cloud.google.com
+    products:
+      - slug: google-artifact-registry
+        name: Google Artifact Registry
+        aliases: [Artifact Registry, GCP Artifact Registry]
+        segments: [artifact_management]
+        sources:
+          - {name: Artifact Registry Release Notes, url: https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml, kind: official, fetch_method: rss}
+          - {name: Artifact Registry Pricing, url: https://cloud.google.com/artifact-registry/pricing, kind: official, fetch_method: page_diff}
+
+  - slug: docker
+    name: Docker
+    relationship: competitor
+    aliases: [Docker Inc]
+    segments: [artifact_management, supply_chain_security]
+    website: https://www.docker.com
+    products:
+      - {slug: docker-hub, name: Docker Hub, segments: [artifact_management]}
+      - {slug: docker-scout, name: Docker Scout, segments: [supply_chain_security]}
+      - {slug: docker-hardened-images, name: Docker Hardened Images, aliases: [DHI], segments: [supply_chain_security]}
+    sources:
+      - {name: Docker Blog, url: https://www.docker.com/feed/, kind: official, fetch_method: rss}
+      - {name: Docker GitHub, url: https://github.com/docker, kind: github, fetch_method: github}
+      - {name: Docker Pricing, url: https://www.docker.com/pricing/, kind: official, fetch_method: page_diff}
+
+  - slug: chainguard
+    name: Chainguard
+    relationship: competitor
+    aliases: []
+    segments: [supply_chain_security]
+    website: https://www.chainguard.dev
+    products:
+      - {slug: chainguard-containers, name: Chainguard Containers, aliases: [Chainguard Images], segments: [supply_chain_security]}
+      - {slug: chainguard-libraries, name: Chainguard Libraries, segments: [supply_chain_security, artifact_management]}
+    sources:
+      - {name: Chainguard Blog, url: https://www.chainguard.dev/unchained/rss.xml, kind: official, fetch_method: rss}
+      - {name: Chainguard GitHub, url: https://github.com/chainguard-dev, kind: github, fetch_method: github}
+      - {name: Chainguard Pricing, url: https://www.chainguard.dev/pricing, kind: official, fetch_method: page_diff}
+
+  - slug: endor-labs
+    name: Endor Labs
+    relationship: competitor
+    aliases: [EndorLabs]
+    segments: [supply_chain_security]
+    website: https://www.endorlabs.com
+    sources:
+      - {name: Endor Labs Blog, url: https://www.endorlabs.com/learn/rss.xml, kind: official, fetch_method: rss}
+      - {name: Endor Labs GitHub, url: https://github.com/endorlabs, kind: github, fetch_method: github}
+      - {name: Endor Labs Pricing, url: https://www.endorlabs.com/pricing, kind: official, fetch_method: page_diff}
+
+  - slug: socket
+    name: Socket
+    relationship: competitor
+    aliases: [Socket Security, socket.dev]
+    segments: [supply_chain_security]
+    website: https://socket.dev
+    sources:
+      - {name: Socket Blog, url: https://socket.dev/api/blog/feed.atom, kind: official, fetch_method: rss}
+      - {name: Socket GitHub, url: https://github.com/SocketDev, kind: github, fetch_method: github}
+      - {name: Socket Pricing, url: https://socket.dev/pricing, kind: official, fetch_method: page_diff}
+
+  - slug: hugging-face
+    name: Hugging Face
+    relationship: coopetition
+    aliases: [HuggingFace]
+    segments: [mlops]
+    website: https://huggingface.co
+    products:
+      - {slug: hugging-face-hub, name: Hugging Face Hub, aliases: [HF Hub], segments: [mlops]}
+    sources:
+      - {name: Hugging Face Blog, url: https://huggingface.co/blog/feed.xml, kind: official, fetch_method: rss}
+      - {name: Hugging Face GitHub, url: https://github.com/huggingface, kind: github, fetch_method: github}
+      - {name: Hugging Face Pricing, url: https://huggingface.co/pricing, kind: official, fetch_method: page_diff}
