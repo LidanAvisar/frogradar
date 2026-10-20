@@ -119,7 +119,8 @@ class LLMCall(Base):
     tokens_in: Mapped[int] = mapped_column(Integer, server_default="0")
     tokens_out: Mapped[int] = mapped_column(Integer, server_default="0")
     # NULL = cost unknown (neither LiteLLM nor llm_routing.yaml pricing knows the model).
-    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 10), server_default="0")
+    # No server default: the gateway always sets it, and a default would turn NULL into 0.
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 10))
     latency_ms: Mapped[int] = mapped_column(Integer, server_default="0")
     cache_hit: Mapped[bool] = mapped_column(server_default=sql("false"))
     cache_key: Mapped[str | None] = mapped_column(CHAR(64), index=True)

@@ -55,6 +55,8 @@ def upgrade() -> None:
         existing_type=sa.Numeric(precision=12, scale=6),
         type_=sa.Numeric(precision=14, scale=10),
         nullable=True,
+        existing_server_default="0",
+        server_default=None,  # a default of 0 would turn "unknown" into "free"
     )
 
 
@@ -66,6 +68,7 @@ def downgrade() -> None:
         existing_type=sa.Numeric(precision=14, scale=10),
         type_=sa.Numeric(precision=12, scale=6),
         nullable=False,
+        server_default="0",
     )
     op.drop_index(op.f("ix_llm_calls_prompt_version"), table_name="llm_calls")
     op.drop_column("llm_calls", "attempt")
