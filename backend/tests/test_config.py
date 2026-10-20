@@ -100,6 +100,23 @@ def test_duplicate_source_url_rejected():
         CompetitorsFile.model_validate(data)
 
 
+@pytest.mark.parametrize("options", [{}, {"repos": []}, {"repos": "jfrog-cli"}, {"repos": [1]}])
+def test_github_source_needs_repos(options):
+    data = _competitors()
+    data["companies"][0]["sources"].append(
+        {"name": "X GitHub", "url": "https://github.com/x", "kind": "github",
+         "fetch_method": "github", "options": options}
+    )  # fmt: skip
+    with pytest.raises(ValidationError, match="needs options.repos"):
+        CompetitorsFile.model_validate(data)
+
+
+def test_every_real_github_source_lists_repos():
+    for src in catalog.load_competitors().all_sources():
+        if src.fetch_method == "github":
+            assert src.options["repos"], src.name
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

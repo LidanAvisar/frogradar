@@ -6,6 +6,8 @@
 # sources:      kind official|press|community|github, fetch_method rss|github|page_diff|web
 #               trust_score optional (defaults: official 0.9, github 0.85, press 0.7, community 0.5)
 #               is_active: false = keep the row but don't fetch it
+#               github sources need options.repos: repos under the org whose releases we collect
+#               (each checked on 2026-10-20 to publish releases)
 #
 # Every URL below was checked on 2026-10-20 (HTTP 200; RSS URLs return a feed; GitHub orgs exist),
 # except where marked "TODO verify".
@@ -30,7 +32,7 @@ companies:
       - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd]}
     sources:
       - {name: JFrog Blog, url: https://jfrog.com/blog/feed/, kind: official, fetch_method: rss}
-      - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github}
+      - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github, options: {repos: [jfrog-cli, frogbot, jfrog-cli-security]}}
       - {name: JFrog Pricing, url: https://jfrog.com/pricing/, kind: official, fetch_method: page_diff}
 
   - slug: sonatype
@@ -45,7 +47,7 @@ companies:
       - {slug: sonatype-firewall, name: Sonatype Repository Firewall, aliases: [Nexus Firewall], segments: [supply_chain_security]}
     sources:
       - {name: Sonatype Blog, url: https://www.sonatype.com/blog/rss.xml, kind: official, fetch_method: rss}
-      - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github}
+      - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github, options: {repos: [nexus-public]}}
       - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff}
 
   - slug: github
@@ -77,7 +79,7 @@ companies:
     sources:
       - {name: GitLab Blog, url: https://about.gitlab.com/atom.xml, kind: official, fetch_method: rss}
       - {name: GitLab Releases, url: https://docs.gitlab.com/releases/releases.xml, kind: official, fetch_method: rss}
-      - {name: GitLab GitHub mirror, url: https://github.com/gitlabhq, kind: github, fetch_method: github}
+      - {name: GitLab GitHub mirror, url: https://github.com/gitlabhq, kind: github, fetch_method: github, options: {repos: [gitlabhq]}}
       - {name: GitLab Pricing, url: https://about.gitlab.com/pricing/, kind: official, fetch_method: page_diff}
 
   - slug: snyk
@@ -92,7 +94,7 @@ companies:
       - {slug: snyk-code, name: Snyk Code, segments: [supply_chain_security]}
     sources:
       - {name: Snyk Blog, url: https://snyk.io/blog/feed/, kind: official, fetch_method: rss}
-      - {name: Snyk GitHub, url: https://github.com/snyk, kind: github, fetch_method: github}
+      - {name: Snyk GitHub, url: https://github.com/snyk, kind: github, fetch_method: github, options: {repos: [cli]}}
       - {name: Snyk Plans, url: https://snyk.io/plans/, kind: official, fetch_method: page_diff}
 
   - slug: cloudsmith
@@ -103,7 +105,7 @@ companies:
     website: https://cloudsmith.com
     sources:
       - {name: Cloudsmith Blog, url: https://cloudsmith.com/rss/blog.xml, kind: official, fetch_method: rss}
-      - {name: Cloudsmith GitHub, url: https://github.com/cloudsmith-io, kind: github, fetch_method: github}
+      - {name: Cloudsmith GitHub, url: https://github.com/cloudsmith-io, kind: github, fetch_method: github, options: {repos: [cloudsmith-cli]}}
       # TODO verify: returned HTTP 429 (rate limited) during the config check.
       - {name: Cloudsmith Pricing, url: https://cloudsmith.com/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
@@ -167,7 +169,7 @@ companies:
       - {slug: docker-hardened-images, name: Docker Hardened Images, aliases: [DHI], segments: [supply_chain_security]}
     sources:
       - {name: Docker Blog, url: https://www.docker.com/feed/, kind: official, fetch_method: rss}
-      - {name: Docker GitHub, url: https://github.com/docker, kind: github, fetch_method: github}
+      - {name: Docker GitHub, url: https://github.com/docker, kind: github, fetch_method: github, options: {repos: [compose, buildx, scout-cli]}}
       - {name: Docker Pricing, url: https://www.docker.com/pricing/, kind: official, fetch_method: page_diff}
 
   - slug: chainguard
@@ -181,7 +183,7 @@ companies:
       - {slug: chainguard-libraries, name: Chainguard Libraries, segments: [supply_chain_security, artifact_management]}
     sources:
       - {name: Chainguard Blog, url: https://www.chainguard.dev/unchained/rss.xml, kind: official, fetch_method: rss}
-      - {name: Chainguard GitHub, url: https://github.com/chainguard-dev, kind: github, fetch_method: github}
+      - {name: Chainguard GitHub, url: https://github.com/chainguard-dev, kind: github, fetch_method: github, options: {repos: [apko, melange]}}
       - {name: Chainguard Pricing, url: https://www.chainguard.dev/pricing, kind: official, fetch_method: page_diff}
 
   - slug: endor-labs
@@ -192,7 +194,7 @@ companies:
     website: https://www.endorlabs.com
     sources:
       - {name: Endor Labs Blog, url: https://www.endorlabs.com/learn/rss.xml, kind: official, fetch_method: rss}
-      - {name: Endor Labs GitHub, url: https://github.com/endorlabs, kind: github, fetch_method: github}
+      - {name: Endor Labs GitHub, url: https://github.com/endorlabs, kind: github, fetch_method: github, options: {repos: [github-action]}}
       - {name: Endor Labs Pricing, url: https://www.endorlabs.com/pricing, kind: official, fetch_method: page_diff}
 
   - slug: socket
@@ -203,7 +205,7 @@ companies:
     website: https://socket.dev
     sources:
       - {name: Socket Blog, url: https://socket.dev/api/blog/feed.atom, kind: official, fetch_method: rss}
-      - {name: Socket GitHub, url: https://github.com/SocketDev, kind: github, fetch_method: github}
+      - {name: Socket GitHub, url: https://github.com/SocketDev, kind: github, fetch_method: github, options: {repos: [socket-cli]}}
       - {name: Socket Pricing, url: https://socket.dev/pricing, kind: official, fetch_method: page_diff}
 
   - slug: hugging-face
@@ -216,5 +218,5 @@ companies:
       - {slug: hugging-face-hub, name: Hugging Face Hub, aliases: [HF Hub], segments: [mlops]}
     sources:
       - {name: Hugging Face Blog, url: https://huggingface.co/blog/feed.xml, kind: official, fetch_method: rss}
-      - {name: Hugging Face GitHub, url: https://github.com/huggingface, kind: github, fetch_method: github}
+      - {name: Hugging Face GitHub, url: https://github.com/huggingface, kind: github, fetch_method: github, options: {repos: [huggingface_hub]}}
       - {name: Hugging Face Pricing, url: https://huggingface.co/pricing, kind: official, fetch_method: page_diff}

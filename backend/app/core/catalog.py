@@ -48,6 +48,14 @@ class SourceConfig(_Strict):
     options: dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
 
+    @model_validator(mode="after")
+    def _check_options(self) -> Self:
+        if self.fetch_method is FetchMethod.GITHUB:
+            repos = self.options.get("repos")
+            if not (isinstance(repos, list) and repos and all(isinstance(r, str) for r in repos)):
+                raise ValueError(f"github source {self.name!r} needs options.repos: [repo, ...]")
+        return self
+
     @property
     def effective_trust(self) -> float:
         return self.trust_score if self.trust_score is not None else DEFAULT_TRUST[self.kind]
