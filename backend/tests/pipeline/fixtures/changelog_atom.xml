@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Acme Changelog</title>
+  <id>https://changelog.acme.test/</id>
+  <updated>2026-10-18T12:00:00Z</updated>
+  <entry>
+    <title>Artifact retention policies are GA</title>
+    <link href="https://changelog.acme.test/2026/retention#top"/>
+    <id>tag:changelog.acme.test,2026:retention</id>
+    <updated>2026-10-18T12:00:00Z</updated>
+    <content type="html">&lt;p&gt;Retention policies let admins delete stale artifacts automatically based on age, download count and tags. Policies can be scoped per repository or project, previewed before they run, and audited afterwards. Storage reports show the space recovered by each policy. The feature is available on all paid plans starting today, and the API supports creating and dry-running policies so that platform teams can manage them as code alongside the rest of their infrastructure configuration and review them in pull requests.&lt;/p&gt;</content>
+  </entry>
+</feed>
