@@ -41,6 +41,9 @@ class RSSCollector:
         if feed.bozo and not feed.entries:
             raise FetchError(f"not a feed: {type(feed.bozo_exception).__name__}")
 
+        keep_fragment = bool(source.options.get("keep_fragment", False))
+        seen_urls: set[str] = set()
+        collisions = 0
         for entry in feed.entries:
             link = entry.get("link")
             if not link:
@@ -48,9 +51,16 @@ class RSSCollector:
             published = to_utc(entry.get("published_parsed") or entry.get("updated_parsed"))
             if not result.see(published, since):
                 continue
+            url_id = canonical_url(link, keep_fragment=keep_fragment)
+            if url_id in seen_urls:
+                # Several entries map to one URL (usually #anchors on one page): keep the first,
+                # never let them overwrite each other. Fix with options.keep_fragment: true.
+                collisions += 1
+                continue
+            seen_urls.add(url_id)
             item = RawItem(
                 url=link,
-                canonical_url=canonical_url(link),
+                canonical_url=url_id,
                 title=html_to_text(entry.get("title") or "").strip() or link,
                 text=_entry_text(entry),
                 published_at=published,
@@ -66,6 +76,11 @@ class RSSCollector:
                     continue
                 self._add_article_text(item, result)
             result.items.append(item)
+        if collisions:
+            result.notes.append(
+                f"{collisions} entries shared a URL with an earlier entry and were skipped; "
+                "if items are #anchors on one page, set options.keep_fragment: true"
+            )
         return result
 
     def _add_article_text(self, item: RawItem, result: CollectResult) -> None:

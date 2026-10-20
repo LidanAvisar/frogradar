@@ -22,11 +22,12 @@ def _is_tracking(param: str) -> bool:
     return p in _TRACKING_PARAMS or p.startswith(_TRACKING_PREFIXES)
 
 
-def canonical_url(url: str) -> str:
+def canonical_url(url: str, *, keep_fragment: bool = False) -> str:
     """Stable identity for a URL.
 
     Lowercase scheme and host, drop credentials, default port, fragment, tracking parameters
     (utm_*, fbclid, …) and the trailing slash; sort the remaining query parameters.
+    keep_fragment: for feeds whose items are #anchors on one page (release notes).
     """
     parts = urlsplit(url.strip())
     scheme = (parts.scheme or "https").lower()
@@ -35,7 +36,8 @@ def canonical_url(url: str) -> str:
     path = re.sub(r"/{2,}", "/", parts.path).rstrip("/")
     query = parse_qsl(parts.query, keep_blank_values=True)
     params = [(k, v) for k, v in query if not _is_tracking(k)]
-    return urlunsplit((scheme, netloc, path, urlencode(sorted(params)), ""))
+    fragment = parts.fragment if keep_fragment else ""
+    return urlunsplit((scheme, netloc, path, urlencode(sorted(params)), fragment))
 
 
 def to_utc(value: datetime | struct_time | str | None) -> datetime | None:

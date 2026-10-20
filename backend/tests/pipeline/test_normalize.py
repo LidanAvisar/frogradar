@@ -30,6 +30,14 @@ def test_canonical_url(url, expected):
     assert canonical_url(url) == expected
 
 
+def test_canonical_url_can_keep_the_fragment():
+    url = "https://docs.acme.test/release-notes/?utm_source=x#July_24_2026"
+    assert canonical_url(url) == "https://docs.acme.test/release-notes"
+    assert canonical_url(url, keep_fragment=True) == (
+        "https://docs.acme.test/release-notes#July_24_2026"
+    )
+
+
 def test_canonical_url_is_idempotent():
     url = "https://Blog.acme.test/x/?b=2&a=1&utm_term=z#frag"
     assert canonical_url(canonical_url(url)) == canonical_url(url)

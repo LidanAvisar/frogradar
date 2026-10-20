@@ -54,6 +54,8 @@ class SourceConfig(_Strict):
             repos = self.options.get("repos")
             if not (isinstance(repos, list) and repos and all(isinstance(r, str) for r in repos)):
                 raise ValueError(f"github source {self.name!r} needs options.repos: [repo, ...]")
+        if not isinstance(self.options.get("keep_fragment", False), bool):
+            raise ValueError(f"source {self.name!r}: options.keep_fragment must be true/false")
         return self
 
     @property

@@ -122,6 +122,45 @@ def test_rss_backfill_ignores_validators(web, make_client):
     assert "if-none-match" not in web.requests[-1].headers
 
 
+ANCHOR_FEED = (
+    b"""<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Release notes</title>
+<entry><title>September 15, 2026</title><updated>2026-09-15T00:00:00-07:00</updated>
+  <link href="https://docs.acme.test/release-notes#September_15_2026"/><id>a</id>
+  <content type="html">Feature A is GA. """
+    + b"x" * 600
+    + b"""</content></entry>
+<entry><title>July 24, 2026</title><updated>2026-07-24T00:00:00-07:00</updated>
+  <link href="https://docs.acme.test/release-notes#July_24_2026"/><id>b</id>
+  <content type="html">Feature B is in preview. """
+    + b"y" * 600
+    + b"""</content></entry>
+</feed>"""
+)
+
+
+def test_rss_anchor_items_collide_without_keep_fragment(web, make_client):
+    web.add(FEED, ANCHOR_FEED)
+    result = collect_rss(make_client())
+    [item] = result.items  # the second entry must not overwrite the first
+    assert item.title == "September 15, 2026"
+    assert result.notes and "keep_fragment" in result.notes[0]
+
+
+def test_rss_keep_fragment_keeps_anchor_items_apart(web, make_client):
+    web.add(FEED, ANCHOR_FEED)
+    src = SourceRef(
+        id=1, name="Notes", url=FEED, fetch_method=FetchMethod.RSS,
+        options={"keep_fragment": True},
+    )  # fmt: skip
+    result = collect_rss(make_client(), src)
+    assert [i.canonical_url for i in result.items] == [
+        "https://docs.acme.test/release-notes#September_15_2026",
+        "https://docs.acme.test/release-notes#July_24_2026",
+    ]
+    assert result.notes == []
+
+
 def test_rss_rejects_non_feed(web, make_client):
     web.add(FEED, "<html><body>Not a feed <<<</body></html")
     with pytest.raises(Exception, match="not a feed"):

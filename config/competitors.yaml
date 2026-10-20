@@ -8,6 +8,7 @@
 #               is_active: false = keep the row but don't fetch it
 #               github sources need options.repos: repos under the org whose releases we collect
 #               (each checked on 2026-10-20 to publish releases)
+#               rss sources may set options.keep_fragment: true when feed items are #anchors on one page
 #
 # Every URL below was checked on 2026-10-20 (HTTP 200; RSS URLs return a feed; GitHub orgs exist),
 # except where marked "TODO verify".
@@ -154,7 +155,7 @@ companies:
         aliases: [Artifact Registry, GCP Artifact Registry]
         segments: [artifact_management]
         sources:
-          - {name: Artifact Registry Release Notes, url: https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml, kind: official, fetch_method: rss}
+          - {name: Artifact Registry Release Notes, url: https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml, kind: official, fetch_method: rss, options: {keep_fragment: true}}
           - {name: Artifact Registry Pricing, url: https://cloud.google.com/artifact-registry/pricing, kind: official, fetch_method: page_diff}
 
   - slug: docker

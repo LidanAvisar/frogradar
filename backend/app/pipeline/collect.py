@@ -257,6 +257,8 @@ def print_report(report: RunReport, out=sys.stdout) -> None:
         detail = r.error if r.status in ("failed", "skipped") else r.history
         if r.extract_failed:
             detail += f" ({r.extract_failed} article extractions failed)"
+        for note in r.notes:
+            detail += f"; NOTE: {note}"
         print(
             cols.format(
                 r.source_id, r.name[:34], r.fetch_method, r.status, r.fetched, r.new,
