@@ -12,7 +12,7 @@ from app.db.models.intel import (
     insight_signals,
     signal_entities,
 )
-from app.db.models.ops import LLMCall, Mission, MissionStep, PipelineRun, WatchTopic
+from app.db.models.ops import LLMCache, LLMCall, Mission, MissionStep, PipelineRun, WatchTopic
 
 __all__ = [
     "EMBEDDING_DIM",
@@ -22,6 +22,7 @@ __all__ = [
     "Entity",
     "Feedback",
     "Insight",
+    "LLMCache",
     "LLMCall",
     "Mission",
     "MissionStep",

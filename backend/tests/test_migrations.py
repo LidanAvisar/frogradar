@@ -13,7 +13,7 @@ pytestmark = pytest.mark.db
 APP_TABLES = {
     "entities", "sources", "signals", "signal_entities", "insights", "insight_signals",
     "feedback", "missions", "mission_steps", "capabilities", "capability_matrix",
-    "page_snapshots", "watch_topics", "pipeline_runs", "llm_calls", "reports",
+    "page_snapshots", "watch_topics", "pipeline_runs", "llm_calls", "reports", "llm_cache",
 }  # fmt: skip
 
 

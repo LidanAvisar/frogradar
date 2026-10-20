@@ -4,9 +4,18 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy import text as sql
-from sqlalchemy.dialects.postgresql import CHAR
+from sqlalchemy.dialects.postgresql import CHAR, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, created_at, enum_type, pk
@@ -109,10 +118,15 @@ class LLMCall(Base):
     model: Mapped[str] = mapped_column(String(100))
     tokens_in: Mapped[int] = mapped_column(Integer, server_default="0")
     tokens_out: Mapped[int] = mapped_column(Integer, server_default="0")
-    cost_usd: Mapped[Decimal] = mapped_column(server_default="0")
+    # NULL = cost unknown (neither LiteLLM nor llm_routing.yaml pricing knows the model).
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 10), server_default="0")
     latency_ms: Mapped[int] = mapped_column(Integer, server_default="0")
     cache_hit: Mapped[bool] = mapped_column(server_default=sql("false"))
     cache_key: Mapped[str | None] = mapped_column(CHAR(64), index=True)
+    # Prompt file id, e.g. "enrich_signal.v1", so eval results can be tied to prompt versions.
+    prompt_version: Mapped[str | None] = mapped_column(String(64), index=True)
+    # 1 = first try; 2-3 = structured-output retries after a validation failure.
+    attempt: Mapped[int] = mapped_column(SmallInteger, server_default="1")
     success: Mapped[bool] = mapped_column(server_default=sql("true"))
     error: Mapped[str | None]
     run_id: Mapped[int | None] = mapped_column(
@@ -122,3 +136,23 @@ class LLMCall(Base):
         BigInteger, ForeignKey("missions.id", ondelete="SET NULL"), index=True
     )
     created_at: Mapped[datetime] = mapped_column(server_default=sql("now()"), index=True)
+
+
+class LLMCache(Base):
+    """Validated LLM outputs and embeddings by content hash. Also the source for demo mode."""
+
+    __tablename__ = "llm_cache"
+
+    cache_key: Mapped[str] = mapped_column(CHAR(64), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16))  # completion / embedding
+    model: Mapped[str] = mapped_column(String(100))
+    operation: Mapped[str] = mapped_column(String(64))
+    prompt_version: Mapped[str | None] = mapped_column(String(64))
+    # Validated object (completion) or vector (embedding).
+    response: Mapped[Any] = mapped_column(JSONB)
+    tokens_in: Mapped[int] = mapped_column(Integer, server_default="0")
+    tokens_out: Mapped[int] = mapped_column(Integer, server_default="0")
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 10))  # original call's cost
+    hit_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    created_at: Mapped[datetime] = created_at()
+    last_hit_at: Mapped[datetime | None]
