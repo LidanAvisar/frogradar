@@ -1,0 +1,134 @@
+import pytest
+import yaml
+from sqlalchemy import func, select, text, update
+
+from app.core import catalog
+from app.db.checks import EmbeddingDimMismatch, assert_embedding_dim_matches_db
+from app.db.enums import EntityReviewStatus
+from app.db.models import Capability, Entity, Source
+from app.db.seed import seed
+
+pytestmark = pytest.mark.db
+
+
+def _counts(session) -> dict[str, int]:
+    return {
+        m.__tablename__: session.scalar(select(func.count()).select_from(m))
+        for m in (Entity, Source, Capability)
+    }
+
+
+def _edit_yaml(path, mutate) -> None:
+    data = yaml.safe_load(path.read_text())
+    mutate(data)
+    path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def test_seed_is_idempotent(db_session):
+    first = seed(db_session)
+    counts = _counts(db_session)
+    second = seed(db_session)
+
+    assert _counts(db_session) == counts
+    competitors = catalog.load_competitors()
+    n_entities = sum(1 + len(c.products) for c in competitors.companies)
+    assert counts["entities"] == n_entities == first.tables["entities"].inserted
+    assert counts["sources"] == len(competitors.all_sources()) + len(catalog.load_sources().sources)
+    for c in second.tables.values():
+        assert (c.inserted, c.updated, c.deactivated) == (0, 0, 0)
+
+
+def test_seeded_entities_shape(db_session):
+    seed(db_session)
+    rows = {e.slug: e for e in db_session.scalars(select(Entity))}
+
+    assert [s for s, e in rows.items() if e.is_self] == ["jfrog"]
+    assert rows["jfrog-xray"].parent_id == rows["jfrog"].id
+    assert rows["aws-codeartifact"].parent_id == rows["aws"].id
+    assert rows["github"].relationship == "coopetition"
+    assert rows["aws"].aliases == []
+    assert all(e.review_status == EntityReviewStatus.APPROVED for e in rows.values())
+    # Product-level sources hang off the product, not the company.
+    pricing = db_session.scalar(select(Source).where(Source.name == "AWS CodeArtifact Pricing"))
+    assert pricing.entity_id == rows["aws-codeartifact"].id
+
+
+def test_config_change_updates_in_place(db_session, config_copy):
+    seed(db_session, config_copy)
+    before = db_session.scalar(select(Entity).where(Entity.slug == "snyk"))
+    snyk_id = before.id
+
+    def rename(data):
+        next(c for c in data["companies"] if c["slug"] == "snyk")["name"] = "Snyk Renamed"
+
+    _edit_yaml(config_copy / "competitors.yaml", rename)
+    catalog.clear_cache()
+    report = seed(db_session, config_copy)
+    db_session.expire_all()
+
+    assert report.tables["entities"].updated == 1
+    assert report.tables["entities"].inserted == 0
+    after = db_session.scalar(select(Entity).where(Entity.slug == "snyk"))
+    assert (after.id, after.name) == (snyk_id, "Snyk Renamed")
+
+
+def test_removed_source_is_deactivated_not_deleted(db_session, config_copy):
+    seed(db_session, config_copy)
+    removed_url = yaml.safe_load((config_copy / "sources.yaml").read_text())["sources"][0]["url"]
+    _edit_yaml(config_copy / "sources.yaml", lambda d: d["sources"].pop(0))
+    catalog.clear_cache()
+    report = seed(db_session, config_copy)
+    db_session.expire_all()
+
+    assert report.tables["sources"].deactivated == 1
+    source = db_session.scalar(select(Source).where(Source.url == removed_url))
+    assert source is not None and source.is_active is False
+
+
+def test_seed_keeps_analyst_owned_fields(db_session):
+    seed(db_session)
+    db_session.execute(
+        update(Entity)
+        .where(Entity.slug == "socket")
+        .values(is_tracked=False, review_status=EntityReviewStatus.REJECTED)
+    )
+    seed(db_session)
+    db_session.expire_all()
+    socket = db_session.scalar(select(Entity).where(Entity.slug == "socket"))
+    assert socket.is_tracked is False
+    assert socket.review_status == EntityReviewStatus.REJECTED
+
+
+def test_url_in_both_source_files_is_rejected(db_session, config_copy):
+    first_competitor_url = catalog.load_competitors(config_copy).all_sources()[0].url
+    _edit_yaml(
+        config_copy / "sources.yaml",
+        lambda d: d["sources"].append(
+            {"name": "dupe", "url": first_competitor_url, "kind": "press", "fetch_method": "rss"}
+        ),
+    )
+    catalog.clear_cache()
+    with pytest.raises(catalog.ConfigError, match="both"):
+        seed(db_session, config_copy)
+
+
+def test_embedding_dim_check(db_session, config_copy):
+    conn = db_session.connection()
+    assert_embedding_dim_matches_db(conn)  # real config matches the migration
+
+    _edit_yaml(config_copy / "llm_routing.yaml", lambda d: d["embedding"].update(dimensions=768))
+    with pytest.raises(EmbeddingDimMismatch, match="768"):
+        assert_embedding_dim_matches_db(conn, config_copy)
+
+
+def test_embedding_dim_check_without_schema(make_database):
+    from sqlalchemy import create_engine
+
+    engine = create_engine(make_database())
+    try:
+        with engine.connect() as conn, pytest.raises(EmbeddingDimMismatch, match="migrate"):
+            assert_embedding_dim_matches_db(conn)
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT 1")).scalar() == 1
+    finally:
+        engine.dispose()
