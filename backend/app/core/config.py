@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     llm_model_verify: str = ""
     embedding_model: str = ""
 
+    # LLM gateway (app/core/llm).
+    demo_mode: bool = False  # serve LLM calls from llm_cache only; never call a provider
+    llm_daily_budget_usd: float = 2.0  # BudgetExceeded once today's (UTC) spend reaches this
+    llm_timeout_s: float = 60.0  # per provider request
+    llm_max_retries: int = 3  # retries on rate limits / 5xx / timeouts (not on 4xx)
+    llm_backoff_base_s: float = 1.0  # first backoff delay; doubles per retry (capped at 30s)
+
     @field_validator("config_dir", mode="before")
     @classmethod
     def _empty_config_dir_means_default(cls, v: object) -> object:
