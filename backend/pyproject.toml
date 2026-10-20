@@ -34,4 +34,13 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["db: needs the docker Postgres (skipped if unreachable, unless REQUIRE_DB=1)"]
+# Live tests call real providers (cost money, need keys): run them explicitly with `-m live`.
+addopts = "-m 'not live'"
+markers = [
+    "db: needs the docker Postgres (skipped if unreachable, unless REQUIRE_DB=1)",
+    "live: calls real LLM providers; skipped unless selected with -m live",
+]
+filterwarnings = [
+    # Noise from LiteLLM's own types on import.
+    "ignore:Item .* is using the `ReadOnly` qualifier:UserWarning",
+]
