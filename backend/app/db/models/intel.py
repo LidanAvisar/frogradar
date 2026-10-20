@@ -83,6 +83,8 @@ class Signal(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
         Index("ix_signals_search_tsv", "search_tsv", postgresql_using="gin"),
+        # Identity within a source is the URL; content_hash catches copies across sources.
+        Index("uq_signals_source_id_canonical_url", "source_id", "canonical_url", unique=True),
     )
 
     id: Mapped[int] = pk()
@@ -103,6 +105,8 @@ class Signal(Base):
     raw_text: Mapped[str]
     published_at: Mapped[datetime | None] = mapped_column(index=True)
     fetched_at: Mapped[datetime] = created_at()
+    # Collector details: repo, tag, prerelease, text_source, revisions, last_changed_at.
+    meta: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
     category: Mapped[SignalCategory | None] = mapped_column(
         enum_type(SignalCategory, "signal_category")
     )

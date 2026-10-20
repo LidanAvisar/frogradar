@@ -92,6 +92,9 @@ class Source(Base):
         enum_type(DiscoveredBy, "discovered_by"), server_default=DiscoveredBy.CONFIG.value
     )
     last_fetched_at: Mapped[datetime | None]
+    # Conditional GET validators from the last successful fetch (DB-owned; seed never touches them).
+    http_etag: Mapped[str | None]
+    http_last_modified: Mapped[str | None]
     created_at: Mapped[datetime] = created_at()
     updated_at: Mapped[datetime] = updated_at()
 
