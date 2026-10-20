@@ -229,6 +229,7 @@ CLAUDE.md
 CLAUDE.md
 docs/PLAN.md
 docs/PROGRESS.md
+docs/DECISIONS.md
 
 # Local scratch
 test_api_keys.py
