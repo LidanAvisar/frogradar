@@ -1,0 +1,10 @@
+# Build context is the repo root (so the image can include config/).
+# Allow-list: ignore everything, then re-include only what the backend image needs.
+*
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/alembic.ini
+!backend/app
+!config
+**/__pycache__
+**/*.pyc
