@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     llm_max_retries: int = 3  # retries on rate limits / 5xx / timeouts (not on 4xx)
     llm_backoff_base_s: float = 1.0  # first backoff delay; doubles per retry (capped at 30s)
 
+    # Collectors (app/pipeline/collectors).
+    github_token: str = ""  # optional: 5000 instead of 60 GitHub API requests/hour
+    collector_user_agent: str = (
+        "FrogRadarBot/0.1 (+https://github.com/LidanAvisar/frogradar; competitive-intel research)"
+    )
+    collector_timeout_s: float = 20.0
+    collector_domain_delay_s: float = 1.0  # minimum gap between requests to the same host
+
     @field_validator("config_dir", mode="before")
     @classmethod
     def _empty_config_dir_means_default(cls, v: object) -> object:

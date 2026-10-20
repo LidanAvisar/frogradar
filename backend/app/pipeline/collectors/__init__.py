@@ -1,0 +1,39 @@
+"""Collectors: one per fetch_method, all returning normalized RawItems (see base.py)."""
+
+from app.core.config import Settings
+from app.db.enums import FetchMethod
+from app.pipeline.collectors.base import (
+    Collector,
+    CollectResult,
+    KnownUrls,
+    NotImplementedCollector,
+    RawItem,
+    SourceRef,
+)
+from app.pipeline.collectors.github import GitHubCollector
+from app.pipeline.collectors.http import FetchError, PoliteClient, RobotsDisallowed
+from app.pipeline.collectors.rss import RSSCollector
+from app.pipeline.collectors.stubs import PageDiffCollector, WebCollector
+
+
+def build_collectors(client: PoliteClient, settings: Settings) -> dict[FetchMethod, Collector]:
+    return {
+        FetchMethod.RSS: RSSCollector(client),
+        FetchMethod.GITHUB: GitHubCollector(client, token=settings.github_token),
+        FetchMethod.PAGE_DIFF: PageDiffCollector(),
+        FetchMethod.WEB: WebCollector(),
+    }
+
+
+__all__ = [
+    "CollectResult",
+    "Collector",
+    "FetchError",
+    "KnownUrls",
+    "NotImplementedCollector",
+    "PoliteClient",
+    "RawItem",
+    "RobotsDisallowed",
+    "SourceRef",
+    "build_collectors",
+]

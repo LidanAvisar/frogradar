@@ -1,4 +1,4 @@
-.PHONY: up down logs db-up migrate seed test test-live lint llm-smoke
+.PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill
 
 up:
 	docker compose up -d --build
@@ -33,3 +33,11 @@ llm-smoke: migrate
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
+
+# Collect raw signals from all active sources (or one: make collect SOURCE="Snyk Blog" / SOURCE=12).
+collect: migrate
+	cd backend && uv run python -m app.pipeline.collect $(if $(SOURCE),--source "$(SOURCE)")
+
+# Page back through history (GitHub releases; whatever RSS feeds still list). SINCE=90d or YYYY-MM-DD.
+backfill: migrate
+	cd backend && uv run python -m app.pipeline.collect --backfill --since $(or $(SINCE),90d) $(if $(SOURCE),--source "$(SOURCE)")
