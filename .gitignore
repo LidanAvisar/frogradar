@@ -218,3 +218,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local secrets
+.env
+CLAUDE.md
+
+.venv/
+
+# Local-only AI assistant context
+CLAUDE.md
+docs/PLAN.md
+docs/PROGRESS.md
