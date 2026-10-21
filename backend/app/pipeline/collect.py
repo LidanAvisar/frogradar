@@ -181,24 +181,21 @@ def collect_source(
     return report
 
 
-def run_collection(
+def collect_all(
     *,
     session_factory: Callable[[], Session],
     client: PoliteClient,
     settings: Settings,
+    run_id: int,
     source: str | None = None,
     since: datetime | None = None,
     backfill: bool = False,
 ) -> RunReport:
+    """Collect every selected source into an existing pipeline run (each source fails alone)."""
     since = since or datetime.now(UTC) - timedelta(days=DEFAULT_SINCE_DAYS)
     collectors = build_collectors(client, settings)
-
     with session_factory() as s:
         refs = [_ref(src) for src in select_sources(s, source)]
-        run = PipelineRun(trigger=RunTrigger.BACKFILL if backfill else RunTrigger.MANUAL)
-        s.add(run)
-        s.commit()
-        run_id = run.id
 
     reports = []
     for ref in refs:
@@ -222,19 +219,50 @@ def run_collection(
         status = RunStatus.PARTIAL
     else:
         status = RunStatus.FAILED
-    report = RunReport(run_id, status, since, backfill, reports)
+    return RunReport(run_id, status, since, backfill, reports)
 
+
+def failed_sources_summary(report: RunReport) -> str | None:
+    failed = [r for r in report.sources if r.status == "failed"]
+    return "; ".join(f"{r.name}: {r.error}" for r in failed)[:4000] or None
+
+
+def run_collection(
+    *,
+    session_factory: Callable[[], Session],
+    client: PoliteClient,
+    settings: Settings,
+    source: str | None = None,
+    since: datetime | None = None,
+    backfill: bool = False,
+) -> RunReport:
+    """`make collect`: a pipeline run of its own that only collects."""
+    with session_factory() as s:
+        run = PipelineRun(trigger=RunTrigger.BACKFILL if backfill else RunTrigger.MANUAL)
+        s.add(run)
+        s.commit()
+        run_id = run.id
+
+    report = collect_all(
+        session_factory=session_factory,
+        client=client,
+        settings=settings,
+        run_id=run_id,
+        source=source,
+        since=since,
+        backfill=backfill,
+    )
     with session_factory() as s:
         run = s.get(PipelineRun, run_id)
-        run.status = status
+        run.status = report.status
         run.finished_at = datetime.now(UTC)
-        run.counts = _counts_json(report)
-        run.error = "; ".join(f"{r.name}: {r.error}" for r in failed)[:4000] or None
+        run.counts = counts_json(report)
+        run.error = failed_sources_summary(report)
         s.commit()
     return report
 
 
-def _counts_json(report: RunReport) -> dict[str, Any]:
+def counts_json(report: RunReport) -> dict[str, Any]:
     return {
         "kind": "collect",
         "since": report.since.isoformat(),

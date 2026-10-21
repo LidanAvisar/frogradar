@@ -33,14 +33,14 @@ companies:
     segments: [artifact_management, supply_chain_security, mlops, cicd, distribution]
     website: https://jfrog.com
     products:
-      - {slug: jfrog-artifactory, name: JFrog Artifactory, aliases: [Artifactory], segments: [artifact_management]}
-      - {slug: jfrog-xray, name: JFrog Xray, aliases: [{alias: Xray, case_sensitive: true}], segments: [supply_chain_security]}
-      - {slug: jfrog-curation, name: JFrog Curation, segments: [supply_chain_security]}
-      - {slug: jfrog-advanced-security, name: JFrog Advanced Security, segments: [supply_chain_security]}
-      - {slug: jfrog-ml, name: JFrog ML, aliases: [Qwak], segments: [mlops]}
-      - {slug: jfrog-distribution, name: JFrog Distribution, segments: [distribution]}
-      - {slug: jfrog-connect, name: JFrog Connect, segments: [distribution]}
-      - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd]}
+      - {slug: jfrog-artifactory, name: JFrog Artifactory, aliases: [Artifactory], segments: [artifact_management], description: "Universal artifact repository manager: local/remote/virtual repos for 30+ package types and OCI, SaaS or self-hosted, multi-site replication, build info and promotion."}
+      - {slug: jfrog-xray, name: JFrog Xray, aliases: [{alias: Xray, case_sensitive: true}], segments: [supply_chain_security], description: "SCA on artifacts in Artifactory: CVEs, licenses, operational risk, SBOM export, policies that block downloads or builds."}
+      - {slug: jfrog-curation, name: JFrog Curation, segments: [supply_chain_security], description: "Blocks malicious or risky open-source packages before they enter the organization (policy gate on remote repositories)."}
+      - {slug: jfrog-advanced-security, name: JFrog Advanced Security, segments: [supply_chain_security], description: "Contextual (reachability) analysis, secrets detection, IaC and container misconfiguration scanning, SAST."}
+      - {slug: jfrog-ml, name: JFrog ML, aliases: [Qwak], segments: [mlops], description: "Model registry and MLOps platform (ex-Qwak): build, deploy and govern ML models and Hugging Face models as artifacts."}
+      - {slug: jfrog-distribution, name: JFrog Distribution, segments: [distribution], description: "Signed release bundles distributed to edge nodes and remote sites."}
+      - {slug: jfrog-connect, name: JFrog Connect, segments: [distribution], description: "Fleet management and OTA software updates for IoT / edge devices."}
+      - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd], description: "CI/CD orchestration integrated with the JFrog Platform; JFrog also integrates with GitHub Actions, GitLab CI and Jenkins via the JFrog CLI."}
     sources:
       - {name: JFrog Blog, url: https://jfrog.com/blog/feed/, kind: official, fetch_method: rss, is_active: false}
       - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github, options: {repos: [jfrog-cli, frogbot, jfrog-cli-security]}, is_active: false}

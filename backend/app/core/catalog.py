@@ -248,9 +248,82 @@ class DedupSettings(_Strict):
         return self
 
 
+class LLMStageSettings(_Strict):
+    # Parallel LLM calls per stage (bounded thread pool).
+    max_workers: Annotated[int, Field(ge=1, le=32)] = 4
+
+
+class TriageSettings(_Strict):
+    max_chars: Annotated[int, Field(ge=500, le=50000)] = 3000
+
+
+class EnrichSettings(_Strict):
+    max_chars: Annotated[int, Field(ge=1000, le=100000)] = 12000
+    # Extra attempts when the evidence quote is not verbatim in raw_text.
+    quote_retries: Annotated[int, Field(ge=0, le=3)] = 1
+
+
+class VerifySettings(_Strict):
+    max_chars: Annotated[int, Field(ge=1000, le=100000)] = 12000
+
+
+Unit = Annotated[float, Field(ge=0, le=1)]
+
+
+class ScoreWeights(_Strict):
+    verification: Unit = 0.45
+    trust: Unit = 0.25
+    corroboration: Unit = 0.15
+    evidence: Unit = 0.15
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        total = self.verification + self.trust + self.corroboration + self.evidence
+        if abs(total - 1) > 1e-6:
+            raise ValueError(f"score weights must sum to 1, got {total:g}")
+        return self
+
+
+class VerificationValues(_Strict):
+    supported: Unit = 1.0
+    partial: Unit = 0.5
+    unsupported: Unit = 0.0
+
+
+class ScoreCaps(_Strict):
+    unsupported: Unit = 0.30
+    quote_unverified: Unit = 0.60
+
+
+class ScoreBands(_Strict):
+    high: Unit = 0.75
+    medium: Unit = 0.50
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        if self.medium >= self.high:
+            raise ValueError("bands: medium must be below high")
+        return self
+
+
+class ScoreSettings(_Strict):
+    weights: ScoreWeights = Field(default_factory=ScoreWeights)
+    verification_values: VerificationValues = Field(default_factory=VerificationValues)
+    # Sources in the dedup cluster needed for full corroboration credit (1 source = 0).
+    corroboration_full_at: Annotated[int, Field(ge=2, le=20)] = 3
+    no_source_trust: Unit = 0.5  # signals without a source (research findings)
+    caps: ScoreCaps = Field(default_factory=ScoreCaps)
+    bands: ScoreBands = Field(default_factory=ScoreBands)
+
+
 class PipelineFile(_Strict):
     embedding: EmbedSettings = Field(default_factory=EmbedSettings)
     dedup: DedupSettings = Field(default_factory=DedupSettings)
+    llm: LLMStageSettings = Field(default_factory=LLMStageSettings)
+    triage: TriageSettings = Field(default_factory=TriageSettings)
+    enrich: EnrichSettings = Field(default_factory=EnrichSettings)
+    verify: VerifySettings = Field(default_factory=VerifySettings)
+    score: ScoreSettings = Field(default_factory=ScoreSettings)
 
 
 # ---------- loading ----------

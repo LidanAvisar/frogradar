@@ -13,3 +13,28 @@ dedup:
   same_source_threshold: 0.97    # ...when from the same source (templated changelog entries
                                  #    look alike but are different news)
   neighbours: 10        # nearest neighbours fetched per signal (HNSW)
+
+llm:
+  max_workers: 4        # parallel LLM calls per stage (bounded thread pool)
+
+# Characters of raw_text sent to each LLM stage (raw_text is untrusted input, see README).
+triage:
+  max_chars: 3000       # relevance gate: the lead is enough
+enrich:
+  max_chars: 12000      # the verifier gets the same text, so it checks exactly what the writer saw
+  quote_retries: 1      # extra attempt when evidence_quote is not verbatim in the source
+verify:
+  max_chars: 12000
+
+# Confidence = how faithfully the signal reflects what its source says (not whether the source's
+# claim is true; vendor claims are flagged by is_claim instead). Computed in code, no LLM:
+#   confidence = w.verification*V + w.trust*T + w.corroboration*C + w.evidence*E, then caps
+#   V = verification_values[verdict]   T = source trust_score   E = 1 if the quote is verbatim
+#   C = min(1, (sources in dedup cluster - 1) / (corroboration_full_at - 1))
+score:
+  weights: {verification: 0.45, trust: 0.25, corroboration: 0.15, evidence: 0.15}   # sum to 1
+  verification_values: {supported: 1.0, partial: 0.5, unsupported: 0.0}
+  corroboration_full_at: 3
+  no_source_trust: 0.5
+  caps: {unsupported: 0.30, quote_unverified: 0.60}
+  bands: {high: 0.75, medium: 0.50}    # >= high → high, >= medium → medium, else low
