@@ -1,0 +1,101 @@
+<div class="fr-page">
+  <header class="intro">
+    <h1 class="fr-page-title">Competitor Radar</h1>
+    <p class="muted lead">New players we don't track yet, discovered from Hacker News, new GitHub projects, the CNCF landscape and the news.</p>
+  </header>
+
+  <section class="fr-panel filters" aria-labelledby="radar-filters-heading">
+    <div class="filters-head">
+      <h2 id="radar-filters-heading" class="eyebrow">Filters</h2>
+      <button type="button" class="fr-button toggle" aria-controls="radar-filter-fields"
+              [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+        Filters @if (activeFilters()) { <span class="mono">({{ activeFilters() }})</span> }
+      </button>
+      @if (activeFilters()) {
+        <button type="button" class="fr-button" (click)="clear()">Clear filters</button>
+      }
+    </div>
+    <div id="radar-filter-fields" class="fields" [class.open]="filtersOpen()">
+      <fieldset class="group">
+        <legend class="fr-field-label">Status</legend>
+        <div class="chips">
+          @for (s of statuses; track s.value) {
+            <label class="fr-chip-choice">
+              <input type="checkbox" [checked]="filters().status.includes(s.value)" (change)="setStatus(s.value, $any($event.target).checked)" />
+              <span>{{ s.label }}</span>
+            </label>
+          }
+        </div>
+      </fieldset>
+      <fieldset class="group">
+        <legend class="fr-field-label">JFrog relation</legend>
+        <div class="chips">
+          @for (r of relations; track r.value) {
+            <label class="fr-chip-choice">
+              <input type="checkbox" [checked]="filters().relation.includes(r.value)" (change)="setRelation(r.value, $any($event.target).checked)" />
+              <span>{{ r.label }}</span>
+            </label>
+          }
+        </div>
+      </fieldset>
+      <div class="fr-field kind">
+        <label for="radar-kind">Kind</label>
+        <select id="radar-kind" class="fr-select" (change)="setKind($any($event.target).value)">
+          <option value="" [selected]="!filters().kind">All kinds</option>
+          @for (k of kinds; track k.value) {
+            <option [value]="k.value" [selected]="filters().kind === k.value">{{ k.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="results" aria-labelledby="radar-results-heading">
+    <div class="results-head">
+      <h2 id="radar-results-heading" class="results-title"><span aria-live="polite">{{ summary() }}</span></h2>
+      <span class="small muted">Sorted by emergence score (0–100)</span>
+    </div>
+
+    @switch (state().status) {
+      @case ('loading') {
+        <div class="list" aria-busy="true" aria-label="Loading candidates">
+          @for (s of [1, 2, 3]; track s) { <div class="fr-panel"><fr-skeleton [lines]="['25%', '80%', '60%']" /></div> }
+        </div>
+      }
+      @case ('error') {
+        <div class="fr-panel"><fr-error-state (retry)="retry()" /></div>
+      }
+      @default {
+        @if (items().length === 0) {
+          <div class="fr-panel">
+            <fr-empty-state title="No candidates match"
+                            [message]="activeFilters() ? 'Try another status or relation.' : 'Discovery runs with the daily pipeline; new players appear here.'" />
+          </div>
+        } @else {
+          @if (top().length) {
+            <ol class="list">
+              @for (c of top(); track c.id) {
+                <li><fr-radar-row [candidate]="c" (act)="onAction(c, $event)" /></li>
+              }
+            </ol>
+          } @else {
+            <p class="small muted">No candidate scores {{ thresholdText() }} or more with these filters.</p>
+          }
+          @if (lower().length) {
+            <details class="lower">
+              <summary>
+                <span class="lower-title">Lower relevance ({{ lower().length }})</span>
+                <span class="small muted">Score below {{ thresholdText() }}, or no overlap with JFrog products</span>
+              </summary>
+              <ol class="list">
+                @for (c of lower(); track c.id) {
+                  <li><fr-radar-row [candidate]="c" (act)="onAction(c, $event)" /></li>
+                }
+              </ol>
+            </details>
+          }
+        }
+      }
+    }
+  </section>
+</div>
