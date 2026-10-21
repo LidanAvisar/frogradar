@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     collector_timeout_s: float = 20.0
     collector_domain_delay_s: float = 1.0  # minimum gap between requests to the same host
 
+    # Scheduler service (app/scheduler.py): standard 5-field cron, evaluated in UTC.
+    daily_run_cron: str = "0 6 * * *"
+
     @field_validator("config_dir", mode="before")
     @classmethod
     def _empty_config_dir_means_default(cls, v: object) -> object:

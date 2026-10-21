@@ -9,8 +9,10 @@
 One pipeline_runs row per run; counts per node. Nodes reuse the step functions
 (`step(session, ctx) -> counts`). A failing node is recorded and the graph goes on (a collect
 failure must not block enrichment of stored signals); a failing signal is counted inside its
-node. BudgetExceeded skips the remaining LLM nodes. Status: succeeded, or partial when any node
-or signal failed or a stage stopped early; failed only if the graph itself crashed.
+node. BudgetExceeded skips the remaining LLM nodes. Only one run at a time (advisory lock,
+app.pipeline.lock): a second `make pipeline` or scheduled run exits without starting.
+Status: succeeded, or partial when any node or signal failed or a stage stopped early; failed
+only if the graph itself crashed.
 """
 
 import argparse
@@ -22,7 +24,7 @@ from decimal import Decimal
 from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from sqlalchemy import func, select
+from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
@@ -36,6 +38,7 @@ from app.pipeline.dedup import dedup_signals
 from app.pipeline.embed import embed_signals
 from app.pipeline.enrich import enrich_signals
 from app.pipeline.link import link_signals
+from app.pipeline.lock import PipelineLocked, pipeline_lock
 from app.pipeline.score import score_signals
 from app.pipeline.triage import triage_signals
 from app.pipeline.verify import verify_signals
@@ -156,6 +159,26 @@ def run_pipeline(
     make_ctx: Callable[[int], RunContext] | None = None,
     steps: Mapping[str, Step] = STEPS,
 ) -> PipelineRun:
+    """Run the graph once. Raises PipelineLocked if another run holds the lock (D42)."""
+    with pipeline_lock(_engine(factory)):
+        return _run_locked(factory, skip, force, trigger, make_ctx, steps)
+
+
+def _engine(factory: sessionmaker[Session]) -> Engine:
+    bind = factory.kw.get("bind")
+    if not isinstance(bind, Engine):
+        raise RuntimeError("run_pipeline needs a sessionmaker bound to an Engine")
+    return bind
+
+
+def _run_locked(
+    factory: sessionmaker[Session],
+    skip: frozenset[str],
+    force: frozenset[str],
+    trigger: RunTrigger,
+    make_ctx: Callable[[int], RunContext] | None,
+    steps: Mapping[str, Step],
+) -> PipelineRun:
     with factory.begin() as s:
         run = PipelineRun(trigger=trigger, counts={"graph": list(NODES)})
         s.add(run)
@@ -207,12 +230,16 @@ def main(argv: list[str] | None = None) -> int:
     from app.db.session import get_engine
 
     factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
-    run = run_pipeline(
-        factory,
-        skip=args.skip,
-        force=args.force,
-        trigger=RunTrigger.SCHEDULED if args.scheduled else RunTrigger.MANUAL,
-    )
+    try:
+        run = run_pipeline(
+            factory,
+            skip=args.skip,
+            force=args.force,
+            trigger=RunTrigger.SCHEDULED if args.scheduled else RunTrigger.MANUAL,
+        )
+    except PipelineLocked as e:
+        print(f"not started: {e}", file=sys.stderr)
+        return 2
     for name in NODES:
         print(f"{name:>8}: {run.counts.get(name)}")
     print(f"run {run.id}: {run.status} – cost ${run.cost_usd:.6f}")

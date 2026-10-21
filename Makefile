@@ -1,5 +1,5 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
-	embed dedup link dedup-report pipeline pipeline-report
+	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-logs
 
 up:
 	docker compose up -d --build
@@ -67,3 +67,12 @@ pipeline: migrate
 # Quality report for the latest pipeline run (RUN=<id> for another). No LLM calls.
 pipeline-report: migrate
 	cd backend && uv run python -m app.pipeline.pipeline_report $(if $(RUN),--run $(RUN))
+
+# Historical baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today,
+# diffed in date order (no LLM calls; change signals are processed by the next `make pipeline`).
+wayback-backfill: migrate
+	cd backend && uv run python -m app.pipeline.wayback $(if $(SOURCE),--source "$(SOURCE)")
+
+# The daily scheduler runs as the `scheduler` compose service (make up); follow its log.
+scheduler-logs:
+	docker compose logs -f scheduler

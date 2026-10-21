@@ -35,5 +35,24 @@ services:
       db:
         condition: service_healthy
 
+  # Daily pipeline run (APScheduler, cron from DAILY_RUN_CRON in .env, UTC). Same image as the
+  # backend; the backend container applies migrations on start. One run at a time (advisory lock).
+  scheduler:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-frogradar}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-frogradar}
+    command: ["python", "-m", "app.scheduler"]
+    volumes:
+      - ./config:/app/config:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
 volumes:
   pgdata:
