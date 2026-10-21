@@ -1,0 +1,1704 @@
+{
+  "summary": {
+    "questions": 12,
+    "mean_recall_at_k": 0.917,
+    "full_recall": 8,
+    "answers_ok": 12,
+    "answered": 12,
+    "cost_usd": 0.2109
+  },
+  "k": 8,
+  "rows": [
+    {
+      "id": "q01",
+      "question": "What changed in Sonatype's pricing this year?",
+      "expected": [
+        "sig:1055",
+        "sig:1054",
+        "sig:1053"
+      ],
+      "retrieved": [
+        "sig:1054",
+        "sig:1055",
+        "sig:1053",
+        "sig:59",
+        "sig:52",
+        "sig:51",
+        "sig:57",
+        "sig:55"
+      ],
+      "hits": [
+        "sig:1055",
+        "sig:1054",
+        "sig:1053"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": "Sonatype",
+        "company_slug": "sonatype",
+        "window": "2026"
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:1055",
+        "sig:1054",
+        "sig:1053"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 5,
+      "cost_usd": 0.023618,
+      "cached": false,
+      "latency_s": 12.4,
+      "turn_id": 1,
+      "answer": {
+        "turn_id": 1,
+        "position": 1,
+        "question": "What changed in Sonatype's pricing this year?",
+        "standalone_question": "What changed in Sonatype's pricing this year?",
+        "filters": {
+          "company": "Sonatype",
+          "company_slug": "sonatype",
+          "window": "2026"
+        },
+        "not_enough_evidence": false,
+        "intro": "Three Sonatype pricing-page changes are logged for 2026: April, July and October.",
+        "points": [
+          {
+            "lead": "Oct 21: Cloud Pro rises to $1,950/year",
+            "text": "Nexus Repository Cloud Pro is now $1,950/year plus consumption, up from $1,620. A Self-Hosted Pro Edition at $7,500/year was added, and Cloud plans split into Pro, Pro+ and Enterprise.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "Oct 21: Several entries removed from page",
+            "text": "Firewall Enterprise, Lifecycle and SBOM Manager entries no longer appear on Sonatype's pricing page.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "Jul 29: Repricing of Nexus Repository and Firewall",
+            "text": "Nexus Repository now starts at $1,620/year plus consumption, replacing $135/month. Repository Firewall is $4,800/year, previously $18.67 per user/month.",
+            "citations": [
+              2
+            ]
+          },
+          {
+            "lead": "Jul 29: Lifecycle custom, new Guide tier",
+            "text": "Lifecycle moved to custom pricing, previously $57.50 per user/month. A new Guide tier starts at $1,200/year.",
+            "citations": [
+              2
+            ]
+          },
+          {
+            "lead": "Apr 14: Renaming and bundling, no prices",
+            "text": "Premium became 'Nexus Repository + Repository Firewall', Free became Community Edition, and the Pro offer was renamed. No dollar amounts appeared in the diff, so this looks like packaging, not price.",
+            "citations": [
+              3
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "Sonatype's higher entry prices and flat Firewall pricing change how Artifactory, Xray and Curation should be compared in deals. Battlecards should also reflect the packaging shifts around Firewall and Lifecycle.",
+          "citations": [
+            2,
+            1
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How does Nexus Pro+ Firewall compare to JFrog Curation?",
+          "What did Sonatype's Guide tier add?",
+          "Which Sonatype products overlap with Artifactory and Xray?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:1055",
+            "type": "pricing_page",
+            "title": "Sonatype raises Nexus Repository Cloud Pro to $1,950 a year",
+            "source": "Sonatype Pricing",
+            "source_kind": "official",
+            "date": "2026-10-21T07:57:56.847543Z",
+            "url": "https://www.sonatype.com/products/pricing",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          },
+          {
+            "n": 2,
+            "id": "sig:1054",
+            "type": "pricing_page",
+            "title": "Sonatype moves Nexus Repository to $1,620/year and Firewall to $4,800/year",
+            "source": "Sonatype Pricing",
+            "source_kind": "official",
+            "date": "2026-07-29T00:45:57Z",
+            "url": "https://www.sonatype.com/products/pricing",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          },
+          {
+            "n": 3,
+            "id": "sig:1053",
+            "type": "pricing_page",
+            "title": "Sonatype bundles Repository Firewall into Nexus Repository + Firewall tier",
+            "source": "Sonatype Pricing",
+            "source_kind": "official",
+            "date": "2026-04-14T05:56:50Z",
+            "url": "https://www.sonatype.com/products/pricing",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.023618,
+        "cached": false,
+        "created_at": "2026-10-21T15:03:15.200734Z",
+        "conversation_id": 1
+      }
+    },
+    {
+      "id": "q02",
+      "question": "Who launched a package firewall?",
+      "expected": [
+        "sig:1046",
+        "sig:52",
+        "sig:50"
+      ],
+      "retrieved": [
+        "sig:1046",
+        "bc:github:strengths:2",
+        "bc:sonatype:weaknesses:2",
+        "bc:github:weaknesses:1",
+        "sig:50",
+        "sig:52",
+        "sig:1008",
+        "sig:54"
+      ],
+      "hits": [
+        "sig:1046",
+        "sig:52",
+        "sig:50"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": null,
+        "company_slug": null,
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:1046",
+        "bc:github:strengths:2",
+        "bc:github:weaknesses:1",
+        "sig:52",
+        "sig:50"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 4,
+      "cost_usd": 0.02008925,
+      "cached": false,
+      "latency_s": 6.97,
+      "turn_id": 2,
+      "answer": {
+        "turn_id": 2,
+        "position": 1,
+        "question": "Who launched a package firewall?",
+        "standalone_question": "Who launched a package firewall?",
+        "filters": {
+          "company": null,
+          "company_slug": null,
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "GitHub launched a package firewall; Sonatype added firewall-style blocking to Nexus Repository.",
+        "points": [
+          {
+            "lead": "GitHub launched a package firewall preview",
+            "text": "GitHub launched a package firewall in public preview for all GitHub Enterprise Cloud customers, including data-resident deployments. It sits between endpoints such as Actions runners or coding agents and upstream registries.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "GitHub's firewall is npm-only and free for now",
+            "text": "It supports only npm packages and is free during preview, moving to metered billing at general availability.",
+            "citations": [
+              1,
+              3
+            ]
+          },
+          {
+            "lead": "Sonatype added Firewall to Nexus Repository",
+            "text": "Sonatype announced new Firewall capabilities in Nexus Repository Pro+ and Enterprise editions that screen requests for packages, containers, LLMs and MCP servers and can block malicious, vulnerable or out-of-policy components.",
+            "citations": [
+              4
+            ]
+          },
+          {
+            "lead": "Sonatype Nexus tiers block malicious packages",
+            "text": "Nexus Repository Pro+ and Enterprise add malicious package protection and configurable policies to block known malicious packages before they reach developers and builds.",
+            "citations": [
+              5
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "Both moves target JFrog Curation's block-at-entry gate. Position Curation's broader package-format coverage and mature policy engine against GitHub's npm-only preview, and update battlecards against Nexus's new tiers.",
+          "citations": [
+            1,
+            5
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How does GitHub's firewall compare to JFrog Curation?",
+          "What is Sonatype's Firewall pricing history?",
+          "Which package formats does Nexus Firewall cover?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:1046",
+            "type": "article",
+            "title": "GitHub package firewall in public preview",
+            "source": "GitHub Changelog",
+            "source_kind": "official",
+            "date": "2026-10-20T16:11:53Z",
+            "url": "https://github.blog/changelog/2026-10-20-github-package-firewall-in-public-preview",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          },
+          {
+            "n": 2,
+            "id": "bc:github:strengths:2",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 3,
+            "id": "bc:github:weaknesses:1",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Weakness",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 4,
+            "id": "sig:52",
+            "type": "article",
+            "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-14T11:00:01Z",
+            "url": "https://www.sonatype.com/blog/trust-what-ships-your-repository-is-now-your-first-defense",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 5,
+            "id": "sig:50",
+            "type": "article",
+            "title": "The New Release Metric: Less Cleanup Per Release",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-20T11:00:00Z",
+            "url": "https://www.sonatype.com/blog/the-new-release-metric-less-cleanup-per-release",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.02008925,
+        "cached": false,
+        "created_at": "2026-10-21T15:03:27.514545Z",
+        "conversation_id": 2
+      }
+    },
+    {
+      "id": "q03",
+      "question": "What supply-chain security incidents happened recently?",
+      "expected": [
+        "sig:1005",
+        "sig:53"
+      ],
+      "retrieved": [
+        "sig:1005",
+        "sig:53",
+        "sig:51",
+        "sig:55",
+        "sig:991",
+        "radar:159",
+        "bc:github:opportunities_for_jfrog:2",
+        "bc:github:positioning:1"
+      ],
+      "hits": [
+        "sig:1005",
+        "sig:53"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": null,
+        "company_slug": null,
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:1005",
+        "sig:53",
+        "bc:github:opportunities_for_jfrog:2"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 5,
+      "cost_usd": 0.0214215,
+      "cached": false,
+      "latency_s": 9.17,
+      "turn_id": 3,
+      "answer": {
+        "turn_id": 3,
+        "position": 1,
+        "question": "What supply-chain security incidents happened recently?",
+        "standalone_question": "What supply-chain security incidents happened recently?",
+        "filters": {
+          "company": null,
+          "company_slug": null,
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "Two recent incidents appear in the documents: a GitHub Actions campaign and a malicious npm release.",
+        "points": [
+          {
+            "lead": "**GitHub account hijack hit 30,000 repos**",
+            "text": "Attackers accessed roughly 1,900 GitHub accounts and inserted credential-stealing workflows into more than 30,000 repositories, with the largest push on October 8 and 9.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "**Stolen secrets: CI/CD, cloud and AI keys**",
+            "text": "The malicious GitHub Actions jobs targeted CI/CD secrets, cloud access keys and AI provider API keys and sent them to an attacker-controlled server. GitGuardian tracked the campaign.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "**Older malicious workflows were recycled**",
+            "text": "The campaign reused older malicious workflows that GitHub's approval controls had not fully removed.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "**Malicious tensorlake npm release**",
+            "text": "Release tensorlake@0.5.144 used an install hook to search for developer credentials and accept remote commands, per Sonatype's review (reported 2026-10-08).",
+            "citations": [
+              2
+            ]
+          },
+          {
+            "lead": "**TensorLake impact not confirmed**",
+            "text": "Sonatype found a GitHub fallback that could create a public repository and commit collected data. It has not confirmed that stolen data was published or that downstream systems were affected.",
+            "citations": [
+              2
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "Exposed registry tokens and cloud keys from CI pipelines affect Artifactory and Xray users, so JFrog Advanced Security secrets detection and JFrog Curation can be pitched on pipeline secret hygiene and malicious package blocking.",
+          "citations": [
+            1,
+            3,
+            2
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How are competitors positioning around the GitHub Actions campaign?",
+          "Which malicious npm packages were reported this month?",
+          "What does the GitHub battlecard say about supply-chain controls?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:1005",
+            "type": "article",
+            "title": "Hackers hijacked 1,900 GitHub accounts. Then they went after 30,000 repos.",
+            "source": "The New Stack",
+            "source_kind": "press",
+            "date": "2026-10-15T21:13:01Z",
+            "url": "https://thenewstack.io/hackers-hijacked-1900-github-accounts-then-they-went-after-30000-repos/",
+            "confidence": 0.775,
+            "confidence_band": "high"
+          },
+          {
+            "n": 2,
+            "id": "sig:53",
+            "type": "article",
+            "title": "Hijacked TensorLake npm Turned Install Into Credential Risk",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-08T19:41:10Z",
+            "url": "https://www.sonatype.com/blog/hijacked-tensorlake-npm-turned-install-into-credential-risk",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 3,
+            "id": "bc:github:opportunities_for_jfrog:2",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Opportunity for JFrog",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.0214215,
+        "cached": false,
+        "created_at": "2026-10-21T15:03:34.480329Z",
+        "conversation_id": 3
+      }
+    },
+    {
+      "id": "q04",
+      "question": "What did GitHub change in secret scanning?",
+      "expected": [
+        "sig:1058",
+        "sig:1044"
+      ],
+      "retrieved": [
+        "sig:1044",
+        "bc:github:strengths:3",
+        "sig:1058",
+        "sig:1005",
+        "bc:github:opportunities_for_jfrog:3",
+        "bc:github:opportunities_for_jfrog:2",
+        "sig:1057",
+        "sig:1056"
+      ],
+      "hits": [
+        "sig:1058",
+        "sig:1044"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": "GitHub",
+        "company_slug": "github",
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:1044",
+        "sig:1058",
+        "bc:github:strengths:3",
+        "bc:github:opportunities_for_jfrog:3"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 4,
+      "cost_usd": 0.0195105,
+      "cached": false,
+      "latency_s": 7.55,
+      "turn_id": 4,
+      "answer": {
+        "turn_id": 4,
+        "position": 1,
+        "question": "What did GitHub change in secret scanning?",
+        "standalone_question": "What did GitHub change in secret scanning?",
+        "filters": {
+          "company": "GitHub",
+          "company_slug": "github",
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "GitHub changed secret scanning features on 2026-10-20 and its AI detection pricing on 2026-10-21.",
+        "points": [
+          {
+            "lead": "Revocation extended to encoded GitHub tokens",
+            "text": "GitHub's 2026-10-20 changelog extends the revocation action to encoded GitHub tokens in secret scanning.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "Custom-pattern alerts stay open on rescan",
+            "text": "Open custom-pattern alerts now stay open when a rescan still matches an edited pattern. Invalid custom pattern API requests return 422 instead of 500.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "Dismissal webhooks and audit log changes",
+            "text": "Dismissal-request webhooks gain a repository-scoped request number. The business field in certain audit log events changes from display name to slug on November 12, 2026.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "AI detection split into two add-ons",
+            "text": "GitHub's pricing page replaced the single 'Copilot secret scanning' add-on with 'AI detection for alerts' and 'AI detection for push protection', both usage-based.",
+            "citations": [
+              2,
+              3
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "GitHub is raising the baseline for secrets scanning on alert handling and revocation. JFrog Advanced Security can contrast the separately priced AI add-ons with artifact-level security in a platform integration pitch.",
+          "citations": [
+            1,
+            4
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How does GitHub's secrets detection compare with JFrog's?",
+          "What did GitHub change on its pricing page recently?",
+          "How did the Actions credential-theft campaign affect GitHub?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:1044",
+            "type": "article",
+            "title": "Updates to GitHub secret scanning",
+            "source": "GitHub Changelog",
+            "source_kind": "official",
+            "date": "2026-10-20T18:03:55Z",
+            "url": "https://github.blog/changelog/2026-10-20-updates-to-github-secret-scanning",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 2,
+            "id": "sig:1058",
+            "type": "pricing_page",
+            "title": "GitHub splits Copilot secret scanning into two usage-based AI detection add-ons",
+            "source": "GitHub Pricing",
+            "source_kind": "official",
+            "date": "2026-10-21T07:57:56.847543Z",
+            "url": "https://github.com/pricing",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          },
+          {
+            "n": 3,
+            "id": "bc:github:strengths:3",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 4,
+            "id": "bc:github:opportunities_for_jfrog:3",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Opportunity for JFrog",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.0195105,
+        "cached": false,
+        "created_at": "2026-10-21T15:03:43.647785Z",
+        "conversation_id": 4
+      }
+    },
+    {
+      "id": "q05",
+      "question": "How is Sonatype talking about AI agents choosing dependencies?",
+      "expected": [
+        "sig:56",
+        "sig:58",
+        "sig:57",
+        "sig:51"
+      ],
+      "retrieved": [
+        "bc:sonatype:strengths:4",
+        "sig:56",
+        "sig:58",
+        "sig:51",
+        "bc:sonatype:positioning:1",
+        "bc:sonatype:blind_spots_for_jfrog:1",
+        "sig:57",
+        "sig:55"
+      ],
+      "hits": [
+        "sig:56",
+        "sig:58",
+        "sig:57",
+        "sig:51"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": "Sonatype",
+        "company_slug": "sonatype",
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:56",
+        "sig:58",
+        "sig:57",
+        "sig:51",
+        "bc:sonatype:positioning:1",
+        "bc:sonatype:strengths:4"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 5,
+      "cost_usd": 0.02424725,
+      "cached": false,
+      "latency_s": 9.36,
+      "turn_id": 5,
+      "answer": {
+        "turn_id": 5,
+        "position": 1,
+        "question": "How is Sonatype talking about AI agents choosing dependencies?",
+        "standalone_question": "How is Sonatype talking about AI agents choosing dependencies?",
+        "filters": {
+          "company": "Sonatype",
+          "company_slug": "sonatype",
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "Sonatype frames agent-chosen dependencies as a governance and evidence problem.",
+        "points": [
+          {
+            "lead": "Agents choose dependencies; accountability follows",
+            "text": "Sonatype's 2026-10-01 blog says coding agents now choose open source dependencies. Teams must track which agent introduced each one, why, and who owns it.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "Framed as a governance gap",
+            "text": "A 2026-09-24 post says agents select packages, versions and configurations without developer review. It recommends live dependency intelligence, policy before execution, decision provenance and continuous monitoring.",
+            "citations": [
+              2
+            ]
+          },
+          {
+            "lead": "Policy at the point of selection",
+            "text": "A 2026-09-29 post recommends embedding policy controls at the point of dependency selection. It says Sonatype Guide and Firewall enforce component policy in developer and AI-assisted workflows.",
+            "citations": [
+              3
+            ]
+          },
+          {
+            "lead": "'AI noise' argument backed by research",
+            "text": "Sonatype cites about 37,000 upgrade recommendations in its 2026 State of the Software Supply Chain research. LLM-generated ones gave the smallest security gain and worsened security in 345 cases. It urges grounding AI in live data.",
+            "citations": [
+              4
+            ]
+          },
+          {
+            "lead": "Repository positioned as AI trust gate",
+            "text": "Sonatype positions Nexus Repository as the first-line trust gate for open source, containers, LLMs and MCP servers. It pitches AI-agent dependency governance and malware research, promoting Guide, Firewall and Lifecycle.",
+            "citations": [
+              5,
+              6
+            ]
+          }
+        ],
+        "meaning_for_jfrog": null,
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How does JFrog Curation compare with Sonatype Firewall?",
+          "What does Sonatype say about MCP servers?",
+          "Which federal deals mention DoW 8430.01?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:56",
+            "type": "article",
+            "title": "Agents Pick Dependencies, DoWI 8430.01 Holds You Accountable",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-01T10:00:04Z",
+            "url": "https://www.sonatype.com/blog/your-agents-are-choosing-dependencies.-dowi-8430.01-says-you-own-the-result",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 2,
+            "id": "sig:58",
+            "type": "article",
+            "title": "The New Engineering Problem: Managing What AI Decides to Import",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-09-24T10:00:01Z",
+            "url": "https://www.sonatype.com/blog/the-new-engineering-problem-managing-what-ai-decides-to-import",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 3,
+            "id": "sig:57",
+            "type": "article",
+            "title": "How AI Changes the SDLC Beyond Faster Coding",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-09-29T10:00:01Z",
+            "url": "https://www.sonatype.com/blog/how-ai-changes-the-sdlc-beyond-faster-coding",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 4,
+            "id": "sig:51",
+            "type": "article",
+            "title": "AI Noise Is the New Development Bottleneck",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-15T12:00:04Z",
+            "url": "https://www.sonatype.com/blog/ai-noise-is-the-new-development-bottleneck",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 5,
+            "id": "bc:sonatype:positioning:1",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Positioning",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 6,
+            "id": "bc:sonatype:strengths:4",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.02424725,
+        "cached": false,
+        "created_at": "2026-10-21T15:03:51.199030Z",
+        "conversation_id": 5
+      }
+    },
+    {
+      "id": "q06",
+      "question": "What did Sonatype's Q3 malware report find?",
+      "expected": [
+        "sig:54"
+      ],
+      "retrieved": [
+        "sig:54",
+        "sig:51",
+        "bc:sonatype:strengths:2",
+        "bc:sonatype:positioning:1",
+        "bc:sonatype:blind_spots_for_jfrog:2",
+        "sig:57",
+        "sig:53",
+        "sig:52"
+      ],
+      "hits": [
+        "sig:54"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": "Sonatype",
+        "company_slug": "sonatype",
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:54",
+        "bc:sonatype:strengths:2",
+        "bc:sonatype:blind_spots_for_jfrog:2"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 4,
+      "cost_usd": 0.01955475,
+      "cached": false,
+      "latency_s": 8.74,
+      "turn_id": 6,
+      "answer": {
+        "turn_id": 6,
+        "position": 1,
+        "question": "What did Sonatype's Q3 malware report find?",
+        "standalone_question": "What did Sonatype's Q3 malware report find?",
+        "filters": {
+          "company": "Sonatype",
+          "company_slug": "sonatype",
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "Sonatype's Q3 2026 Open Source Malware Index, published 2026-10-08, reported the following.",
+        "points": [
+          {
+            "lead": "**149,329 malicious packages logged in Q3**",
+            "text": "Sonatype Research Labs logged 149,329 malicious open source packages in Q3 2026, bringing the total since 2017 to 1,960,846.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "**npm dominates at 89.5%**",
+            "text": "npm accounted for 89.5% of the quarter's malicious packages, which the evidence quote puts at 133,579 packages.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "**Droppers and secrets exfiltration prevalent**",
+            "text": "74.5% of packages with overt-malware behavior involved droppers, secrets exfiltration, or both.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "**Report supports Sonatype's threat-intel positioning**",
+            "text": "The FrogRadar battlecard lists the index as a Sonatype strength that supports its threat-intelligence positioning.",
+            "citations": [
+              2,
+              1
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "The npm-heavy, dropper and credential-theft findings map to JFrog Curation's block-at-entry gate and JFrog Xray's malicious package detection. JFrog battlecards should account for Sonatype's research-led narrative.",
+          "citations": [
+            1,
+            3
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How is Sonatype pairing this research with Nexus Firewall?",
+          "What did Sonatype say about the TensorLake npm compromise?",
+          "How does Sonatype position against JFrog Curation?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:54",
+            "type": "article",
+            "title": "Q3 2026 Open Source Malware Index: When Compromise Compounds",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-08T10:00:01Z",
+            "url": "https://www.sonatype.com/blog/q3-2026-open-source-malware-index-when-compromise-compounds",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 2,
+            "id": "bc:sonatype:strengths:2",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 3,
+            "id": "bc:sonatype:blind_spots_for_jfrog:2",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Blind spot for JFrog",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.01955475,
+        "cached": false,
+        "created_at": "2026-10-21T15:04:00.562421Z",
+        "conversation_id": 6
+      }
+    },
+    {
+      "id": "q07",
+      "question": "Is GitHub moving into license compliance?",
+      "expected": [
+        "sig:79"
+      ],
+      "retrieved": [
+        "bc:github:strengths:1",
+        "bc:github:blind_spots_for_jfrog:1",
+        "sig:79",
+        "bc:github:positioning:1",
+        "sig:82",
+        "sig:1057",
+        "sig:1046",
+        "sig:1058"
+      ],
+      "hits": [
+        "sig:79"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": "GitHub",
+        "company_slug": "github",
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:79",
+        "bc:github:strengths:1",
+        "bc:github:blind_spots_for_jfrog:1",
+        "bc:github:positioning:1",
+        "sig:1046"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 4,
+      "cost_usd": 0.0195875,
+      "cached": false,
+      "latency_s": 6.63,
+      "turn_id": 7,
+      "answer": {
+        "turn_id": 7,
+        "position": 1,
+        "question": "Is GitHub moving into license compliance?",
+        "standalone_question": "Is GitHub moving into license compliance?",
+        "filters": {
+          "company": "GitHub",
+          "company_slug": "github",
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "Yes: GitHub made license compliance generally available on 2026-10-16.",
+        "points": [
+          {
+            "lead": "License compliance is now generally available",
+            "text": "GitHub made open source license compliance generally available for GitHub Enterprise Cloud, including data-resident GHEC, for repositories with GitHub Code Security enabled.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "Enterprise-wide policy enforced via rulesets",
+            "text": "The feature adds an enterprise-wide license policy enforced through rulesets, with a new 'Require license compliance results before merging' condition.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "Checks move earlier, aimed at coding agents",
+            "text": "GitHub also added a new API for checking package compliance aimed at coding agents, moving license checks earlier in developer workflows.",
+            "citations": [
+              3,
+              1
+            ]
+          },
+          {
+            "lead": "Part of a wider supply-chain push",
+            "text": "GitHub is adding supply-chain controls such as a package firewall and license gating. The firewall is in public preview, supports only npm, and is free during preview before metered billing at GA.",
+            "citations": [
+              4,
+              5
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "JFrog Xray and JFrog Advanced Security now face a native GitHub alternative for PR-time license gating. Battlecards should address enterprise policy enforcement at the pull request stage.",
+          "citations": [
+            1,
+            3
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How does GitHub's package firewall compare to JFrog Curation?",
+          "What is GitHub bundling into its complete developer platform pitch?",
+          "How is GitHub pricing its AI secrets detection add-ons?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:79",
+            "type": "article",
+            "title": "Open source license compliance generally available",
+            "source": "GitHub Changelog",
+            "source_kind": "official",
+            "date": "2026-10-16T14:00:32Z",
+            "url": "https://github.blog/changelog/2026-10-16-open-source-license-compliance-generally-available",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 2,
+            "id": "bc:github:strengths:1",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 3,
+            "id": "bc:github:blind_spots_for_jfrog:1",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Blind spot for JFrog",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 4,
+            "id": "bc:github:positioning:1",
+            "type": "battlecard",
+            "title": "GitHub battlecard \u00b7 Positioning",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:45:17.814900Z",
+            "url": "/battlecards/github",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 5,
+            "id": "sig:1046",
+            "type": "article",
+            "title": "GitHub package firewall in public preview",
+            "source": "GitHub Changelog",
+            "source_kind": "official",
+            "date": "2026-10-20T16:11:53Z",
+            "url": "https://github.blog/changelog/2026-10-20-github-package-firewall-in-public-preview",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.0195875,
+        "cached": false,
+        "created_at": "2026-10-21T15:04:09.301576Z",
+        "conversation_id": 7
+      }
+    },
+    {
+      "id": "q08",
+      "question": "What is Sonatype doing in the US public sector?",
+      "expected": [
+        "sig:59",
+        "sig:56"
+      ],
+      "retrieved": [
+        "bc:sonatype:strengths:3",
+        "sig:59",
+        "bc:sonatype:positioning:1",
+        "sig:1053",
+        "bc:sonatype:strengths:4",
+        "sig:52",
+        "sig:1054",
+        "sig:55"
+      ],
+      "hits": [
+        "sig:59"
+      ],
+      "recall": 0.5,
+      "filters": {
+        "company": "Sonatype",
+        "company_slug": "sonatype",
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "sig:59",
+        "bc:sonatype:strengths:3",
+        "bc:sonatype:strengths:4"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 3,
+      "cost_usd": 0.01870175,
+      "cached": false,
+      "latency_s": 6.94,
+      "turn_id": 8,
+      "answer": {
+        "turn_id": 8,
+        "position": 1,
+        "question": "What is Sonatype doing in the US public sector?",
+        "standalone_question": "What is Sonatype doing in the US public sector?",
+        "filters": {
+          "company": "Sonatype",
+          "company_slug": "sonatype",
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "Sonatype's public-sector activity centers on a DoD marketplace listing and DoW-linked messaging.",
+        "points": [
+          {
+            "lead": "Awardable on DoD Platform One MarketPlace",
+            "text": "Sonatype's Nexus One was assessed as \"Awardable\" and listed in the DoD Platform One Solutions MarketPlace on 2026-09-22, giving eligible DoW organizations a streamlined way to evaluate it.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "Not a contract award or ATO",
+            "text": "Awardable status is not a contract award, Authorization to Operate, or security accreditation. It is an evaluation and procurement route only.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "Messaging tied to DoW 8430.01 evidence",
+            "text": "Sonatype ties its messaging to AI agent dependency selection and DoW 8430.01 evidence requirements, promoting Guide, Firewall and Lifecycle for governing AI-driven dependency choices.",
+            "citations": [
+              3
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "Expect Sonatype to cite the Platform One listing in government bids where Artifactory, Xray and Curation compete. JFrog should prepare battlecards that address federal procurement.",
+          "citations": [
+            1
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "What other Sonatype partnerships target government buyers?",
+          "How does Sonatype Firewall compare with JFrog Curation?",
+          "What did Sonatype change in its pricing recently?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "sig:59",
+            "type": "article",
+            "title": "Sonatype Is Now Awardable on the Platform One Solutions MarketPlace",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-09-22T10:00:01Z",
+            "url": "https://www.sonatype.com/blog/sonatype-is-now-awardable-on-the-platform-one-solutions-marketplace",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 2,
+            "id": "bc:sonatype:strengths:3",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 3,
+            "id": "bc:sonatype:strengths:4",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Strength",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.01870175,
+        "cached": false,
+        "created_at": "2026-10-21T15:04:15.927012Z",
+        "conversation_id": 8
+      }
+    },
+    {
+      "id": "q09",
+      "question": "What does GitLab charge for its Ultimate tier?",
+      "expected": [],
+      "retrieved": [],
+      "hits": [],
+      "recall": null,
+      "filters": {
+        "company": "GitLab",
+        "company_slug": "gitlab",
+        "window": null
+      },
+      "expect_not_enough": true,
+      "not_enough": true,
+      "cited": [],
+      "cites_expected": null,
+      "ok": true,
+      "points": 0,
+      "cost_usd": 0.0,
+      "cached": true,
+      "latency_s": 0.04,
+      "turn_id": 9,
+      "answer": {
+        "turn_id": 9,
+        "position": 1,
+        "question": "What does GitLab charge for its Ultimate tier?",
+        "standalone_question": "What does GitLab charge for its Ultimate tier?",
+        "filters": {
+          "company": "GitLab",
+          "company_slug": "gitlab",
+          "window": null
+        },
+        "not_enough_evidence": true,
+        "intro": null,
+        "points": [],
+        "meaning_for_jfrog": null,
+        "gap": "FrogRadar has no stored intelligence that matches this question.",
+        "suggestions": [
+          "Check the spelling of the company or product name, or ask without a time frame.",
+          "Add a source for this company in config/sources.yaml or config/competitors.yaml.",
+          "Send a research mission to collect public information on this topic."
+        ],
+        "suggested_followups": [],
+        "sources": [],
+        "retrieved": 0,
+        "cost_usd": 0.0,
+        "cached": true,
+        "created_at": "2026-10-21T15:04:22.864543Z",
+        "conversation_id": 9
+      }
+    },
+    {
+      "id": "q10",
+      "question": "Did Cloudsmith raise funding this year?",
+      "expected": [],
+      "retrieved": [],
+      "hits": [],
+      "recall": null,
+      "filters": {
+        "company": "Cloudsmith",
+        "company_slug": "cloudsmith",
+        "window": "2026"
+      },
+      "expect_not_enough": true,
+      "not_enough": true,
+      "cited": [],
+      "cites_expected": null,
+      "ok": true,
+      "points": 0,
+      "cost_usd": 0.0,
+      "cached": true,
+      "latency_s": 0.04,
+      "turn_id": 10,
+      "answer": {
+        "turn_id": 10,
+        "position": 1,
+        "question": "Did Cloudsmith raise funding this year?",
+        "standalone_question": "Did Cloudsmith raise funding this year?",
+        "filters": {
+          "company": "Cloudsmith",
+          "company_slug": "cloudsmith",
+          "window": "2026"
+        },
+        "not_enough_evidence": true,
+        "intro": null,
+        "points": [],
+        "meaning_for_jfrog": null,
+        "gap": "FrogRadar has no stored intelligence that matches this question.",
+        "suggestions": [
+          "Check the spelling of the company or product name, or ask without a time frame.",
+          "Add a source for this company in config/sources.yaml or config/competitors.yaml.",
+          "Send a research mission to collect public information on this topic."
+        ],
+        "suggested_followups": [],
+        "sources": [],
+        "retrieved": 0,
+        "cost_usd": 0.0,
+        "cached": true,
+        "created_at": "2026-10-21T15:04:22.900754Z",
+        "conversation_id": 10
+      }
+    },
+    {
+      "id": "q11",
+      "question": "What new tools or startups have appeared that could compete with Xray or Curation?",
+      "expected": [
+        "radar:158",
+        "radar:159"
+      ],
+      "retrieved": [
+        "radar:158",
+        "bc:sonatype:opportunities_for_jfrog:4",
+        "bc:sonatype:opportunities_for_jfrog:2",
+        "radar:152",
+        "sig:51",
+        "sig:1001",
+        "bc:github:blind_spots_for_jfrog:1",
+        "sig:52"
+      ],
+      "hits": [
+        "radar:158"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company": null,
+        "company_slug": null,
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "radar:158",
+        "sig:52",
+        "sig:51"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 4,
+      "cost_usd": 0.02151875,
+      "cached": false,
+      "latency_s": 11.76,
+      "turn_id": 11,
+      "answer": {
+        "turn_id": 11,
+        "position": 1,
+        "question": "What new tools or startups have appeared that could compete with Xray or Curation?",
+        "standalone_question": "What new tools or startups have appeared that could compete with Xray or Curation?",
+        "filters": {
+          "company": null,
+          "company_slug": null,
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "One new startup-style tool is in the documents; the other items are existing competitors adding features.",
+        "points": [
+          {
+            "lead": "PatchWave: new Dependabot PR automation tool",
+            "text": "PatchWave is a GitHub App launched via Show HN on 2026-10-20. It analyzes Dependabot PRs with static analysis and agents, optionally auto-merges safe ones, and runs a fix agent when a PR breaks CI.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "PatchWave's overlap with JFrog is only partly verified",
+            "text": "The Competitor Radar relates PatchWave to JFrog Xray, Advanced Security and Curation, but marks that statement as only partly verified.",
+            "citations": [
+              1
+            ]
+          },
+          {
+            "lead": "Sonatype adds Firewall blocking inside Nexus Repository",
+            "text": "On 2026-10-14 Sonatype announced Firewall capabilities in Nexus Repository Pro+ and Enterprise that screen requests for packages, containers, LLMs and MCP servers and block malicious or out-of-policy components.",
+            "citations": [
+              2
+            ]
+          },
+          {
+            "lead": "Sonatype pushes grounded AI dependency guidance",
+            "text": "A Sonatype post of 2026-10-15 recommends grounding AI tools in live registry, vulnerability, malware and policy data, with repository-level blocking, contesting Curation and Xray positioning.",
+            "citations": [
+              3
+            ]
+          }
+        ],
+        "meaning_for_jfrog": null,
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "What are Sonatype's Firewall pricing changes?",
+          "How does GitHub's license gating compare to Xray?",
+          "What else has the Competitor Radar flagged this month?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "radar:158",
+            "type": "radar",
+            "title": "PatchWave (Competitor Radar)",
+            "source": "FrogRadar Competitor Radar",
+            "source_kind": null,
+            "date": "2026-10-20T14:08:09Z",
+            "url": "/radar/158",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 2,
+            "id": "sig:52",
+            "type": "article",
+            "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-14T11:00:01Z",
+            "url": "https://www.sonatype.com/blog/trust-what-ships-your-repository-is-now-your-first-defense",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 3,
+            "id": "sig:51",
+            "type": "article",
+            "title": "AI Noise Is the New Development Bottleneck",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-15T12:00:04Z",
+            "url": "https://www.sonatype.com/blog/ai-noise-is-the-new-development-bottleneck",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.02151875,
+        "cached": false,
+        "created_at": "2026-10-21T15:04:22.935650Z",
+        "conversation_id": 11
+      }
+    },
+    {
+      "id": "q12",
+      "question": "What are Sonatype's weaknesses compared to JFrog?",
+      "expected": [
+        "bc:sonatype:weaknesses:*",
+        "sig:1055",
+        "sig:1054"
+      ],
+      "retrieved": [
+        "bc:sonatype:weaknesses:3",
+        "bc:sonatype:weaknesses:1",
+        "bc:sonatype:weaknesses:2",
+        "sig:59",
+        "sig:52",
+        "sig:55",
+        "sig:1053",
+        "sig:1054"
+      ],
+      "hits": [
+        "bc:sonatype:weaknesses:*",
+        "sig:1054"
+      ],
+      "recall": 0.6666666666666666,
+      "filters": {
+        "company": "Sonatype",
+        "company_slug": "sonatype",
+        "window": null
+      },
+      "expect_not_enough": false,
+      "not_enough": false,
+      "cited": [
+        "bc:sonatype:weaknesses:3",
+        "sig:52",
+        "bc:sonatype:weaknesses:1",
+        "bc:sonatype:weaknesses:2",
+        "sig:1054",
+        "sig:1053"
+      ],
+      "cites_expected": true,
+      "ok": true,
+      "points": 5,
+      "cost_usd": 0.02260925,
+      "cached": false,
+      "latency_s": 10.27,
+      "turn_id": 12,
+      "answer": {
+        "turn_id": 12,
+        "position": 1,
+        "question": "What are Sonatype's weaknesses compared to JFrog?",
+        "standalone_question": "What are Sonatype's weaknesses compared to JFrog?",
+        "filters": {
+          "company": "Sonatype",
+          "company_slug": "sonatype",
+          "window": null
+        },
+        "not_enough_evidence": false,
+        "intro": "Battlecard weaknesses and pricing signals point to cost, packaging and tier-gating issues for Sonatype.",
+        "points": [
+          {
+            "lead": "Malicious-package blocking is tier-gated",
+            "text": "Malicious-package blocking in Nexus is limited to the new Pro+ and Enterprise editions, so lower tiers do not get it.",
+            "citations": [
+              1,
+              2
+            ]
+          },
+          {
+            "lead": "Entry cost has risen",
+            "text": "Nexus Repository Cloud Pro rose to $1,950/year plus consumption from $1,620, and a self-hosted Pro tier is listed at $7,500/year, raising entry cost.",
+            "citations": [
+              3
+            ]
+          },
+          {
+            "lead": "Pricing and packaging keep shifting",
+            "text": "Firewall moved from per-user to flat annual pricing and Lifecycle went to custom pricing. Later, Firewall Enterprise, Lifecycle and SBOM Manager no longer appeared on the pricing page.",
+            "citations": [
+              4
+            ]
+          },
+          {
+            "lead": "Repricing changed Firewall and Lifecycle terms",
+            "text": "On 2026-07-29 Sonatype's page showed Firewall starting at $4,800/year, previously $18.67 per user/month, and Lifecycle moved to custom pricing, previously $57.50 per user/month.",
+            "citations": [
+              5
+            ]
+          },
+          {
+            "lead": "Tier naming was reshuffled",
+            "text": "In April 2026 Sonatype renamed its Nexus Repository tiers, with 'Premium' becoming 'Nexus Repository + Repository Firewall'. The diff showed no dollar amounts, so these were naming and packaging updates.",
+            "citations": [
+              6
+            ]
+          }
+        ],
+        "meaning_for_jfrog": {
+          "text": "JFrog sales can contrast Sonatype's tier-gated blocking, higher entry prices and shifting packaging with Artifactory plus Curation. Note that Sonatype's Pro+ and Enterprise blocking overlaps Curation's entry-point policy gate.",
+          "citations": [
+            1,
+            4,
+            2
+          ]
+        },
+        "gap": null,
+        "suggestions": [],
+        "suggested_followups": [
+          "How does Sonatype's Firewall overlap with JFrog Curation?",
+          "What are Sonatype's strengths against JFrog?",
+          "How is Sonatype positioning for federal deals?"
+        ],
+        "sources": [
+          {
+            "n": 1,
+            "id": "bc:sonatype:weaknesses:3",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Weakness",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 2,
+            "id": "sig:52",
+            "type": "article",
+            "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+            "source": "Sonatype Blog",
+            "source_kind": "official",
+            "date": "2026-10-14T11:00:01Z",
+            "url": "https://www.sonatype.com/blog/trust-what-ships-your-repository-is-now-your-first-defense",
+            "confidence": 0.825,
+            "confidence_band": "high"
+          },
+          {
+            "n": 3,
+            "id": "bc:sonatype:weaknesses:1",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Weakness",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 4,
+            "id": "bc:sonatype:weaknesses:2",
+            "type": "battlecard",
+            "title": "Sonatype battlecard \u00b7 Weakness",
+            "source": "FrogRadar battlecard",
+            "source_kind": null,
+            "date": "2026-10-21T11:54:09.056321Z",
+            "url": "/battlecards/sonatype",
+            "confidence": null,
+            "confidence_band": null
+          },
+          {
+            "n": 5,
+            "id": "sig:1054",
+            "type": "pricing_page",
+            "title": "Sonatype moves Nexus Repository to $1,620/year and Firewall to $4,800/year",
+            "source": "Sonatype Pricing",
+            "source_kind": "official",
+            "date": "2026-07-29T00:45:57Z",
+            "url": "https://www.sonatype.com/products/pricing",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          },
+          {
+            "n": 6,
+            "id": "sig:1053",
+            "type": "pricing_page",
+            "title": "Sonatype bundles Repository Firewall into Nexus Repository + Firewall tier",
+            "source": "Sonatype Pricing",
+            "source_kind": "official",
+            "date": "2026-04-14T05:56:50Z",
+            "url": "https://www.sonatype.com/products/pricing",
+            "confidence": 0.6,
+            "confidence_band": "medium"
+          }
+        ],
+        "retrieved": 8,
+        "cost_usd": 0.02260925,
+        "cached": false,
+        "created_at": "2026-10-21T15:04:34.691051Z",
+        "conversation_id": 12
+      }
+    }
+  ]
+}

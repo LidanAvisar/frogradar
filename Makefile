@@ -1,6 +1,6 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
-	eval-select eval-embed eval-pairs eval-label eval eval-compare api-types screenshots \
+	eval-select eval-embed eval-pairs eval-label eval eval-compare eval-ask api-types screenshots \
 	radar radar-backfill
 
 up:
@@ -127,6 +127,11 @@ eval-label: migrate
 # Never writes to signals. Paid for uncached items only.
 eval: migrate
 	cd backend && uv run --env-file ../.env python -m app.eval run $(ARGS)
+
+# Ask eval (eval/ask_questions.yaml): recall@k, cited expected ids, not-enough-evidence, cost.
+# Paid (answer + verify per question); ARGS="--retrieval-only" = embeddings only; --cap 0.60 default.
+eval-ask: migrate
+	cd backend && uv run --env-file ../.env python -m app.eval ask $(ARGS)
 
 # Compare two runs: make eval-compare A=eval/results/x.json B=eval/results/y.json
 eval-compare:

@@ -6,6 +6,8 @@ python -m app.eval pairs [--force]         dedup pairs → eval/dedup_pairs.csv 
 python -m app.eval label [--estimate]      silver labels for items + pairs (paid: synthesis)
 python -m app.eval run [--estimate]        eval pass + report (paid: bulk + verify, cached)
 python -m app.eval compare A.json B.json   headline metrics of two runs side by side
+python -m app.eval ask [--retrieval-only] [--cap 0.60] [--only q01,q02]
+                                           Ask eval: recall@k, cited expected, cost (paid)
 """
 
 import argparse
@@ -150,6 +152,26 @@ def cmd_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ask(args: argparse.Namespace) -> int:
+    from app.core.catalog import load_pipeline
+    from app.core.llm import complete, embed
+    from app.eval import ask as ask_eval
+    from app.rag.service import LLMFns
+
+    only = set(args.only.split(",")) if args.only else None
+    rows = ask_eval.run(
+        _factory(),
+        LLMFns(complete=complete, embed=embed),
+        retrieval_only=args.retrieval_only,
+        cap=args.cap,
+        only=only,
+    )
+    path = ask_eval.write_report(rows, load_pipeline().ask.k, args.retrieval_only)
+    print(ask_eval.summary(rows))
+    print(f"report → {path.with_suffix('.md')}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.eval",
@@ -163,6 +185,10 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_parser(name).add_argument(
             "--estimate", action="store_true", help="print calls and cost, make no calls"
         )
+    a = sub.add_parser("ask")
+    a.add_argument("--retrieval-only", action="store_true", help="embeddings only, no answers")
+    a.add_argument("--cap", type=float, default=0.60, help="stop before crossing this spend (USD)")
+    a.add_argument("--only", help="comma-separated question ids")
     c = sub.add_parser("compare")
     c.add_argument("a")
     c.add_argument("b")
@@ -175,6 +201,7 @@ def main(argv: list[str] | None = None) -> int:
         "label": cmd_label,
         "run": cmd_run,
         "compare": cmd_compare,
+        "ask": cmd_ask,
     }
     return handlers[args.cmd](args)
 

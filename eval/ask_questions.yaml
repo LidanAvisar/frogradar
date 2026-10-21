@@ -1,0 +1,48 @@
+# Ask your intelligence – retrieval eval (S13, `make eval-ask`). Written from the stored data on
+# 2026-10-21 (32 usable signals, Sonatype + GitHub battlecards, 7 profiled radar candidates).
+# expected: document ids that should be retrieved (top k). "bc:sonatype:weaknesses:*" = any item
+#   of that section; match: any = one of the expected ids is enough. recall@k = share of expected ids retrieved; "cites expected" = the answer
+#   cites at least one of them.
+# not_enough_evidence: true = the data can't answer; the answer must say so.
+questions:
+  - id: q01
+    question: What changed in Sonatype's pricing this year?
+    expected: [sig:1055, sig:1054, sig:1053]
+  - id: q02
+    question: Who launched a package firewall?
+    expected: [sig:1046, sig:52, sig:50]
+  - id: q03
+    question: What supply-chain security incidents happened recently?
+    expected: [sig:1005, sig:53]
+  - id: q04
+    question: What did GitHub change in secret scanning?
+    expected: [sig:1058, sig:1044]
+  - id: q05
+    question: How is Sonatype talking about AI agents choosing dependencies?
+    expected: [sig:56, sig:58, sig:57, sig:51]
+  - id: q06
+    question: What did Sonatype's Q3 malware report find?
+    expected: [sig:54]
+  - id: q07
+    question: Is GitHub moving into license compliance?
+    expected: [sig:79]
+  - id: q08
+    question: What is Sonatype doing in the US public sector?
+    expected: [sig:59, sig:56]
+  - id: q09
+    question: What does GitLab charge for its Ultimate tier?
+    not_enough_evidence: true
+  - id: q10
+    question: Did Cloudsmith raise funding this year?
+    not_enough_evidence: true
+  # Answered from the other document types (user addition, 2026-10-21):
+  - id: q11
+    question: What new tools or startups have appeared that could compete with Xray or Curation?
+    # User spec: "PatchWave, Primod or others with a threatens/both relation" → any one of them.
+    expected: [radar:158, radar:159]
+    match: any
+    doc_type: radar
+  - id: q12
+    question: What are Sonatype's weaknesses compared to JFrog?
+    expected: ["bc:sonatype:weaknesses:*", sig:1055, sig:1054]
+    doc_type: battlecard
