@@ -143,6 +143,9 @@ def test_pricing_watch_prefers_verified_model_changes_and_display_title(client, 
     assert item["signal"]["title"] == "A raises Cloud Pro to $1,950 a year"
     assert item["signal"]["original_title"] == sig.title
     assert item["signal"]["takeaway"] == "A raises Pro: an opening for JFrog Artifactory."
+    build.signal("Bigger news", impact=5, hours_ago=1)  # takes the only Top slot
+    (new,) = [i for i in brief(client, limit=1)["since_yesterday"] if i["id"] == sig.id]
+    assert new["title"] == "A raises Cloud Pro to $1,950 a year"
 
 
 def test_pipeline_info_skips_eval_runs(client, build):

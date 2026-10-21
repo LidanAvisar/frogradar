@@ -37,6 +37,7 @@ from app.api.schemas import (
 from app.db.enums import FetchMethod, ReportKind, Verification
 from app.db.models import PipelineRun, Report, Signal, Source
 from app.pipeline.scope import in_scope
+from app.pipeline.synthesis.inputs import display_title
 
 router = APIRouter(prefix="/api", tags=["brief"])
 
@@ -89,7 +90,7 @@ def get_brief(
     since_yesterday = [
         SinceYesterdayItem(
             id=s.id,
-            title=s.title,
+            title=display_title(s),
             url=s.url,
             impact=s.impact,
             category=s.category,
