@@ -579,6 +579,12 @@ class RadarProfileSettings(_Strict):
     excerpt_chars: Annotated[int, Field(ge=200, le=10000)] = 1500
 
 
+class RadarUiSettings(_Strict):
+    # Radar page: candidates scoring below this (or whose profile says relation "none") are listed
+    # under "Lower relevance" instead of with the top.
+    lower_relevance_below: Annotated[float, Field(ge=0, le=100)] = 35
+
+
 class RadarSettings(_Strict):
     # Names that never become candidates (registries, foundations, AI labs, generic tools).
     ignore: list[str] = Field(default_factory=list)
@@ -586,6 +592,7 @@ class RadarSettings(_Strict):
     score: RadarScoreSettings = Field(default_factory=RadarScoreSettings)
     profile: RadarProfileSettings = Field(default_factory=RadarProfileSettings)
     teaser_count: Annotated[int, Field(ge=1, le=10)] = 3
+    ui: RadarUiSettings = Field(default_factory=RadarUiSettings)
 
 
 class DiscoveryFile(_Strict):

@@ -13,9 +13,11 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
 from app.api.deps import DbSession, Now
+from app.api.entities import list_entities
 from app.api.queries import citation_refs, event_time, usable
 from app.api.schemas import (
     BattlecardEntity,
+    BattlecardListItem,
     BattlecardOut,
     CapabilityRef,
     CitationRef,
@@ -36,6 +38,33 @@ router = APIRouter(prefix="/api", tags=["entities"])
 
 TIMELINE_MAX = 30
 HIGH_IMPACT = 4
+
+
+@router.get("/battlecards", response_model=list[BattlecardListItem])
+def list_battlecards(session: DbSession) -> list[BattlecardListItem]:
+    """Tracked competitors for the switcher: those with a card first (by signal count), then the
+    rest ("no card yet")."""
+    latest = dict(
+        session.execute(
+            select(Entity.slug, func.max(Report.created_at))
+            .join(Report, Report.entity_id == Entity.id)
+            .where(Report.kind == ReportKind.BATTLECARD)
+            .group_by(Entity.slug)
+        ).all()
+    )
+    items = [
+        BattlecardListItem(
+            slug=e.slug,
+            name=e.name,
+            relationship=e.relationship,
+            signal_count=e.signal_count,
+            generated_at=latest.get(e.slug),
+        )
+        for e in list_entities(session)
+        if not e.is_self
+    ]
+    # Stable sort keeps list_entities' order (signal count, then name) within each group.
+    return sorted(items, key=lambda i: i.generated_at is None)
 
 
 @router.get("/entities/{slug}/battlecard", response_model=BattlecardOut)
@@ -78,7 +107,12 @@ def get_battlecard(slug: str, session: DbSession, now: Now) -> BattlecardOut:
         }
     )
     return BattlecardOut(
-        entity=BattlecardEntity(slug=ent.slug, name=ent.name, relationship=ent.relationship),
+        entity=BattlecardEntity(
+            slug=ent.slug,
+            name=ent.name,
+            relationship=ent.relationship,
+            segments=list(ent.segments or []),
+        ),
         report_id=report.id if report else None,
         generated_at=report.created_at if report else None,
         model=report.model if report else None,

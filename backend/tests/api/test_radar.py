@@ -282,3 +282,41 @@ def test_discovery_signals_stay_out_of_the_brief(client, radar):
     ids = {s["id"] for s in brief["since_yesterday"]} | {d["id"] for d in brief["developments"]}
     assert not ids & {s.id for s in radar["signals"]}
     assert client.get("/api/signals").json()["total"] == 0
+
+
+def test_list_has_profile_lines_relation_and_threshold(client, radar, db_session):
+    radar["top"].metrics = {**radar["top"].metrics, "relation": "threatens"}
+    db_session.flush()
+    data = client.get("/api/radar").json()
+    assert data["lower_relevance_below"] == 35
+    top = data["items"][0]
+    assert top["what_it_is"] == "An open-source registry firewall."
+    assert top["why_notable_now"] == "Launched on HN this week."
+    assert top["relation"] == "threatens" and top["relation_products"] == ["JFrog Curation"]
+    other = data["items"][1]
+    assert (other["what_it_is"], other["relation"], other["relation_products"]) == (None, None, [])
+    # A rejected profile supplies no statements.
+    radar["top"].profile_status = ProfileStatus.REJECTED
+    db_session.flush()
+    top = client.get("/api/radar").json()["items"][0]
+    assert top["what_it_is"] is None and top["why_notable_now"] is None
+
+
+def test_list_filters_relation_and_kind(client, radar, db_session):
+    radar["top"].metrics = {**radar["top"].metrics, "relation": "threatens"}
+    radar["watching"].metrics = {**radar["watching"].metrics, "relation": "none"}
+    db_session.flush()
+
+    def names(**params):
+        r = client.get("/api/radar", params=params)
+        assert r.status_code == 200, r.text
+        return [c["name"] for c in r.json()["items"]]
+
+    assert names(relation="threatens") == ["Regshield"]
+    assert names(relation="threatens,none") == ["Regshield", "Pkgguard"]
+    assert names(relation="unknown") == ["Tinytool"]
+    assert names(kind="company") == ["Tinytool"]
+    assert names(kind="open_source_project", relation="none") == ["Pkgguard"]
+    assert client.get("/api/radar?relation=bogus").status_code == 422
+    assert client.get("/api/radar?kind=bogus").status_code == 422
+    assert client.get("/api/radar?relation=threatens").json()["total"] == 1

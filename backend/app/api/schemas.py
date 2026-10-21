@@ -239,6 +239,15 @@ class BattlecardEntity(BaseModel):
     slug: str
     name: str
     relationship: Relationship
+    segments: list[str] = Field(default_factory=list)
+
+
+class BattlecardListItem(BaseModel):
+    slug: str
+    name: str
+    relationship: Relationship
+    signal_count: int
+    generated_at: datetime | None = Field(description="Latest card; null = no card yet")
 
 
 class CapabilityRef(BaseModel):
@@ -309,6 +318,7 @@ class BattlecardOut(BaseModel):
 
 RadarKindOut = Literal["company", "product", "open_source_project"]
 RadarStatusOut = Literal["new", "watching", "approved", "dismissed"]
+RadarRelation = Literal["threatens", "complements", "both", "none"]
 DismissReason = Literal[
     "not_relevant", "not_a_competitor", "too_small", "duplicate", "already_tracked", "other"
 ]
@@ -361,6 +371,16 @@ class RadarCandidateOut(BaseModel):
         None, description="One line: the profile's why-notable-now, else what it is, else a context"
     )
     line_source: Literal["why_notable_now", "what_it_is", "context"] | None = None
+    what_it_is: str | None = Field(None, description="Profile statement (accepted profiles only)")
+    why_notable_now: str | None = Field(
+        None, description="Profile statement (accepted profiles only)"
+    )
+    relation: RadarRelation | None = Field(
+        None, description="JFrog relation used for ranking (null = no trusted profile relation)"
+    )
+    relation_products: list[str] = Field(
+        default_factory=list, description="JFrog product names the relation statement names"
+    )
     profile_status: Literal["none", "ok", "rejected"]
     origins: list[str] = Field(
         description="How mentions reached the radar: news_new_entity, hn_new_entity, "
@@ -372,6 +392,10 @@ class RadarCandidateOut(BaseModel):
 class RadarListOut(BaseModel):
     items: list[RadarCandidateOut]
     total: int
+    lower_relevance_below: float = Field(
+        description="Score below which (or with relation none) the UI lists a candidate under "
+        "'Lower relevance' (config/discovery.yaml radar.ui)"
+    )
 
 
 class RadarStatementOut(BaseModel):

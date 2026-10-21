@@ -68,7 +68,10 @@ def test_battlecard_shape(client, build):
     fw, price, gone, gh = _world(build)
     data = client.get("/api/entities/sonatype/battlecard").json()
 
-    assert data["entity"] == {"slug": "sonatype", "name": "Sonatype", "relationship": "competitor"}
+    assert data["entity"] == {
+        "slug": "sonatype", "name": "Sonatype", "relationship": "competitor",
+        "segments": ["supply_chain_security"],
+    }  # fmt: skip
     assert data["positioning"]["signal_ids"] == [fw.id]
     assert [i["text"] for i in data["strengths"]] == [
         "Firewall 2 blocks malware."
@@ -103,3 +106,14 @@ def test_unknown_self_and_product_slugs_404(client, build):
     build.entity("jfrog-xray", "JFrog Xray", parent=jfrog)
     for slug in ("nope", "jfrog", "jfrog-xray"):
         assert client.get(f"/api/entities/{slug}/battlecard").status_code == 404
+
+
+def test_battlecard_list_cards_first_then_no_card_yet(client, build):
+    _world(build)  # Sonatype has a card (2 signals), GitHub none (1 signal)
+    build.entity("snyk", "Snyk", relationship=Relationship.COMPETITOR)
+    build.entity("jfrog", "JFrog", relationship=Relationship.SELF, is_self=True)
+    data = client.get("/api/battlecards").json()
+    assert [(i["slug"], i["generated_at"] is not None) for i in data] == [
+        ("sonatype", True), ("github", False), ("snyk", False),
+    ]  # fmt: skip
+    assert data[0]["signal_count"] == 2 and data[1]["signal_count"] == 1

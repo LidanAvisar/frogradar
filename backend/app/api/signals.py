@@ -1,23 +1,38 @@
 """GET /api/signals (filtered, paginated, full-text) and GET /api/signals/{id}."""
 
-from datetime import datetime
-from typing import Annotated
+from datetime import datetime, timedelta
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, not_, select
 
-from app.api.deps import DbSession
-from app.api.queries import entity_and_products, event_time, signals_query, to_outs, visible
+from app.api.deps import DbSession, Now
+from app.api.queries import (
+    entity_and_products,
+    event_time,
+    is_page_diff,
+    signals_query,
+    to_outs,
+    visible,
+)
 from app.api.schemas import SignalOut, SignalPage
-from app.db.enums import SignalCategory
+from app.db.enums import SignalCategory, Verification
 from app.db.models import Signal, signal_entities
 
 router = APIRouter(prefix="/api", tags=["signals"])
+
+WINDOWS = {
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30),
+    "90d": timedelta(days=90),
+}
 
 
 @router.get("/signals", response_model=SignalPage)
 def list_signals(
     session: DbSession,
+    now: Now,
     entity: Annotated[
         str | None, Query(description="Entity slug (a company includes its products)")
     ] = None,
@@ -26,6 +41,16 @@ def list_signals(
     relevant: bool | None = True,
     since: datetime | None = None,
     until: datetime | None = None,
+    window: Annotated[
+        Literal["24h", "7d", "30d", "90d"] | None,
+        Query(description="Relative window ending now (server clock, as the Brief stats)"),
+    ] = None,
+    kind: Annotated[
+        Literal["article", "page_diff"] | None, Query(description="page_diff = pricing pages")
+    ] = None,
+    include_unsupported: Annotated[
+        bool, Query(description="Include signals whose summary the verifier did not support")
+    ] = False,
     q: Annotated[str | None, Query(max_length=200, description="Full-text search")] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -46,6 +71,15 @@ def list_signals(
         conds.append(Signal.impact >= min_impact)
     if relevant is not None:
         conds.append(Signal.relevant.is_(relevant))
+    if not include_unsupported:
+        conds.append(Signal.verification != Verification.UNSUPPORTED)
+    if kind:
+        # coalesce: meta.kind is NULL for articles, and NOT (NULL OR false) is NULL.
+        pd = func.coalesce(is_page_diff(), False)
+        conds.append(pd if kind == "page_diff" else not_(pd))
+    if window:
+        conds.append(event_time() >= now - WINDOWS[window])
+        conds.append(event_time() <= now)
     if since:
         conds.append(event_time() >= since)
     if until:

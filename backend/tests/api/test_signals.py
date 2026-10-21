@@ -171,3 +171,39 @@ def test_self_product_terms(client, build):
 def test_self_404_without_self_entity(client, build):
     build.entity("github", "GitHub")
     assert client.get("/api/self").status_code == 404
+
+
+def test_filter_kind_window_and_unsupported(client, build):
+    article = build.signal("article", hours_ago=2)
+    diff = build.signal("diff", hours_ago=30, meta={"kind": "page_diff"})
+    old = build.signal("old", hours_ago=24 * 10)
+    unsupported = build.signal("unsupported", hours_ago=1, verification=Verification.UNSUPPORTED)
+    future = build.signal("future", hours_ago=-5)
+
+    assert ids(client, kind="page_diff") == [diff.id]
+    assert set(ids(client, kind="article")) == {article.id, old.id, future.id}
+    assert ids(client, window="24h") == [article.id]  # not the future-dated one
+    assert ids(client, window="7d") == [article.id, diff.id]
+    assert unsupported.id not in ids(client)
+    assert unsupported.id in ids(client, include_unsupported=True)
+    assert client.get("/api/signals", params={"window": "1y"}).status_code == 422
+    assert client.get("/api/signals", params={"kind": "video"}).status_code == 422
+
+
+def test_brief_tiles_match_their_signals_views(client, build):
+    """Each Brief stat tile opens /signals with a filter; the list total must equal the tile."""
+    build.signal("new high", hours_ago=2, impact=4)
+    build.signal("new low", hours_ago=3, impact=2)
+    build.signal("new unsupported", hours_ago=3, impact=5, verification=Verification.UNSUPPORTED)
+    build.signal("yesterday-ish", hours_ago=30, impact=5)
+    build.signal("price", hours_ago=50, impact=3, meta={"kind": "page_diff"})
+    build.signal("old price", hours_ago=24 * 9, meta={"kind": "page_diff"})
+    stats = client.get("/api/brief").json()["stats"]
+
+    def total(**params):
+        return client.get("/api/signals", params=params).json()["total"]
+
+    assert total(window="24h") == stats["new_signals"] == 2
+    assert total(window="24h", min_impact=4) == stats["high_impact"] == 1
+    assert stats["price_change_days"] == 7
+    assert total(window="7d", kind="page_diff") == stats["price_changes"] == 1

@@ -195,3 +195,7 @@ radar:
     max_signals: 8
     excerpt_chars: 1500
   teaser_count: 3
+  # Radar page: below this score, or with JFrog relation "none", a candidate is listed under
+  # "Lower relevance" (collapsed) instead of with the top.
+  ui:
+    lower_relevance_below: 35

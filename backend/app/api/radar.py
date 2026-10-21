@@ -16,7 +16,7 @@ import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession
@@ -38,6 +38,7 @@ from app.api.schemas import (
     RadarTeaser,
     RadarWatchIn,
 )
+from app.core.catalog import load_discovery
 from app.db.enums import (
     DiscoveredBy,
     EntityReviewStatus,
@@ -83,8 +84,16 @@ def _line(c: RadarCandidate) -> tuple[str | None, str | None]:
     return (contexts[0], "context") if contexts else (None, None)
 
 
-def to_out(c: RadarCandidate) -> RadarCandidateOut:
+def _statement(c: RadarCandidate, key: str) -> dict[str, Any]:
+    if c.profile_status != ProfileStatus.OK:
+        return {}
+    return dict(((c.profile or {}).get("items") or {}).get(key) or {})
+
+
+def to_out(c: RadarCandidate, names: dict[str, str] | None = None) -> RadarCandidateOut:
     line, line_source = _line(c)
+    relation = (c.metrics or {}).get("relation")
+    products = _statement(c, "jfrog_relation").get("products") or [] if relation else []
     origins = sorted(set(((c.meta or {}).get("mention_origins") or {}).values()))
     metrics = {k: v for k, v in (c.metrics or {}).items() if k in RadarMetrics.model_fields}
     return RadarCandidateOut(
@@ -103,6 +112,10 @@ def to_out(c: RadarCandidate) -> RadarCandidateOut:
         segments=list(c.segments or []),
         line=line,
         line_source=line_source,
+        what_it_is=_statement(c, "what_it_is").get("statement"),
+        why_notable_now=_statement(c, "why_notable_now").get("statement"),
+        relation=relation,
+        relation_products=[(names or {}).get(p, p) for p in products],
         profile_status=c.profile_status,
         origins=origins,
         metrics=RadarMetrics(**metrics),
@@ -117,28 +130,68 @@ def _statuses(value: str) -> list[str]:
     return out
 
 
-def _ordered(statuses: list[str]) -> Any:
+def _ordered(statuses: list[str], *conds: Any) -> Any:
     return (
         select(RadarCandidate)
-        .where(_live(), RadarCandidate.status.in_(statuses))
+        .where(_live(), RadarCandidate.status.in_(statuses), *conds)
         .order_by(RadarCandidate.score.desc().nulls_last(), RadarCandidate.id)
     )
 
 
-@router.get("", response_model=RadarListOut)
+RELATIONS = ("threatens", "both", "complements", "none", "unknown")
+KINDS = tuple(k.value for k in RadarKind)
+
+
+def _csv(value: str | None, allowed: tuple[str, ...], what: str) -> list[str]:
+    out = [v.strip() for v in (value or "").split(",") if v.strip()]
+    bad = [v for v in out if v not in allowed]
+    if bad:
+        raise HTTPException(422, f"unknown {what} {bad}; allowed: {list(allowed)}")
+    return out
+
+
+def _relation_cond(relations: list[str]) -> Any:
+    rel = RadarCandidate.metrics["relation"].astext
+    known = [r for r in relations if r != "unknown"]
+    conds = [rel.in_(known)] if known else []
+    if "unknown" in relations:
+        conds.append(rel.is_(None))
+    return or_(*conds)
+
+
+@router.get("", response_model=RadarListOut, responses={422: {}})
 def list_candidates(
     session: DbSession,
     status: str = "new,watching",
+    relation: Annotated[
+        str | None,
+        Query(description="Comma list: threatens, both, complements, none, unknown (no relation)"),
+    ] = None,
+    kind: Annotated[
+        str | None, Query(description="Comma list: company, product, open_source_project")
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> RadarListOut:
     statuses = _statuses(status)
+    conds = []
+    relations = _csv(relation, RELATIONS, "relation")
+    if relations:
+        conds.append(_relation_cond(relations))
+    kinds = _csv(kind, KINDS, "kind")
+    if kinds:
+        conds.append(RadarCandidate.kind.in_(kinds))
     total = session.scalar(
         select(func.count())
         .select_from(RadarCandidate)
-        .where(_live(), RadarCandidate.status.in_(statuses))
+        .where(_live(), RadarCandidate.status.in_(statuses), *conds)
     )
-    rows = session.scalars(_ordered(statuses).limit(limit)).all()
-    return RadarListOut(items=[to_out(c) for c in rows], total=total or 0)
+    rows = session.scalars(_ordered(statuses, *conds).limit(limit)).all()
+    names = _product_names(session)
+    return RadarListOut(
+        items=[to_out(c, names) for c in rows],
+        total=total or 0,
+        lower_relevance_below=load_discovery().radar.ui.lower_relevance_below,
+    )
 
 
 def teaser(session: Session, n: int) -> list[RadarTeaser]:
@@ -256,7 +309,7 @@ def detail(session: Session, c: RadarCandidate) -> RadarCandidateDetail:
     approved = session.get(Entity, c.approved_entity_id) if c.approved_entity_id else None
     generated = profile.get("generated_at")
     return RadarCandidateDetail(
-        **to_out(c).model_dump(),
+        **to_out(c, names).model_dump(),
         statements=statements,
         dropped_statements=len(profile.get("dropped") or []),
         profile_generated_at=generated,

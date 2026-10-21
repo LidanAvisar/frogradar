@@ -7,7 +7,7 @@ from sqlalchemy.orm import aliased
 from app.api.deps import DbSession
 from app.api.queries import event_time, visible
 from app.api.schemas import EntityOut, NavCounts, SelfOut
-from app.db.enums import EntityReviewStatus, EntityType, RadarStatus, ReviewStatus
+from app.db.enums import EntityReviewStatus, EntityType, RadarStatus, ReviewStatus, Verification
 from app.db.models import Entity, RadarCandidate, Signal, signal_entities
 
 router = APIRouter(prefix="/api", tags=["entities"])
@@ -58,7 +58,8 @@ def list_entities(session: DbSession) -> list[EntityOut]:
 def nav_counts(session: DbSession) -> NavCounts:
     base = select(func.count()).select_from(Signal).where(visible(), Signal.relevant.is_(True))
     return NavCounts(
-        signals=session.scalar(base) or 0,
+        # Same default as GET /api/signals: unsupported summaries are not listed.
+        signals=session.scalar(base.where(Signal.verification != Verification.UNSUPPORTED)) or 0,
         review_queue=session.scalar(base.where(Signal.status == ReviewStatus.NEW)) or 0,
         radar_new=session.scalar(
             select(func.count())
