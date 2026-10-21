@@ -78,9 +78,15 @@ class LLMGateway:
         *,
         prompt_version: str | None = None,
         use_cache: bool = True,
+        thinking: str | None = None,
     ) -> M:
-        """Run a chat completion and return a validated `response_model` instance."""
+        """Run a chat completion and return a validated `response_model` instance.
+
+        thinking: overrides the task's configured thinking level for this call (eval A/B only);
+        it is part of the cache key like the configured value."""
         route = resolve(task, self.routing)
+        if thinking is not None and thinking != route.thinking:
+            route = route.model_copy(update={"thinking": thinking})
         ctx = current_context()
         messages = list(messages)
         schema = response_model.model_json_schema()
@@ -216,6 +222,28 @@ class LLMGateway:
             f"{operation}: output failed {response_model.__name__} validation "
             f"{structured.MAX_VALIDATION_RETRIES + 1} times; last error: {scrub(last_error)}"
         )
+
+    def cached(
+        self,
+        task: str,
+        messages: Sequence[Message],
+        response_model: type[BaseModel],
+        *,
+        thinking: str | None = None,
+    ) -> bool:
+        """Would complete() be answered from the cache? (cost estimates; no call, no ledger row)"""
+        route = resolve(task, self.routing)
+        key = cache.completion_key(
+            model=route.model,
+            max_tokens=route.max_tokens,
+            temperature=route.temperature,
+            messages=list(messages),
+            schema=response_model.model_json_schema(),
+            thinking=thinking if thinking is not None else route.thinking,
+        )
+        with self._session_factory() as s:
+            hit = cache.get_many(s, [key]).get(key)
+            return hit is not None and _validate_cached(hit.response, response_model) is not None
 
     # ---------- embeddings ----------
 

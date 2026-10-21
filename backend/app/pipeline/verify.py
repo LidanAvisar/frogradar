@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.llm import load_prompt
 from app.db.enums import Verification
 from app.db.models import Signal
-from app.pipeline.context import RunContext
+from app.pipeline.context import CompleteFn, RunContext
 from app.pipeline.enrich import inherit_from_canonicals
 from app.pipeline.llm_steps import (
     canonical_or_unclustered,
@@ -24,7 +24,7 @@ from app.pipeline.llm_steps import (
     meta_version_differs,
     run_parallel,
 )
-from app.pipeline.prompting import verify_messages
+from app.pipeline.prompting import SignalInput, verify_messages
 from app.pipeline.schemas import VerifyResult
 from app.pipeline.scope import in_scope
 
@@ -36,6 +36,25 @@ def verification_notes(result: VerifyResult) -> str:
     if result.unsupported_claims:
         notes += " Unsupported: " + "; ".join(c.strip() for c in result.unsupported_claims)
     return notes
+
+
+def verify_one(
+    sig: SignalInput,
+    summary: str,
+    why: str,
+    quote: str,
+    max_chars: int,
+    complete: CompleteFn,
+    *,
+    thinking: str | None = None,
+) -> VerifyResult:
+    """One verification (no DB writes). Shared by the stage and the eval runner (app.eval).
+    thinking overrides the configured level (eval A/B only)."""
+    prompt, messages = verify_messages(sig, summary, why, quote, max_chars)
+    extra = {"thinking": thinking} if thinking is not None else {}
+    return complete(
+        "verify", "verify_signal", messages, VerifyResult, prompt_version=prompt.id, **extra
+    )
 
 
 def verify_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
@@ -65,11 +84,8 @@ def verify_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     Signal.id == signal_id
                 )
             ).one()
-        prompt, messages = verify_messages(sig, summary, why, quote or "", cfg.max_chars)
-        result = complete(
-            "verify", "verify_signal", messages, VerifyResult, prompt_version=prompt.id
-        )
-        info = {"prompt_version": prompt.id, "unsupported_claims": result.unsupported_claims}
+        result = verify_one(sig, summary, why, quote or "", cfg.max_chars, complete)
+        info = {"prompt_version": version, "unsupported_claims": result.unsupported_claims}
         with factory.begin() as s:
             s.execute(
                 update(Signal)

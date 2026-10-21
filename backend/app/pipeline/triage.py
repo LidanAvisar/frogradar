@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.core.llm import load_prompt
 from app.db.models import Signal
-from app.pipeline.context import RunContext
+from app.pipeline.context import CompleteFn, RunContext
 from app.pipeline.llm_steps import (
     canonical_or_unclustered,
     load_input,
@@ -22,11 +22,19 @@ from app.pipeline.llm_steps import (
     meta_version_differs,
     run_parallel,
 )
-from app.pipeline.prompting import Catalog, triage_messages
+from app.pipeline.prompting import Catalog, SignalInput, triage_messages
 from app.pipeline.schemas import TriageResult
 from app.pipeline.scope import in_scope
 
 logger = logging.getLogger(__name__)
+
+
+def triage_one(
+    sig: SignalInput, catalog: Catalog, max_chars: int, complete: CompleteFn
+) -> TriageResult:
+    """One triage decision (no DB writes). Shared by the stage and the eval runner (app.eval)."""
+    prompt, messages = triage_messages(sig, catalog, max_chars)
+    return complete("bulk", "triage", messages, TriageResult, prompt_version=prompt.id)
 
 
 def triage_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
@@ -42,12 +50,11 @@ def triage_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     def worker(signal_id: int) -> str:
         with factory() as s:
             sig = load_input(s, signal_id)
-        prompt, messages = triage_messages(sig, catalog, cfg.max_chars)
-        result = complete("bulk", "triage", messages, TriageResult, prompt_version=prompt.id)
+        result = triage_one(sig, catalog, cfg.max_chars, complete)
         info = {
             "reason": result.reason,
             "segments": [str(x) for x in result.segments],
-            "prompt_version": prompt.id,
+            "prompt_version": version,
         }
         with factory.begin() as s:
             s.execute(

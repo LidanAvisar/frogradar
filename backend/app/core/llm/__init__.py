@@ -35,8 +35,10 @@ def complete[M: BaseModel](
     *,
     prompt_version: str | None = None,
     use_cache: bool = True,
+    thinking: str | None = None,
 ) -> M:
-    """Chat completion validated into `response_model`. task: bulk / synthesis / verify."""
+    """Chat completion validated into `response_model`. task: bulk / synthesis / verify.
+    thinking overrides the task's configured level for this call (eval A/B)."""
     return get_gateway().complete(
         task,
         operation,
@@ -44,6 +46,7 @@ def complete[M: BaseModel](
         response_model,
         prompt_version=prompt_version,
         use_cache=use_cache,
+        thinking=thinking,
     )
 
 

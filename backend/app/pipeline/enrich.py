@@ -19,6 +19,7 @@ quote, is_claim, entity links, new-entity candidates and capabilities (bulk mode
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -26,20 +27,81 @@ from sqlalchemy import and_, case, delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, aliased
 
+from app.core.catalog import EnrichSettings
 from app.core.llm import load_prompt
 from app.core.llm.structured import retry_messages
 from app.db.enums import Verification
 from app.db.models import Capability, Entity, Signal, Source, signal_capabilities, signal_entities
-from app.pipeline.context import RunContext
+from app.pipeline.context import CompleteFn, RunContext
 from app.pipeline.llm_steps import canonical_or_unclustered, load_input, merge_meta, run_parallel
 from app.pipeline.page_diff import is_page_diff, split_section
 from app.pipeline.page_diff import quote_source as page_quote_source
-from app.pipeline.prompting import Catalog, enrich_messages
+from app.pipeline.prompting import Catalog, SignalInput, enrich_messages
 from app.pipeline.quotes import quote_error, quote_in_text, repair_quote
 from app.pipeline.schemas import EnrichedSignalBase, enrich_schema
 from app.pipeline.scope import in_scope
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class EnrichOutcome:
+    """Result of enrich_one: the (possibly quote-repaired) output and how the quote check went."""
+
+    result: EnrichedSignalBase
+    quote_ok: bool  # evidence_quote is verbatim in the allowed source text
+    attempts: int  # model calls (1 + quote retries)
+    repair: dict[str, Any] | None  # D39 code repair: original quote, similarity, coverage
+    quote_side: str | None  # page diffs: "after" / "before"
+    quote_section: str | None  # page diffs: section path split off the quote
+    prompt_version: str
+
+
+def enrich_one(
+    sig: SignalInput,
+    meta: dict[str, Any] | None,
+    catalog: Catalog,
+    schema: type[EnrichedSignalBase],
+    cfg: EnrichSettings,
+    complete: CompleteFn,
+) -> EnrichOutcome:
+    """Enrich one signal incl. the quote check / repair / retry (no DB writes).
+    Shared by the stage and the eval runner (app.eval)."""
+    diff = is_page_diff(meta)
+    prompt_name = DIFF_PROMPT if diff else "enrich_signal"
+    # Where the quote may come from: the whole text, or only the [after] lines of a diff.
+    # Removal-only diffs have no [after] text: their quote comes from [before] (quote_side).
+    side, quote_source = page_quote_source(sig.raw_text) if diff else (None, sig.raw_text)
+    prompt, messages = enrich_messages(sig, catalog, cfg.max_chars, prompt_name)
+    result = complete("bulk", prompt_name, messages, schema, prompt_version=prompt.id)
+    attempts = 1
+    repair: dict[str, Any] | None = None
+    quote_ok = quote_in_text(result.evidence_quote, quote_source)
+    while not quote_ok:
+        fixed = repair_quote(result.evidence_quote, quote_source, cfg.quote_repair_threshold)
+        if fixed is not None:
+            repair = {
+                "original": result.evidence_quote,
+                "similarity": round(fixed.similarity, 3),
+                "coverage": round(fixed.coverage, 3),
+            }
+            result = result.model_copy(update={"evidence_quote": fixed.span})
+            quote_ok = True
+            break
+        if attempts > cfg.quote_retries:
+            break
+        error = quote_error(result.evidence_quote, diff_side=side)
+        retry = [*messages, *retry_messages(result.model_dump_json(), error)]
+        result = complete("bulk", prompt_name, retry, schema, prompt_version=prompt.id)
+        attempts += 1
+        quote_ok = quote_in_text(result.evidence_quote, quote_source)
+
+    # Price-lines diffs prefix lines with "[section path] ": keep the page text as the quote
+    # and the section next to it (meta.quote_section).
+    section, page_quote = split_section(result.evidence_quote) if diff else (None, "")
+    if section is not None and quote_in_text(page_quote, quote_source):
+        result = result.model_copy(update={"evidence_quote": page_quote})
+    return EnrichOutcome(result, quote_ok, attempts, repair, side, section, prompt.id)
 
 
 def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
@@ -72,40 +134,9 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                 .outerjoin(Source, Source.id == Signal.source_id)
                 .where(Signal.id == signal_id)
             ).one()
-        diff = is_page_diff(meta)
-        prompt_name = DIFF_PROMPT if diff else "enrich_signal"
-        # Where the quote may come from: the whole text, or only the [after] lines of a diff.
-        # Removal-only diffs have no [after] text: their quote comes from [before] (quote_side).
-        side, quote_source = page_quote_source(sig.raw_text) if diff else (None, sig.raw_text)
-        prompt, messages = enrich_messages(sig, catalog, cfg.max_chars, prompt_name)
-        result = complete("bulk", prompt_name, messages, schema, prompt_version=prompt.id)
-        attempts = 1
-        repair: dict[str, Any] | None = None
-        quote_ok = quote_in_text(result.evidence_quote, quote_source)
-        while not quote_ok:
-            fixed = repair_quote(result.evidence_quote, quote_source, cfg.quote_repair_threshold)
-            if fixed is not None:
-                repair = {
-                    "original": result.evidence_quote,
-                    "similarity": round(fixed.similarity, 3),
-                    "coverage": round(fixed.coverage, 3),
-                }
-                result = result.model_copy(update={"evidence_quote": fixed.span})
-                quote_ok = True
-                break
-            if attempts > cfg.quote_retries:
-                break
-            error = quote_error(result.evidence_quote, diff_side=side)
-            retry = [*messages, *retry_messages(result.model_dump_json(), error)]
-            result = complete("bulk", prompt_name, retry, schema, prompt_version=prompt.id)
-            attempts += 1
-            quote_ok = quote_in_text(result.evidence_quote, quote_source)
-
-        # Price-lines diffs prefix lines with "[section path] ": keep the page text as the quote
-        # and the section next to it (meta.quote_section).
-        section, page_quote = split_section(result.evidence_quote) if diff else (None, "")
-        if section is not None and quote_in_text(page_quote, quote_source):
-            result = result.model_copy(update={"evidence_quote": page_quote})
+        out = enrich_one(sig, meta, catalog, schema, cfg, complete)
+        result, quote_ok, attempts, repair = out.result, out.quote_ok, out.attempts, out.repair
+        side, section, prompt_id = out.quote_side, out.quote_section, out.prompt_version
 
         with factory.begin() as s:
             review = apply_entity_links(
@@ -122,7 +153,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     )
                 )
             info = {
-                "prompt_version": prompt.id,
+                "prompt_version": prompt_id,
                 "impact_rationale": result.impact_rationale,
                 "new_entities": untracked(result.new_entities, tracked),
                 "capabilities": list(result.capabilities),
@@ -142,7 +173,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     evidence_quote_verified=quote_ok,
                     is_claim=result.is_claim,
                     enriched_at=datetime.now(UTC),
-                    enrich_prompt_version=prompt.id,
+                    enrich_prompt_version=prompt_id,
                     verification=Verification.PENDING,
                     verification_notes=None,
                     confidence=None,
@@ -194,6 +225,17 @@ def untracked(new_entities: list[Any], tracked: set[str]) -> list[dict[str, Any]
     return out
 
 
+def link_roles[K](refs: list[tuple[K, str]], source_entity: K | None) -> dict[K, bool]:
+    """Final links {entity: is_primary}: the model's entities (primary wins over mention) plus the
+    source's own entity, always primary. Used by apply_entity_links and the eval runner."""
+    final: dict[K, bool] = {}
+    for key, role in refs:
+        final[key] = final.get(key, False) or role == "primary"
+    if source_entity is not None:
+        final[source_entity] = True
+    return final
+
+
 def apply_entity_links(
     s: Session,
     signal_id: int,
@@ -204,12 +246,9 @@ def apply_entity_links(
 ) -> dict[str, list[str]]:
     """Replace the signal's links with the model's, keeping the source entity as primary."""
     slug_by_id = {v: k for k, v in entity_ids.items()}
-    final: dict[int, bool] = {}
-    for ref in result.entities:
-        eid = entity_ids[ref.slug]
-        final[eid] = final.get(eid, False) or ref.role == "primary"
-    if source_entity_id is not None:
-        final[source_entity_id] = True
+    final = link_roles(
+        [(entity_ids[ref.slug], ref.role) for ref in result.entities], source_entity_id
+    )
 
     s.execute(
         delete(signal_entities).where(

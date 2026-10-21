@@ -3,9 +3,15 @@
 A signal is in scope if its source is active, or if it has no source (research-mission findings).
 Signals from inactive sources stay in the DB (history, citations) but are not processed further.
 Every stage selects its work through these helpers, so "in scope" has one definition.
+
+Two other selections exist for evaluation only (app.eval), never for the daily pipeline:
+- full_catalog(): every signal, any source (dedup calibration, eval-set sampling).
+- eval_set(ids): exactly the labeled signals of the eval set (eval/labels.csv).
 """
 
-from sqlalchemy import ColumnElement, Select, exists, func, or_, select
+from collections.abc import Iterable
+
+from sqlalchemy import ColumnElement, Select, exists, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from app.db.models import Signal, Source
@@ -30,3 +36,13 @@ def count_in_scope(session: Session) -> tuple[int, int]:
     total = session.scalar(select(func.count()).select_from(Signal)) or 0
     scoped = session.scalar(select(func.count()).select_from(Signal).where(in_scope())) or 0
     return scoped, total
+
+
+def full_catalog() -> ColumnElement[bool]:
+    """WHERE clause for every signal, active source or not (evaluation and calibration only)."""
+    return true()
+
+
+def eval_set(ids: Iterable[int]) -> ColumnElement[bool]:
+    """WHERE clause for the labeled eval-set signals, in scope or not (evaluation only)."""
+    return Signal.id.in_(sorted(set(ids)))

@@ -7,7 +7,7 @@ The gateway caches each text by hash, so re-running after a failure costs nothin
 import logging
 from typing import Any
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import ColumnElement, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import Signal
@@ -21,12 +21,16 @@ def embedding_input(title: str, raw_text: str, max_chars: int) -> str:
     return f"{title.strip()}\n\n{raw_text[:max_chars].strip()}".strip()
 
 
-def embed_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
+def embed_signals(
+    session: Session, ctx: RunContext, where: ColumnElement[bool] | None = None
+) -> dict[str, Any]:
+    """where: which signals (app.pipeline.scope); default in_scope(). The eval's dedup
+    calibration passes scope.full_catalog()."""
     cfg = ctx.config.embedding
     rows = session.execute(
         select(Signal.id, Signal.title, Signal.raw_text, Signal.embedding_model)
         .where(
-            in_scope(),
+            in_scope() if where is None else where,
             or_(Signal.embedding.is_(None), Signal.embedding_model != ctx.embedding_model),
         )
         .order_by(Signal.id)
