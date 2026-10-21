@@ -54,7 +54,7 @@ from app.db.enums import (
 )
 from app.db.models import Entity, Feedback, RadarCandidate, Signal, Source
 from app.pipeline.radar.normalize import repo_slug
-from app.pipeline.radar.profile import KEYS
+from app.pipeline.radar.profile import KEYS, profile_relation
 from app.pipeline.synthesis.inputs import display_title
 
 router = APIRouter(prefix="/api/radar", tags=["radar"])
@@ -143,7 +143,12 @@ def list_candidates(
 
 def teaser(session: Session, n: int) -> list[RadarTeaser]:
     """Brief card: the top open candidates by score."""
-    rows = session.scalars(_ordered([s.value for s in OPEN]).limit(n)).all()
+    # A candidate whose profile says it has nothing to do with JFrog ("none") is never teased.
+    rows = [
+        c
+        for c in session.scalars(_ordered([s.value for s in OPEN]).limit(n * 10)).all()
+        if profile_relation(c.profile) != "none"
+    ][:n]
     return [
         RadarTeaser(
             id=c.id,

@@ -257,6 +257,18 @@ def test_rejected_profile_gives_no_line(client, radar, db_session):
     assert (item["line"], item["line_source"]) == ("A registry firewall.", "context")
 
 
+def test_teaser_skips_candidates_with_no_jfrog_relation(client, radar, db_session):
+    w = radar["watching"]
+    w.profile = {
+        "items": {"jfrog_relation": {"relation": "none", "statement": "x", "signal_ids": [1]}},
+        "dropped": [],
+    }
+    w.profile_status = ProfileStatus.OK
+    db_session.flush()
+    names = [t["name"] for t in client.get("/api/brief").json()["radar"]]
+    assert names == ["Regshield", "Tinytool"]
+
+
 def test_brief_teaser_and_nav(client, radar):
     brief = client.get("/api/brief").json()
     assert [t["name"] for t in brief["radar"]] == ["Regshield", "Pkgguard", "Tinytool"]

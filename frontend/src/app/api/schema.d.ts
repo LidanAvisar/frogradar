@@ -813,6 +813,11 @@ export interface components {
             /** Hn Points Max */
             hn_points_max?: number | null;
             /**
+             * Max Impact
+             * @description Highest enrich impact of the mentions
+             */
+            max_impact?: number | null;
+            /**
              * Mentions
              * @default 0
              */
@@ -822,6 +827,11 @@ export interface components {
              * @default 0
              */
             mentions_recent: number;
+            /**
+             * Relation
+             * @description JFrog relation from the profile, used for ranking
+             */
+            relation?: ("threatens" | "complements" | "both" | "none") | null;
             /**
              * Sources
              * @default 0

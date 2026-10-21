@@ -1680,6 +1680,18 @@
             ],
             "title": "Hn Points Max"
           },
+          "max_impact": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest enrich impact of the mentions",
+            "title": "Max Impact"
+          },
           "mentions": {
             "default": 0,
             "title": "Mentions",
@@ -1689,6 +1701,24 @@
             "default": 0,
             "title": "Mentions Recent",
             "type": "integer"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "threatens",
+                  "complements",
+                  "both",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "JFrog relation from the profile, used for ranking",
+            "title": "Relation"
           },
           "sources": {
             "default": 0,

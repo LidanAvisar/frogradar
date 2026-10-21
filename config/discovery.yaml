@@ -162,30 +162,33 @@ radar:
   merge:
     name_ratio: 0.92
     embedding_cosine: 0.90
-  # Emergence score (0-100) = 100 x sum(weight x factor), each factor in [0, 1]. README
-  # "Competitor Radar" documents the formula; the breakdown is stored per candidate.
+  # Emergence score (0-100) = 100 x sum(weight x factor), each factor in [0, 1] (radar_score.v2:
+  # relevance to JFrog first, popularity second). README "Competitor Radar" documents the formula;
+  # the breakdown is stored per candidate.
   score:
     weights:
-      mentions: 0.20
-      source_diversity: 0.15
+      relevance: 0.35
+      mentions: 0.10
+      source_diversity: 0.20
       mention_velocity: 0.10
-      traction: 0.20
-      segment_overlap: 0.25
-      recency: 0.10
-    mentions_full_at: 10
-    sources_full_at: 3
+      traction: 0.10
+      recency: 0.15
+    # Relevance: max enrich impact (1-5 -> 0-1); once a profile states the JFrog relation:
+    # 0.7 x relation weight + 0.3 x impact factor.
+    relation_weights: {threatens: 1.0, both: 1.0, complements: 0.6, none: 0.05}
+    relation_share: 0.7
+    # Weight of a mention / a source by kind: press and official count more than community and
+    # discovery sources (HN, GitHub search, CNCF).
+    credibility: {official: 1.0, press: 1.0, community: 0.5, github: 0.5, discovery: 0.35, no_source: 0.5}
+    mentions_full_at: 6
+    sources_full_at: 2
     velocity_recent_days: 14
     velocity_window_days: 90
     velocity_recent_full_at: 3
     stars_per_day_full_at: 50
     hn_points_full_at: 500
+    hn_max_factor: 0.5
     recency_half_life_days: 14
-    segment_weights:
-      artifact_management: 1.0
-      supply_chain_security: 1.0
-      mlops: 0.8
-      cicd: 0.6
-      distribution: 0.6
   profile:
     min_score: 35
     top_n: 10

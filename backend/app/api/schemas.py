@@ -337,6 +337,10 @@ class RadarMetrics(BaseModel):
         None, description="snapshots = between runs; age = stars / repo age (first sighting)"
     )
     hn_points_max: int | None = None
+    max_impact: int | None = Field(None, description="Highest enrich impact of the mentions")
+    relation: Literal["threatens", "complements", "both", "none"] | None = Field(
+        None, description="JFrog relation from the profile, used for ranking"
+    )
 
 
 class RadarCandidateOut(BaseModel):

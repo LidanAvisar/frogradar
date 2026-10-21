@@ -116,6 +116,9 @@ class Resolver:
         )
         self.counts: Counter[str] = Counter()
         self._vectors: dict[str, list[float]] = {}
+        # Signal ids observed this run per candidate id: mentions not seen again (signal re-triaged
+        # irrelevant, source out of scope) are pruned (prune()).
+        self.observed: dict[int, set[int]] = {}
 
     # ---------- observations ----------
 
@@ -128,6 +131,7 @@ class Resolver:
             cand = self._create(obs)
             how = "new"
         changed = self._attach(cand, obs, how)
+        self.observed.setdefault(cand.id, set()).add(obs.signal_id)
         self.counts[f"matched_{how}" if how != "new" else "created"] += 1
         if changed and how not in ("new",):
             self.counts["mentions_added"] += 1
@@ -249,6 +253,36 @@ class Resolver:
                 },
             ]
         return new_mention
+
+    # ---------- prune ----------
+
+    def prune(self) -> int:
+        """Drop mentions that no observation produced this run. A still-new candidate left with
+        no mention is deleted (nothing was decided about it); decided ones are kept as they are.
+        Returns candidates deleted."""
+        deleted = 0
+        for cand in list(self.live):
+            seen = self.observed.get(cand.id, set())
+            ids = [i for i in cand.mention_signal_ids or [] if i in seen]
+            if ids == list(cand.mention_signal_ids or []):
+                continue
+            if not ids:
+                if cand.status == RadarStatus.NEW:
+                    self.session.delete(cand)
+                    self.live.remove(cand)
+                    deleted += 1
+                continue
+            self.counts["mentions_pruned"] += len(cand.mention_signal_ids) - len(ids)
+            keep = {str(i) for i in ids}
+            meta = dict(cand.meta or {})
+            for k in ("mention_origins", "contexts", "hn_points"):
+                meta[k] = {sid: v for sid, v in (meta.get(k) or {}).items() if sid in keep}
+            cand.meta = meta
+            cand.mention_signal_ids = ids
+            cand.profile_signal_hash = None
+        self.session.flush()
+        self.counts["candidates_removed"] += deleted
+        return deleted
 
     # ---------- merge pass ----------
 

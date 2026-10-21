@@ -22,7 +22,7 @@ from app.pipeline.radar.extract import Observation, observations
 from app.pipeline.radar.normalize import name_key, site_host
 from app.pipeline.radar.profile import KEYS
 from app.pipeline.radar.resolve import Known, Resolver, ratio
-from app.pipeline.radar.score import ScoreInput, compute
+from app.pipeline.radar.score import Mention, ScoreInput, compute
 from app.pipeline.radar.stars import Velocity
 from app.pipeline.radar.step import radar_step
 from app.pipeline.scope import visible
@@ -238,45 +238,79 @@ def test_dismissed_candidate_collects_mentions_but_stays_dismissed(known_world):
 # ---------- score ----------
 
 
+def _m(days, cred=1.0, impact=None):
+    return Mention(NOW - timedelta(days=days), cred, impact)
+
+
 def test_score_formula_and_breakdown():
+    import math
+
     cfg = RadarScoreSettings()
-    now = NOW
-    times = [now - timedelta(days=d) for d in (1, 2, 3, 40)]  # 3 recent, 1 prior
     inp = ScoreInput(
-        mention_times=times,
-        sources=2,
-        segments=["supply_chain_security", "cicd"],
-        last_seen=now - timedelta(days=1),
+        mentions=[_m(1, 1.0, 4), _m(2, 0.35, 2), _m(3, 0.35), _m(40, 0.5, 3)],
+        source_credibility=[1.0, 0.35, 0.5],
+        last_seen=NOW - timedelta(days=1),
         stars=Velocity(500, 20.0, "age", 25),
         hn_points_max=120,
     )
-    score, b = compute(inp, cfg, now)
-    import math
-
+    score, b = compute(inp, cfg, NOW)
     c = b["components"]
-    assert c["mentions"]["factor"] == pytest.approx(math.log1p(4) / math.log1p(10), abs=1e-4)
-    assert c["source_diversity"]["factor"] == pytest.approx(2 / 3, abs=1e-4)
-    prior_scaled = 1 * 14 / 76
-    assert c["mention_velocity"]["factor"] == pytest.approx(3 / (3 + prior_scaled), abs=1e-4)
+    assert c["relevance"]["factor"] == pytest.approx(3 / 4, abs=1e-4)  # max impact 4
+    assert c["relevance"]["value"] == {"max_impact": 4, "relation": None, "basis": "impact"}
+    assert c["mentions"]["value"]["weighted"] == 2.2
+    assert c["mentions"]["factor"] == pytest.approx(math.log1p(2.2) / math.log1p(6), abs=1e-4)
+    assert c["source_diversity"]["factor"] == pytest.approx(1.85 / 2, abs=1e-4)
     star_f = math.log1p(20) / math.log1p(50)
-    hn_f = math.log1p(120) / math.log1p(500)
-    assert c["traction"]["factor"] == pytest.approx(max(star_f, hn_f), abs=1e-4)
-    assert c["traction"]["value"]["from"] == "stars"
-    assert c["segment_overlap"]["factor"] == 1.0
+    assert c["traction"]["factor"] == pytest.approx(star_f, abs=1e-4)
     assert c["recency"]["factor"] == pytest.approx(0.5 ** (1 / 14), abs=1e-4)
     expected = sum(100 * v["weight"] * v["factor"] for v in c.values())
     assert score == pytest.approx(expected, abs=0.1)
-    assert b["formula"] == "radar_score.v1" and b["score"] == score
+    assert b["formula"] == "radar_score.v2" and b["score"] == score
+    assert set(c) == {
+        "relevance",
+        "mentions",
+        "source_diversity",
+        "mention_velocity",
+        "traction",
+        "recency",
+    }
+
+
+@pytest.mark.parametrize(
+    ("relation", "expected"),
+    [
+        ("threatens", 0.7 * 1.0 + 0.3 * 0.25),
+        ("complements", 0.7 * 0.6 + 0.3 * 0.25),
+        ("none", 0.7 * 0.05 + 0.3 * 0.25),
+        (None, 0.25),
+    ],
+)
+def test_relevance_uses_profile_relation(relation, expected):
+    _, b = compute(
+        ScoreInput([_m(1, 1.0, 2)], [1.0], NOW, relation=relation), RadarScoreSettings(), NOW
+    )
+    assert b["components"]["relevance"]["factor"] == pytest.approx(expected, abs=1e-4)
+
+
+def test_viral_hn_post_is_capped():
+    _, b = compute(
+        ScoreInput([_m(1, 0.35)], [0.35], NOW, hn_points_max=5000), RadarScoreSettings(), NOW
+    )
+    assert b["components"]["traction"]["factor"] == 0.5
+    assert b["components"]["traction"]["points"] == 5.0
+
+
+def test_press_mention_outweighs_discovery_mentions():
+    cfg = RadarScoreSettings()
+    _, press = compute(ScoreInput([_m(1, 1.0, 3)], [1.0], NOW), cfg, NOW)
+    _, hn = compute(ScoreInput([_m(1, 0.35, 3)], [0.35], NOW), cfg, NOW)
+    assert press["score"] > hn["score"] + 8
 
 
 def test_one_new_mention_is_not_full_velocity():
-    _, b = compute(
-        ScoreInput([NOW - timedelta(days=1)], 1, [], NOW - timedelta(days=1)),
-        RadarScoreSettings(),
-        NOW,
-    )
+    _, b = compute(ScoreInput([_m(1)], [1.0], NOW - timedelta(days=1)), RadarScoreSettings(), NOW)
     assert b["components"]["mention_velocity"]["factor"] == pytest.approx(1 / 3, abs=1e-4)
-    assert b["components"]["segment_overlap"]["factor"] == 0.0
+    assert b["components"]["relevance"]["factor"] == 0.0
     assert b["components"]["traction"]["factor"] == 0.0
 
 
@@ -538,6 +572,7 @@ def test_radar_step_end_to_end(jfrog_world):
         assert cand.metrics["stars"] == 800 and cand.metrics["star_velocity_basis"] == "age"
         assert cand.metrics["hn_points_max"] == 140
         assert cand.score_breakdown["components"]["source_diversity"]["value"]["sources"] == 3
+        assert cand.score_breakdown["formula"] == "radar_score.v2"
         assert cand.profile_status == ProfileStatus.OK
         assert set(cand.profile["items"]) == set(KEYS) and cand.profile["dropped"] == []
         assert cand.profile["items"]["jfrog_relation"]["products"] == ["jfrog-curation"]
@@ -652,3 +687,92 @@ def test_relation_none_needs_empty_products():
         schema.model_validate(
             {**base, "jfrog_relation": {**rel, "relation": "threatens", "products": []}}
         )
+
+
+def test_profile_relation_from_kept_or_partial_only():
+    from app.pipeline.radar.profile import profile_relation
+
+    kept = {"items": {"jfrog_relation": {"relation": "threatens"}}, "dropped": []}
+    partial = {
+        "items": {},
+        "dropped": [{"key": "jfrog_relation", "reason": "verifier_partial", "relation": "none"}],
+    }
+    bad = {
+        "items": {},
+        "dropped": [
+            {"key": "jfrog_relation", "reason": "verifier_unsupported", "relation": "none"}
+        ],
+    }
+    assert profile_relation(kept) == "threatens"
+    assert profile_relation(partial) == "none"
+    assert profile_relation(bad) is None and profile_relation(None) is None
+
+
+def test_prune_removes_mentions_no_longer_observed(jfrog_world):
+    factory = jfrog_world
+    ids = _radar_world(factory)
+    profile, verify = _profile_handler()
+    _step(factory, FakeLLM(radar_profile=profile, verify_profile=verify))
+    # The news article is re-triaged as not relevant: its mention disappears.
+    with factory.begin() as s:
+        s.execute(update(Signal).where(Signal.id == ids["news"]).values(relevant=False))
+    counts = _step(factory, FakeLLM(radar_profile=profile, verify_profile=verify))
+    assert counts["mentions_pruned"] == 1
+    with factory() as s:
+        cand = s.scalars(select(RadarCandidate)).one()
+        assert ids["news"] not in cand.mention_signal_ids
+        assert str(ids["news"]) not in cand.meta["mention_origins"]
+        assert len(cand.source_ids) == 2
+
+
+def test_new_candidate_without_mentions_is_removed(jfrog_world):
+    factory = jfrog_world
+    _radar_world(factory)
+    profile, verify = _profile_handler()
+    _step(factory, FakeLLM(radar_profile=profile, verify_profile=verify))
+    with factory.begin() as s:
+        s.execute(update(Signal).values(relevant=False))
+    counts = _step(factory, FakeLLM(radar_profile=profile, verify_profile=verify))
+    assert counts["candidates_removed"] == 1
+    with factory() as s:
+        assert s.scalars(select(RadarCandidate)).all() == []
+
+
+def test_profile_relation_drives_the_score(jfrog_world):
+    factory = jfrog_world
+    _radar_world(factory)
+    profile, verify = _profile_handler()
+
+    def none_profile(call):
+        out = profile(call)
+        out["jfrog_relation"] = {**out["jfrog_relation"], "relation": "none", "products": []}
+        return out
+
+    _step(factory, FakeLLM(radar_profile=none_profile, verify_profile=verify))
+    with factory() as s:
+        cand = s.scalars(select(RadarCandidate)).one()
+        rel = cand.score_breakdown["components"]["relevance"]
+        assert rel["value"]["relation"] == "none" and rel["value"]["basis"] == "profile_relation"
+        assert cand.metrics["relation"] == "none"
+
+
+def test_triage_uses_discovery_prompt(jfrog_world):
+    from app.pipeline.triage import triage_signals
+
+    factory = jfrog_world
+    with factory.begin() as s:
+        hn = source(s, "HN", trust=0.4)
+        press = source(s, "Press")
+        d = _discovery_signal(s, hn, "Show HN: my email app").id
+        n = signal(s, press, "News item").id
+    llm = FakeLLM(triage_discovery={"relevant": False, "reason": "Email app.", "segments": []})
+    with factory.begin() as s:
+        triage_signals(s, ctx(llm=llm, factory=factory))
+    ops = sorted(c.operation for c in llm.calls)
+    assert ops == ["triage", "triage_discovery"]
+    with factory() as s:
+        assert s.get_one(Signal, d).meta["triage"]["prompt_version"] == "triage_discovery.v1"
+        assert s.get_one(Signal, n).meta["triage"]["prompt_version"] == "triage.v1"
+    # Current versions: nothing to redo.
+    with factory.begin() as s:
+        assert triage_signals(s, ctx(llm=llm, factory=factory))["selected"] == 0

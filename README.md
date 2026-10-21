@@ -449,7 +449,9 @@ the analyst. **Nothing becomes a tracked entity unless an analyst approves it.**
   candidates; a project that only moved category is not. The backfill uses the copies at -90 / -60 / -30 days
   (commits API).
 
-Discovery items are ordinary signals (`meta.kind = discovery`). Triage filters them and `enrich_discovery.v1`
+Discovery items are ordinary signals (`meta.kind = discovery`). A stricter triage (`triage_discovery.v1`: relevant
+only if the item's own product operates in one of JFrog's segments, not if it merely mentions MCP, a registry or
+security) filters them, and `enrich_discovery.v1`
 enriches them, naming the item's own subject as a new entity, with a URL only if it appears in the text. They are
 not verified one by one, never join news dedup clusters and never appear in the Brief, feed or battlecards.
 
@@ -460,19 +462,25 @@ ignore list. Mentions attach by exact key, then repo URL, then homepage host (sh
 count), then fuzzy (name ratio ≥ 0.92 **and** name-embedding cosine ≥ 0.90). A merge pass joins candidates that
 turn out to be the same player, and every merge is logged on both rows.
 
-**Emergence score** (0–100, weights in `discovery.yaml`, breakdown stored and returned by the API):
+**Emergence score** (0–100, `radar_score.v2`: relevance to JFrog first, popularity second; weights in
+`discovery.yaml`, breakdown stored and returned by the API):
 
 ```
 score = 100 × Σ weight × factor          (every factor in [0, 1])
-mentions          0.20  ln(1 + mentions) / ln(1 + 10)
-source_diversity  0.15  distinct sources / 3
+relevance         0.35  no profile yet: (max enrich impact of the relevant mentions - 1) / 4
+                        with a profile:  0.7 × relation weight + 0.3 × impact factor
+                        (threatens 1.0 · both 1.0 · complements 0.6 · none 0.05)
+mentions          0.10  ln(1 + weighted mentions) / ln(1 + 6)
+source_diversity  0.20  weighted distinct sources / 2
 mention_velocity  0.10  recent / (recent + prior × 14/76) × min(1, recent / 3)   recent = last 14 days of 90
-traction          0.20  max(ln(1 + stars/day) / ln(1 + 50),  ln(1 + HN points) / ln(1 + 500))
-segment_overlap   0.25  max segment weight (artifact mgmt, supply chain 1.0 · MLOps 0.8 · CI/CD, distribution 0.6)
-recency           0.10  0.5 ^ (days since last mention / 14)
+traction          0.10  max(ln(1 + stars/day) / ln(1 + 50),  min(0.5, ln(1 + HN points) / ln(1 + 500)))
+recency           0.15  0.5 ^ (days since last mention / 14)
 ```
-Star velocity is the difference between snapshots. On the first sighting it is stars ÷ repo age (the repo is at
-most 90 days old); the breakdown says which one was used.
+"Weighted" means each mention or source counts by credibility: press and official 1.0, community and GitHub 0.5,
+discovery sources (HN, GitHub search, CNCF) 0.35. One viral HN post adds at most 5 points. The profile's JFrog
+relation counts if the statement was kept, or dropped only as "partial" (the core is right). A candidate whose
+relation is "none" never appears in the Brief teaser. Star velocity is the difference between snapshots; on the
+first sighting it is stars ÷ repo age (the breakdown says which).
 
 **Profile** (top 10 candidates ≥ 35 points per run, regenerated when the mentions or the prompt change):
 `radar_profile.v2` (bulk model) writes what it is, segments, JFrog relation (threatens / complements / both /
@@ -490,12 +498,16 @@ row. The Brief's right rail shows "New on the radar" (top 3, watching badge, sco
 noise filter), CNCF 7 additions (1 relevant) → 249 observations → 159 candidates (153 via discovery sources, 5
 via news `new_entities`). Cost $0.53: triage $0.12, enrich $0.32, profiles + checks $0.09.
 
-**What the first run taught us (tuning, not done yet)**:
-- `segment_overlap` gives 149 of 159 candidates full points (triage always names a segment), so it doesn't
-  separate anything. HN points then decide the ranking, and an email app or a Redis clone can reach the top 10.
-- The profile catches this ("no overlap with JFrog products" for 6 of the top 10), but the score doesn't use it.
-- Players found in news articles (GitGuardian, StepSecurity) have no stars or HN points and rank #66–67.
-- The verifier rejects many segment / stage statements as overstated, including some fair ones.
+**Tuning round (radar_score.v2 + triage_discovery.v1)**: the first ranking put an email app, a Redis clone and a
+WhatsApp MCP server in the top 10. The reason: segment overlap gave 149 of 159 candidates full points, HN points
+decided the rest, and players found in news had no traction. Re-triage kept 103 of 404 discovery items (223
+before). 71 candidates remain; all three false positives are gone. The new top 3 are PatchWave (Dependabot PR
+review), Primod (Kubernetes runtime security, new in the CNCF landscape) and Code Genome Project (OpenRewrite's
+new Maven repository). GitGuardian and StepSecurity rose from #66–67 to #5–6: their only evidence is one article
+citing their analysis of an attack, so their profiles say "relation: none". Cost $0.150 (re-triage $0.124).
+
+Still open: the verifier marks many segment / stage statements partial; players with a single press mention stay
+mid-table until more evidence arrives.
 
 ### Known limitations
 - No authentication: the radar's write endpoints are open and record the analyst as "anonymous".
@@ -623,9 +635,9 @@ Each line: what we chose – why – what we rejected.
 - **D52 Takeaway, display title, verified price changes** – one-sentence takeaway (≤ 160 hard) from enrichment; diffs get a headline and model-proposed prices that code accepts only when both strings are in the right side of the same change, with the same billing unit – rejected overwriting the collected title (part of the content hash) and showing unchecked model prices.
 - **D51 Takeaway-first Brief cards** – cards collapsed by default (header + first sentence of "why"), expanded state in memory for the session; JFrog product names highlighted from config through a text-segment pipe (no innerHTML), bare names like "Advanced Security" skipped after another vendor's name; since yesterday doesn't repeat the Top 5 – rejected a hard-coded product list and highlighting every bare name.
 - **D50 Generated API types** – `make api-types` turns FastAPI's OpenAPI into TypeScript types (committed; a test fails when they are stale) – rejected hand-written interfaces.
-- **D57 Discovery sources feed the Radar only** – HN (title search, typo tolerance off), GitHub repos created in the last 90 days (code noise filter, star snapshots), CNCF landscape copies diffed for new names; discovery items are triaged and enriched (`enrich_discovery.v1`) but not verified one by one, not deduped against news and never shown in the Brief / feed / battlecards – rejected scraping product directories, whole-org scans and verifying every post.
+- **D57 Discovery sources feed the Radar only** – HN (title search, typo tolerance off), GitHub repos created in the last 90 days (code noise filter, star snapshots), CNCF landscape copies diffed for new names; discovery items get a stricter triage (`triage_discovery.v1`: the product itself must operate in a JFrog segment) and are enriched (`enrich_discovery.v1`) but not verified one by one, not deduped against news and never shown in the Brief / feed / battlecards – rejected scraping product directories, whole-org scans and verifying every post.
 - **D58 Conservative candidate resolution** – normalized name keys; skip anything matching a tracked name / alias / website / GitHub org / the ignore list; attach by key, repo, host, or fuzzy only when name ratio ≥ 0.92 AND embedding cosine ≥ 0.90; merges logged; decided candidates never absorbed; only an analyst's approve creates an entity – rejected LLM resolution and embedding-only matching.
-- **D59 Emergence score in code** – six factors (mentions, sources, velocity, traction, segment overlap, recency), weights in config, breakdown stored and shown – rejected an LLM "threat score" and raw star counts.
+- **D59 Emergence score in code (v2: relevance first)** – relevance to JFrog 0.35 (enrich impact, then the profile's relation), credibility-weighted mentions 0.10 and sources 0.20, velocity 0.10, traction 0.10 with HN points capped, recency 0.15; weights in config, breakdown stored and shown; "none" candidates never teased – rejected v1's segment overlap (full points for 94% of candidates), an LLM "threat score" and raw star counts.
 - **D60 Checked radar profiles** – bulk writer, five cited statements, code citation check, verify model against the cited signals' text (same excerpt) with JFrog's product list as trusted context; relation "none" allowed (v2) – rejected checking against the unverified enrich summaries.
 - **D61 First write endpoints without auth** – watch / approve / dismiss with feedback rows; approve creates an entity and an optional disabled GitHub source; auth is a known limitation – rejected auto-activating sources.
 

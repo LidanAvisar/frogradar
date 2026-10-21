@@ -286,3 +286,18 @@ def build_profile(
     cand.profile_status = status
     cand.profile_signal_hash = signal_hash(cand.mention_signal_ids)
     return status.value
+
+
+def profile_relation(profile: dict[str, Any] | None) -> str | None:
+    """The profile's JFrog relation if it may be used for ranking: the statement was kept, or
+    dropped only as "partial" (by the verify prompt's definition the core is right, a detail is
+    overstated). Dropped as unsupported / invalid citation → None (not trusted)."""
+    if not profile:
+        return None
+    kept = (profile.get("items") or {}).get("jfrog_relation")
+    if kept and kept.get("relation"):
+        return str(kept["relation"])
+    for d in profile.get("dropped") or []:
+        if d.get("key") == "jfrog_relation" and d.get("reason") == "verifier_partial":
+            return d.get("relation")
+    return None

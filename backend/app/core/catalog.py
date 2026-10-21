@@ -508,12 +508,13 @@ class CNCFSettings(_Strict):
 
 
 class RadarScoreWeights(_Strict):
-    mentions: Unit = 0.20
-    source_diversity: Unit = 0.15
+    # radar_score.v2 (S11 tuning): relevance to JFrog first, popularity second.
+    relevance: Unit = 0.35
+    mentions: Unit = 0.10
+    source_diversity: Unit = 0.20
     mention_velocity: Unit = 0.10
-    traction: Unit = 0.20
-    segment_overlap: Unit = 0.25
-    recency: Unit = 0.10
+    traction: Unit = 0.10
+    recency: Unit = 0.15
 
     @model_validator(mode="after")
     def _check(self) -> Self:
@@ -523,10 +524,35 @@ class RadarScoreWeights(_Strict):
         return self
 
 
+class RelationWeights(_Strict):
+    threatens: Unit = 1.0
+    both: Unit = 1.0
+    complements: Unit = 0.6
+    none: Unit = 0.05
+
+
+class SourceCredibility(_Strict):
+    """Weight of one mention / one source by source kind; discovery sources (HN, GitHub search,
+    CNCF) use `discovery` whatever their kind."""
+
+    official: Unit = 1.0
+    press: Unit = 1.0
+    community: Unit = 0.5
+    github: Unit = 0.5
+    discovery: Unit = 0.35
+    no_source: Unit = 0.5
+
+
 class RadarScoreSettings(_Strict):
     weights: RadarScoreWeights = Field(default_factory=RadarScoreWeights)
-    mentions_full_at: Annotated[int, Field(ge=2, le=1000)] = 10
-    sources_full_at: Annotated[int, Field(ge=1, le=50)] = 3
+    # Relevance = max enrich impact of the relevant mentions, (impact - 1) / 4. With a profile
+    # whose JFrog relation is kept (or only "partial" for a detail), relevance =
+    # relation_share x relation weight + (1 - relation_share) x impact factor.
+    relation_weights: RelationWeights = Field(default_factory=RelationWeights)
+    relation_share: Unit = 0.7
+    credibility: SourceCredibility = Field(default_factory=SourceCredibility)
+    mentions_full_at: Annotated[float, Field(gt=1, le=1000)] = 6  # credibility-weighted mentions
+    sources_full_at: Annotated[float, Field(gt=0, le=50)] = 2  # credibility-weighted sources
     velocity_recent_days: Annotated[int, Field(ge=1, le=90)] = 14
     velocity_window_days: Annotated[int, Field(ge=15, le=730)] = 90
     # Full velocity credit needs at least this many recent mentions (one new mention is not a
@@ -534,16 +560,9 @@ class RadarScoreSettings(_Strict):
     velocity_recent_full_at: Annotated[int, Field(ge=1, le=100)] = 3
     stars_per_day_full_at: Annotated[float, Field(gt=0, le=10000)] = 50
     hn_points_full_at: Annotated[int, Field(ge=1, le=100000)] = 500
+    # One viral HN post can give at most this much of the traction factor.
+    hn_max_factor: Unit = 0.5
     recency_half_life_days: Annotated[float, Field(gt=0, le=365)] = 14
-    segment_weights: dict[Segment, Unit] = Field(
-        default_factory=lambda: {
-            Segment.ARTIFACT_MANAGEMENT: 1.0,
-            Segment.SUPPLY_CHAIN_SECURITY: 1.0,
-            Segment.MLOPS: 0.8,
-            Segment.CICD: 0.6,
-            Segment.DISTRIBUTION: 0.6,
-        }
-    )
 
 
 class RadarMergeSettings(_Strict):
