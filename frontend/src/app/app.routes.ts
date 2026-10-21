@@ -20,6 +20,10 @@ export const routes: Routes = [
   { path: 'radar/:id', loadComponent: () => import('./features/radar/radar-detail-page.component').then((m) => m.RadarDetailPageComponent), title: 'Radar candidate · FrogRadar' },
   { path: 'ask', loadComponent: () => import('./features/ask/ask-page.component').then((m) => m.AskPageComponent), title: 'Ask · FrogRadar' },
   soon('missions', 'Missions', 'missions', 'Give a research agent a task and follow its steps until the report is ready.'),
-  soon('review', 'Review queue', 'review', 'Approve, reject or correct new insights; corrections teach the pipeline.'),
+  {
+    path: 'review',
+    loadComponent: () => import('./features/review/review-page.component').then((m) => m.ReviewPageComponent),
+    title: 'Review queue · FrogRadar',
+  },
   { path: '**', redirectTo: '' },
 ];

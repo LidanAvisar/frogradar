@@ -1,0 +1,135 @@
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-xs);
+
+  .lead {
+    margin: 0;
+    max-width: 70ch;
+  }
+}
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-sm);
+}
+
+.queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fr-gap-xs) var(--fr-gap);
+}
+
+.results-title {
+  margin: 0;
+  font-size: var(--fr-text-h2);
+  font-weight: 700;
+}
+
+.bar {
+  height: 6px;
+  border-radius: var(--fr-radius-pill);
+  background: var(--fr-divider);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--fr-accent);
+  }
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--fr-ink-3);
+
+  kbd {
+    display: inline-block;
+    min-width: 20px;
+    padding: 0 5px;
+    border: 1px solid var(--fr-control-border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--fr-surface);
+    font-family: var(--fr-font-mono);
+    font-size: 12px;
+    text-align: center;
+    color: var(--fr-ink);
+  }
+}
+
+.focus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-sm);
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--fr-gap-xs);
+}
+
+.upcoming {
+  summary {
+    cursor: pointer;
+    min-height: var(--fr-touch);
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--fr-ink-2);
+  }
+
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--fr-gap-sm);
+  min-height: var(--fr-touch);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--fr-radius-control);
+  background: none;
+  color: var(--fr-ink-2);
+  font: inherit;
+  font-size: var(--fr-text-small);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &.current {
+    background: var(--fr-accent-tint);
+    color: var(--fr-ink);
+  }
+
+  .impact {
+    flex: none;
+    width: 1.5em;
+    text-align: center;
+  }
+
+  .row-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

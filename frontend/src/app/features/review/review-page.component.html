@@ -1,0 +1,65 @@
+<div class="fr-page">
+  <header class="intro">
+    <h1 class="fr-page-title">Review queue</h1>
+    <p class="muted lead">Approve, correct or reject what the pipeline produced. Corrections change what everyone sees and teach the pipeline.</p>
+  </header>
+
+  <fr-scorecard-panel [scorecard]="scorecard()" />
+
+  @switch (state().status) {
+    @case ('loading') {
+      <div class="fr-panel"><fr-skeleton [lines]="['30%', '90%', '80%', '60%']" /></div>
+    }
+    @case ('error') {
+      <fr-error-state (retry)="load()" />
+    }
+    @default {
+      @if (!items().length) {
+        <fr-empty-state title="Nothing to review" message="Every signal has been reviewed. New ones arrive with the next pipeline run." />
+      } @else {
+        <section class="queue" aria-labelledby="queue-heading">
+          <div class="queue-head">
+            <h2 id="queue-heading" class="results-title">
+              <span aria-live="polite">{{ progress()?.reviewed }} of {{ progress()?.total }} reviewed</span>
+            </h2>
+            <span class="small muted">Signal {{ index() + 1 }} of {{ items().length }} · {{ remaining() }} waiting · sorted by impact × confidence</span>
+          </div>
+          <div class="bar" role="progressbar" aria-label="Review progress" [attr.aria-valuenow]="progress()?.reviewed"
+               aria-valuemin="0" [attr.aria-valuemax]="progress()?.total">
+            <span [style.width.%]="progress()?.total ? (100 * progress()!.reviewed) / progress()!.total : 0"></span>
+          </div>
+
+          <ul class="legend small" aria-label="Keyboard shortcuts">
+            @for (k of legend; track k.key) { <li><kbd>{{ k.key }}</kbd> {{ k.label }}</li> }
+          </ul>
+
+          @if (current(); as s) {
+            <div class="focus">
+              <fr-signal-card [signal]="s" variant="analyst" [expanded]="true" [actions]="s.review?.status !== 'rejected'"
+                              (act)="act($event, s)" />
+              <div class="nav">
+                <button type="button" class="fr-button" [attr.aria-disabled]="index() === 0 ? true : null" (click)="prev()">Previous</button>
+                <button type="button" class="fr-button" [attr.aria-disabled]="index() === items().length - 1 ? true : null" (click)="next()">Next</button>
+              </div>
+            </div>
+          }
+
+          <details class="upcoming">
+            <summary class="small">All {{ items().length }} signals in this queue</summary>
+            <ol>
+              @for (s of items(); track s.id; let i = $index) {
+                <li>
+                  <button type="button" class="row" [class.current]="i === index()" [attr.aria-current]="i === index() ? 'true' : null" (click)="select(i)">
+                    <span class="mono impact">{{ s.impact ?? '–' }}</span>
+                    <span class="row-title">{{ s.title }}</span>
+                    @if (s.review) { <span class="fr-pill tone-green">{{ s.review.status === 'rejected' ? 'Rejected' : s.review.edited_fields?.length ? 'Edited' : 'Approved' }}</span> }
+                  </button>
+                </li>
+              }
+            </ol>
+          </details>
+        </section>
+      }
+    }
+  }
+</div>
