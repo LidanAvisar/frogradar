@@ -1322,6 +1322,22 @@
             "description": "JFrog relation used for ranking (null = no trusted profile relation)",
             "title": "Relation"
           },
+          "relation_check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)",
+            "title": "Relation Check"
+          },
           "relation_products": {
             "description": "JFrog product names the relation statement names",
             "items": {
@@ -1553,6 +1569,22 @@
             ],
             "description": "JFrog relation used for ranking (null = no trusted profile relation)",
             "title": "Relation"
+          },
+          "relation_check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)",
+            "title": "Relation Check"
           },
           "relation_products": {
             "description": "JFrog product names the relation statement names",

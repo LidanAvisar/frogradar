@@ -90,10 +90,23 @@ def _statement(c: RadarCandidate, key: str) -> dict[str, Any]:
     return dict(((c.profile or {}).get("items") or {}).get(key) or {})
 
 
+def _relation_source(c: RadarCandidate) -> tuple[list[str], str | None]:
+    """Products of the statement the ranking relation comes from (profile_relation's rule): the
+    kept statement ("supported"), else one dropped only as partial ("partial")."""
+    kept = _statement(c, "jfrog_relation")
+    if kept.get("relation"):
+        return list(kept.get("products") or []), "supported"
+    if c.profile_status == ProfileStatus.OK:
+        for d in (c.profile or {}).get("dropped") or []:
+            if d.get("key") == "jfrog_relation" and d.get("reason") == "verifier_partial":
+                return list(d.get("products") or []), "partial"
+    return [], None
+
+
 def to_out(c: RadarCandidate, names: dict[str, str] | None = None) -> RadarCandidateOut:
     line, line_source = _line(c)
     relation = (c.metrics or {}).get("relation")
-    products = _statement(c, "jfrog_relation").get("products") or [] if relation else []
+    products, relation_check = _relation_source(c) if relation else ([], None)
     origins = sorted(set(((c.meta or {}).get("mention_origins") or {}).values()))
     metrics = {k: v for k, v in (c.metrics or {}).items() if k in RadarMetrics.model_fields}
     return RadarCandidateOut(
@@ -116,6 +129,7 @@ def to_out(c: RadarCandidate, names: dict[str, str] | None = None) -> RadarCandi
         why_notable_now=_statement(c, "why_notable_now").get("statement"),
         relation=relation,
         relation_products=[(names or {}).get(p, p) for p in products],
+        relation_check=relation_check,
         profile_status=c.profile_status,
         origins=origins,
         metrics=RadarMetrics(**metrics),

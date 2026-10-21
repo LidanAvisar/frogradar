@@ -381,6 +381,11 @@ class RadarCandidateOut(BaseModel):
     relation_products: list[str] = Field(
         default_factory=list, description="JFrog product names the relation statement names"
     )
+    relation_check: Literal["supported", "partial"] | None = Field(
+        None,
+        description="Verifier verdict of the relation statement: partial = core right, a detail "
+        "overstated (the statement itself is not shown)",
+    )
     profile_status: Literal["none", "ok", "rejected"]
     origins: list[str] = Field(
         description="How mentions reached the radar: news_new_entity, hn_new_entity, "

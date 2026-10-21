@@ -730,6 +730,11 @@ export interface components {
              */
             relation?: ("threatens" | "complements" | "both" | "none") | null;
             /**
+             * Relation Check
+             * @description Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)
+             */
+            relation_check?: ("supported" | "partial") | null;
+            /**
              * Relation Products
              * @description JFrog product names the relation statement names
              */
@@ -809,6 +814,11 @@ export interface components {
              * @description JFrog relation used for ranking (null = no trusted profile relation)
              */
             relation?: ("threatens" | "complements" | "both" | "none") | null;
+            /**
+             * Relation Check
+             * @description Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)
+             */
+            relation_check?: ("supported" | "partial") | null;
             /**
              * Relation Products
              * @description JFrog product names the relation statement names

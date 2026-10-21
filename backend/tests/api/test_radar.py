@@ -293,6 +293,7 @@ def test_list_has_profile_lines_relation_and_threshold(client, radar, db_session
     assert top["what_it_is"] == "An open-source registry firewall."
     assert top["why_notable_now"] == "Launched on HN this week."
     assert top["relation"] == "threatens" and top["relation_products"] == ["JFrog Curation"]
+    assert top["relation_check"] == "supported"
     other = data["items"][1]
     assert (other["what_it_is"], other["relation"], other["relation_products"]) == (None, None, [])
     # A rejected profile supplies no statements.
@@ -320,3 +321,21 @@ def test_list_filters_relation_and_kind(client, radar, db_session):
     assert client.get("/api/radar?relation=bogus").status_code == 422
     assert client.get("/api/radar?kind=bogus").status_code == 422
     assert client.get("/api/radar?relation=threatens").json()["total"] == 1
+
+
+def test_relation_products_from_a_partial_statement_are_flagged(client, radar, db_session):
+    top = radar["top"]
+    a, _ = radar["signals"]
+    items = dict(top.profile["items"])
+    rel = items.pop("jfrog_relation")
+    top.profile = {
+        **top.profile,
+        "items": items,
+        "dropped": [{**rel, "reason": "verifier_partial", "signal_ids": [a.id]}],
+    }
+    top.metrics = {**top.metrics, "relation": "threatens"}
+    db_session.flush()
+    item = client.get("/api/radar").json()["items"][0]
+    assert item["relation_products"] == ["JFrog Curation"] and item["relation_check"] == "partial"
+    detail = client.get(f"/api/radar/{top.id}").json()
+    assert "jfrog_relation" not in [s["key"] for s in detail["statements"]]  # not shown as fact
