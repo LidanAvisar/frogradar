@@ -118,6 +118,8 @@ class LLMCall(Base):
     model: Mapped[str] = mapped_column(String(100))
     tokens_in: Mapped[int] = mapped_column(Integer, server_default="0")
     tokens_out: Mapped[int] = mapped_column(Integer, server_default="0")
+    # Part of tokens_out spent on reasoning/thinking, from the provider's usage (NULL = unknown).
+    tokens_reasoning: Mapped[int | None] = mapped_column(Integer)
     # NULL = cost unknown (neither LiteLLM nor llm_routing.yaml pricing knows the model).
     # No server default: the gateway always sets it, and a default would turn NULL into 0.
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 10))

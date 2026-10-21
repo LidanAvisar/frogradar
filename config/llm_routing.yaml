@@ -3,6 +3,8 @@
 #   LLM_MODEL_BULK, LLM_MODEL_SYNTHESIS, LLM_MODEL_VERIFY, EMBEDDING_MODEL
 # Rule: the verify provider must differ from both bulk and synthesis providers
 # (a second model family checks the writer's work).
+# thinking: default | off | low | medium | high – model reasoning per task. default sends nothing
+#   (the model's own default); off disables it explicitly. Part of the LLM cache key.
 # Model ids checked against LiteLLM's model registry on 2026-10-20.
 
 tasks:
@@ -11,7 +13,8 @@ tasks:
     # Enrichment JSON averages ~600 output tokens (incl. the model's own reasoning); 1024 cut off
     # 30 of 56 calls in the first run (S6). max_tokens is a cap: cost follows actual tokens.
     max_tokens: 4096
-    temperature: 0.0
+    temperature: 0.0   # NOTE: dropped by LiteLLM for claude-haiku-5-5 (no sampling params)
+    thinking: "off"    # quoted: bare off is YAML for false. Classification/extraction; quality guarded by quote check + verifier
   synthesis:   # morning brief, insight fusion, battlecards, research agent
     model: anthropic/claude-sonnet-5-5
     max_tokens: 4096
@@ -20,6 +23,7 @@ tasks:
     model: openai/gpt-5.4-mini
     max_tokens: 1024
     temperature: 0.0
+    thinking: low      # gpt-5.4-mini defaults to no reasoning; low = a little, for fact-checking
 
 embedding:
   model: openai/text-embedding-3-small

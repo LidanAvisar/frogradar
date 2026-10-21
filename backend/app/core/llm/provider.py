@@ -48,6 +48,7 @@ class CompletionResult:
     latency_ms: int
     raw: Any  # litellm ModelResponse, for cost calculation
     finish_reason: str | None = None  # "length" = cut off at max_tokens
+    tokens_reasoning: int | None = None  # part of tokens_out spent on reasoning (None = unknown)
 
 
 @dataclass
@@ -56,6 +57,28 @@ class EmbeddingBatch:
     tokens_in: int
     latency_ms: int
     raw: Any
+
+
+def thinking_params(model: str, thinking: str) -> dict[str, Any]:
+    """LiteLLM kwargs for a task's thinking setting (see TaskRoute.thinking).
+
+    "off" must be explicit: LiteLLM sends nothing for reasoning_effort="none" on Anthropic, so
+    Anthropic gets thinking={"type": "disabled"}; OpenAI and others get reasoning_effort="none".
+    """
+    if thinking == "default":
+        return {}
+    provider = model.split("/", 1)[0]
+    if thinking == "off":
+        if provider == "anthropic":
+            return {"thinking": {"type": "disabled"}}
+        return {"reasoning_effort": "none"}
+    return {"reasoning_effort": thinking}
+
+
+def _reasoning_tokens(usage: Any) -> int | None:
+    details = getattr(usage, "completion_tokens_details", None)
+    value = getattr(details, "reasoning_tokens", None)
+    return int(value) if isinstance(value, int) else None
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -126,6 +149,7 @@ class LiteLLMProvider:
         temperature: float,
         response_format: dict[str, Any] | None,
         on_error: OnError | None = None,
+        thinking: str = "default",
     ) -> CompletionResult:
         self._refuse_in_demo_mode(f"completion with {model}")
         kwargs: dict[str, Any] = {
@@ -139,6 +163,7 @@ class LiteLLMProvider:
         }
         if response_format is not None:
             kwargs["response_format"] = response_format
+        kwargs.update(thinking_params(model, thinking))
 
         start = time.perf_counter()
         resp = self._with_retries(
@@ -153,6 +178,7 @@ class LiteLLMProvider:
             latency_ms=latency_ms,
             raw=resp,
             finish_reason=getattr(resp.choices[0], "finish_reason", None),
+            tokens_reasoning=_reasoning_tokens(usage),
         )
 
     def embed(

@@ -195,3 +195,44 @@ def test_real_litellm_call_fails_the_test():
         litellm.completion(model="openai/gpt-5.4-mini", messages=[])
     with pytest.raises(Failed, match="real provider call"):
         litellm.embedding(model="openai/text-embedding-3-small", input=["x"])
+
+
+# ---------- thinking setting ----------
+
+
+def test_thinking_in_cache_key_only_when_set():
+    old_format = cache._hash(
+        {
+            "kind": "completion",
+            "model": "anthropic/claude-haiku-5-5",
+            "params": {"max_tokens": 100, "temperature": 0.0},
+            "messages": [{"role": "user", "content": "hi"}],
+            "schema": Answer.model_json_schema(),
+        }
+    )
+    assert _key() == _key(thinking="default") == old_format  # earlier cache entries stay valid
+    assert _key(thinking="off") != _key() != _key(thinking="low") != _key(thinking="off")
+
+
+def test_thinking_params_per_provider():
+    from app.core.llm.provider import thinking_params
+
+    assert thinking_params("anthropic/claude-haiku-5-5", "default") == {}
+    # Anthropic "off" must be explicit: reasoning_effort="none" sends nothing to Anthropic.
+    assert thinking_params("anthropic/claude-haiku-5-5", "off") == {
+        "thinking": {"type": "disabled"}
+    }
+    assert thinking_params("openai/gpt-5.4-mini", "off") == {"reasoning_effort": "none"}
+    assert thinking_params("openai/gpt-5.4-mini", "low") == {"reasoning_effort": "low"}
+    assert thinking_params("anthropic/claude-haiku-5-5", "high") == {"reasoning_effort": "high"}
+
+
+def test_thinking_config_values():
+    data = load_llm_routing().model_dump()
+    data["tasks"]["bulk"]["thinking"] = False  # what YAML makes of a bare `off`
+    assert catalog.LLMRoutingFile.model_validate(data).tasks.bulk.thinking == "off"
+    data["tasks"]["bulk"]["thinking"] = "maybe"
+    with pytest.raises(ValueError):
+        catalog.LLMRoutingFile.model_validate(data)
+    routing = load_llm_routing()
+    assert routing.tasks.bulk.thinking == "off" and routing.tasks.verify.thinking == "low"

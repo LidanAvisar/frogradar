@@ -142,6 +142,27 @@ def test_truncated_output_is_not_retried(make_gateway, fake_litellm, llm_db, mon
     assert not row.success and "raise max_tokens" in row.error
 
 
+def test_thinking_setting_is_sent_and_reasoning_tokens_recorded(
+    make_gateway, fake_litellm, llm_db, monkeypatch
+):
+    _schema_support(monkeypatch, True)
+    fake_litellm.queue(
+        {"content": GOOD, "tokens_out": 50, "reasoning_tokens": 30},
+        {"content": GOOD, "tokens_out": 9},
+    )
+    gw = make_gateway()  # real routing: bulk thinking "off", verify "low"
+
+    gw.complete("bulk", "enrich_signal", MSGS, Answer)
+    gw.complete("verify", "verify_signal", MSGS, Answer)
+
+    bulk_call, verify_call = fake_litellm.calls
+    assert bulk_call["thinking"] == {"type": "disabled"} and "reasoning_effort" not in bulk_call
+    assert verify_call["reasoning_effort"] == "low" and "thinking" not in verify_call
+    first, second = _rows(llm_db)
+    assert (first.tokens_out, first.tokens_reasoning) == (50, 30)
+    assert second.tokens_reasoning is None  # provider gave no breakdown
+
+
 # ---------- reliability ----------
 
 

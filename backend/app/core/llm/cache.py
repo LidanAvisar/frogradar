@@ -36,12 +36,17 @@ def completion_key(
     temperature: float,
     messages: list[dict[str, Any]],
     schema: dict[str, Any],
+    thinking: str = "default",
 ) -> str:
+    params: dict[str, Any] = {"max_tokens": max_tokens, "temperature": temperature}
+    if thinking != "default":
+        # Only when set, so keys of calls made before the setting existed stay valid.
+        params["thinking"] = thinking
     return _hash(
         {
             "kind": "completion",
             "model": model,
-            "params": {"max_tokens": max_tokens, "temperature": temperature},
+            "params": params,
             "messages": messages,
             "schema": schema,
         }

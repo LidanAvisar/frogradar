@@ -42,6 +42,7 @@ def make_response(
     tokens_in: int = 10,
     tokens_out: int = 5,
     finish_reason: str = "stop",
+    reasoning_tokens: int | None = None,
 ) -> Any:
     return litellm.ModelResponse(
         model=model,
@@ -56,6 +57,11 @@ def make_response(
             "prompt_tokens": tokens_in,
             "completion_tokens": tokens_out,
             "total_tokens": tokens_in + tokens_out,
+            **(
+                {"completion_tokens_details": {"reasoning_tokens": reasoning_tokens}}
+                if reasoning_tokens is not None
+                else {}
+            ),
         },
     )
 
@@ -80,6 +86,8 @@ class FakeLiteLLM:
         item = self.script.pop(0)
         if isinstance(item, Exception):
             raise item
+        if isinstance(item, dict):  # {"content", "finish_reason", "reasoning_tokens", ...}
+            return make_response(model=kwargs["model"], **item)
         if isinstance(item, tuple):
             content, finish = item
             return make_response(content, model=kwargs["model"], finish_reason=finish)

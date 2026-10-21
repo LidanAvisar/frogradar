@@ -90,6 +90,7 @@ class LLMGateway:
             temperature=route.temperature,
             messages=messages,
             schema=schema,
+            thinking=route.thinking,
         )
 
         def record(**fields: Any) -> CallRecord:
@@ -156,6 +157,7 @@ class LLMGateway:
                 temperature=route.temperature,
                 response_format=fmt,
                 on_error=on_error,
+                thinking=route.thinking,
             )
             cost = compute_cost(
                 model=route.model,
@@ -168,6 +170,7 @@ class LLMGateway:
             rec = record(
                 tokens_in=result.tokens_in,
                 tokens_out=result.tokens_out,
+                tokens_reasoning=result.tokens_reasoning,
                 cost_usd=cost,
                 latency_ms=result.latency_ms,
                 attempt=attempt,

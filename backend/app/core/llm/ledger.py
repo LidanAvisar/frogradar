@@ -21,6 +21,7 @@ class CallRecord:
     model: str
     tokens_in: int = 0
     tokens_out: int = 0
+    tokens_reasoning: int | None = None
     cost_usd: Decimal | None = Decimal(0)
     latency_ms: int = 0
     cache_hit: bool = False

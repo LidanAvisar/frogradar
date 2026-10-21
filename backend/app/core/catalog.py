@@ -5,10 +5,17 @@ Each file maps to a Pydantic model with extra="forbid", so typos fail loudly at 
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    ValidationError,
+    model_validator,
+)
 
 from app.core.config import get_settings
 from app.db.enums import FetchMethod, Relationship, Segment, SourceKind
@@ -178,10 +185,22 @@ class CapabilitiesFile(_Strict):
 # ---------- llm_routing.yaml ----------
 
 
+def _yaml_off(value: object) -> object:
+    # YAML 1.1 reads a bare `off` as false; accept it rather than fail on a quoting detail.
+    return "off" if value is False else value
+
+
+Thinking = Annotated[Literal["default", "off", "low", "medium", "high"], BeforeValidator(_yaml_off)]
+
+
 class TaskRoute(_Strict):
     model: Annotated[str, Field(pattern=r"^[\w.-]+/\S+$")]  # LiteLLM "provider/model"
     max_tokens: Annotated[int, Field(gt=0)] = 1024
     temperature: Annotated[float, Field(ge=0, le=2)] = 0.0
+    # Model reasoning ("thinking"): default = send nothing (the model's own default), off =
+    # explicitly disabled, low/medium/high = reasoning effort. Mapped per provider in
+    # app.core.llm.provider.thinking_params; part of the LLM cache key.
+    thinking: Thinking = "default"
 
     @property
     def provider(self) -> str:
