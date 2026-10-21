@@ -14,7 +14,16 @@ from app.db.models.intel import (
     signal_capabilities,
     signal_entities,
 )
-from app.db.models.ops import LLMCache, LLMCall, Mission, MissionStep, PipelineRun, WatchTopic
+from app.db.models.ops import (
+    LLMCache,
+    LLMCall,
+    Mission,
+    MissionFinding,
+    MissionSource,
+    MissionStep,
+    PipelineRun,
+    WatchTopic,
+)
 from app.db.models.radar import RadarCandidate, RepoStarSnapshot
 
 __all__ = [
@@ -30,6 +39,8 @@ __all__ = [
     "LLMCache",
     "LLMCall",
     "Mission",
+    "MissionFinding",
+    "MissionSource",
     "MissionStep",
     "PageSnapshot",
     "PipelineRun",

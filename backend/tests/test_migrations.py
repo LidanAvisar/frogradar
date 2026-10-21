@@ -16,6 +16,7 @@ APP_TABLES = {
     "feedback", "missions", "mission_steps", "capabilities", "capability_matrix",
     "page_snapshots", "watch_topics", "pipeline_runs", "llm_calls", "reports", "llm_cache",
     "radar_candidates", "repo_star_snapshots", "ask_conversations", "ask_turns",
+    "mission_sources", "mission_findings",
 }  # fmt: skip
 
 

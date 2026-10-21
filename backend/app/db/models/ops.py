@@ -19,7 +19,17 @@ from sqlalchemy.dialects.postgresql import CHAR, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, created_at, enum_type, pk
-from app.db.enums import MissionStatus, MissionStepKind, RunStatus, RunTrigger
+from app.db.enums import (
+    FindingConfidence,
+    FindingStatus,
+    MissionOrigin,
+    MissionSourceKind,
+    MissionStatus,
+    MissionStepKind,
+    RunStatus,
+    RunTrigger,
+    Verification,
+)
 
 
 class WatchTopic(Base):
@@ -67,10 +77,93 @@ class Mission(Base):
     created_at: Mapped[datetime] = created_at()
     started_at: Mapped[datetime | None]
     finished_at: Mapped[datetime | None]
+    # Where the analyst started it (S15): origin_ref = {signal_id} / {candidate_id} /
+    # {entity_id, capability_id} / {turn_id}.
+    origin_kind: Mapped[MissionOrigin] = mapped_column(
+        enum_type(MissionOrigin, "mission_origin"), server_default=MissionOrigin.MANUAL.value
+    )
+    origin_ref: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
+    # The company approved findings are linked to (first company in scope / of the origin).
+    entity_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("entities.id", ondelete="SET NULL"), index=True
+    )
+    capability_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("capabilities.id", ondelete="SET NULL")
+    )
+    radar_candidate_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("radar_candidates.id", ondelete="SET NULL"), index=True
+    )
+    # Set by POST /stop; the runner checks it between steps (cooperative stop).
+    stop_requested: Mapped[bool] = mapped_column(server_default=sql("false"))
+    timeout_s: Mapped[int] = mapped_column(Integer, server_default="600")
 
     steps: Mapped[list["MissionStep"]] = relationship(
         back_populates="mission", order_by="MissionStep.step_no", cascade="all, delete-orphan"
     )
+
+
+class MissionSource(Base):
+    """A page or FrogRadar signal the agent read. excerpt is the fetched text the findings were
+    extracted from and checked against: analysis only, never returned by the API (like raw_text)."""
+
+    __tablename__ = "mission_sources"
+    __table_args__ = (UniqueConstraint("mission_id", "canonical_url"),)
+
+    id: Mapped[int] = pk()
+    mission_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("missions.id", ondelete="CASCADE"), index=True
+    )
+    kind: Mapped[MissionSourceKind] = mapped_column(
+        enum_type(MissionSourceKind, "mission_source_kind")
+    )
+    url: Mapped[str]
+    canonical_url: Mapped[str]
+    title: Mapped[str]
+    signal_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("signals.id", ondelete="SET NULL")
+    )
+    excerpt: Mapped[str]
+    fetched_at: Mapped[datetime] = created_at()
+
+
+class MissionFinding(Base):
+    """One claim the agent extracted, cited to one mission source, checked by the verify model."""
+
+    __tablename__ = "mission_findings"
+
+    id: Mapped[int] = pk()
+    mission_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("missions.id", ondelete="CASCADE"), index=True
+    )
+    sub_question_no: Mapped[int] = mapped_column(SmallInteger)
+    statement: Mapped[str]
+    evidence_quote: Mapped[str]
+    source_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("mission_sources.id", ondelete="CASCADE")
+    )
+    confidence: Mapped[FindingConfidence] = mapped_column(
+        enum_type(FindingConfidence, "finding_confidence")
+    )
+    is_claim: Mapped[bool] = mapped_column(server_default=sql("false"))
+    impact: Mapped[int | None] = mapped_column(SmallInteger)
+    verification: Mapped[Verification] = mapped_column(
+        enum_type(Verification, "verification"), server_default=Verification.PENDING.value
+    )
+    verification_notes: Mapped[str | None]
+    status: Mapped[FindingStatus] = mapped_column(
+        enum_type(FindingStatus, "finding_status"), server_default=FindingStatus.NEW.value
+    )
+    dropped_reason: Mapped[str | None]
+    # category, why_jfrog_cares from extraction (become the signal's fields on approval).
+    meta: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
+    signal_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("signals.id", ondelete="SET NULL")
+    )
+    reviewed_by: Mapped[str | None] = mapped_column(String(100))
+    reviewed_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = created_at()
+
+    source: Mapped[MissionSource] = relationship()
 
 
 class MissionStep(Base):

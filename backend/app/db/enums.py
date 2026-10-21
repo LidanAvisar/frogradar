@@ -106,6 +106,7 @@ class FeedbackTarget(StrEnum):
     MISSION = "mission"
     RADAR_CANDIDATE = "radar_candidate"
     ASK_TURN = "ask_turn"
+    MISSION_FINDING = "mission_finding"
 
 
 class FeedbackAction(StrEnum):
@@ -162,6 +163,8 @@ class ProfileStatus(StrEnum):
 class MissionStatus(StrEnum):
     QUEUED = "queued"
     PLANNING = "planning"
+    # Plan written; research starts after the analyst approves (or edits) it.
+    AWAITING_APPROVAL = "awaiting_approval"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -176,8 +179,35 @@ class MissionStepKind(StrEnum):
     READ = "read"
     ANALYZE = "analyze"
     SIGNAL = "signal"
+    VERIFY = "verify"
     REPORT = "report"
     ERROR = "error"
+
+
+class MissionOrigin(StrEnum):
+    MANUAL = "manual"
+    SIGNAL = "signal"
+    RADAR_CANDIDATE = "radar_candidate"
+    CAPABILITY = "capability"
+    ASK_TURN = "ask_turn"
+
+
+class MissionSourceKind(StrEnum):
+    KB = "kb"  # a FrogRadar signal found by the knowledge-base search
+    WEB = "web"  # a page fetched from the web
+
+
+class FindingStatus(StrEnum):
+    NEW = "new"  # verified, waiting for the analyst
+    APPROVED = "approved"  # became a signal
+    REJECTED = "rejected"  # analyst said no
+    DROPPED = "dropped"  # failed the quote or verify check; never shown as a finding
+
+
+class FindingConfidence(StrEnum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
 
 
 class CapabilityLevel(StrEnum):
