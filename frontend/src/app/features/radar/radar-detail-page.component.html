@@ -40,9 +40,7 @@
               <button type="button" class="fr-button fr-button--primary" (click)="act('track')">Track</button>
               <button type="button" class="fr-button" (click)="act('dismiss')">Dismiss</button>
             }
-            <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                    aria-describedby="radar-soon">Investigate</button>
-            <span class="visually-hidden" id="radar-soon">Coming soon</span>
+            <a class="fr-button" routerLink="/missions" [queryParams]="{ candidate: cand.id }">Investigate</a>
           </div>
         </header>
 

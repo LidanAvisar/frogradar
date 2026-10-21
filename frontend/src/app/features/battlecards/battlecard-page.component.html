@@ -41,9 +41,7 @@
             </div>
           </div>
           <div class="actions">
-            <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                    aria-describedby="bc-soon">Send a research mission</button>
-            <span class="visually-hidden" id="bc-soon">Coming soon</span>
+            <a class="fr-button" routerLink="/missions" [queryParams]="{ entity_slug: c.entity.slug }">Send a research mission</a>
           </div>
         </header>
 
@@ -88,7 +86,7 @@
               <span class="small muted">Every cell links to its evidence. No evidence → unknown.</span>
             </div>
             @if (c.matrix.length) {
-              <fr-capability-matrix [rows]="c.matrix" [competitor]="c.entity.name" />
+              <fr-capability-matrix [rows]="c.matrix" [competitor]="c.entity.name" [competitorSlug]="c.entity.slug" />
             } @else {
               <fr-empty-state title="No capabilities mapped" message="This competitor has no segments in the capability taxonomy." />
             }

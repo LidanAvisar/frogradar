@@ -94,9 +94,9 @@ describe('BattlecardPageComponent', () => {
     expect(folded.length).toBe(1);
     expect(folded[0].querySelector('th')?.textContent?.trim()).toBe('SBOM');
     expect(folded[0].querySelectorAll('fr-level-badge')[0].textContent?.trim()).toBe('● Full');
-    const investigate = folded[0].querySelector('.investigate')!;
-    expect(investigate.getAttribute('aria-disabled')).toBe('true');
-    expect(investigate.textContent?.replace(/\s+/g, ' ').trim()).toBe('Investigate · Coming soon');
+    const investigate = folded[0].querySelector<HTMLAnchorElement>('a.investigate')!;
+    expect(investigate.textContent?.trim()).toBe('Investigate');
+    expect(investigate.getAttribute('href')).toContain('/missions?entity_slug=sonatype&capability_slug=');
   });
 
   it('shows an empty state for a competitor without a card', async () => {

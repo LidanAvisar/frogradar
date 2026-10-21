@@ -12,12 +12,20 @@ import type {
   BattlecardListItem,
   Brief,
   Entity,
+  FindingReviewIn,
+  FindingReviewOut,
+  MissionCreateIn,
+  MissionDetail,
+  MissionList,
+  MissionPlanIn,
+  MissionPrefill,
   NavCounts,
   RadarApproveIn,
   RadarApproveOut,
   RadarCandidateDetail,
   RadarDismissIn,
   RadarList,
+  RadarRefreshOut,
   ReviewQueue,
   Scorecard,
   SelfInfo,
@@ -30,6 +38,7 @@ import type {
 import type { operations } from '../api/schema';
 
 export type SignalQuery = NonNullable<operations['list_signals_api_signals_get']['parameters']['query']>;
+export type PrefillQuery = NonNullable<operations['get_prefill_api_missions_prefill_get']['parameters']['query']>;
 export type RadarQuery = NonNullable<operations['list_candidates_api_radar_get']['parameters']['query']>;
 
 function toParams(query: object): HttpParams {
@@ -133,5 +142,41 @@ export class ApiService {
 
   askFeedback(turnId: number, body: AskFeedbackIn): Observable<unknown> {
     return this.http.post(`/api/ask/turns/${turnId}/feedback`, body);
+  }
+
+  missionPrefill(query: PrefillQuery): Observable<MissionPrefill> {
+    return this.http.get<MissionPrefill>('/api/missions/prefill', { params: toParams(query) });
+  }
+
+  missions(limit = 50): Observable<MissionList> {
+    return this.http.get<MissionList>('/api/missions', { params: { limit } });
+  }
+
+  mission(id: number): Observable<MissionDetail> {
+    return this.http.get<MissionDetail>(`/api/missions/${id}`);
+  }
+
+  createMission(body: MissionCreateIn): Observable<MissionDetail> {
+    return this.http.post<MissionDetail>('/api/missions', body);
+  }
+
+  approvePlan(id: number, body: MissionPlanIn): Observable<MissionDetail> {
+    return this.http.post<MissionDetail>(`/api/missions/${id}/plan`, body);
+  }
+
+  stopMission(id: number): Observable<MissionDetail> {
+    return this.http.post<MissionDetail>(`/api/missions/${id}/stop`, {});
+  }
+
+  approveFinding(id: number, body: FindingReviewIn): Observable<FindingReviewOut> {
+    return this.http.post<FindingReviewOut>(`/api/missions/findings/${id}/approve`, body);
+  }
+
+  rejectFinding(id: number, body: FindingReviewIn): Observable<FindingReviewOut> {
+    return this.http.post<FindingReviewOut>(`/api/missions/findings/${id}/reject`, body);
+  }
+
+  refreshRadar(id: number): Observable<RadarRefreshOut> {
+    return this.http.post<RadarRefreshOut>(`/api/missions/${id}/refresh-radar`, {});
   }
 }

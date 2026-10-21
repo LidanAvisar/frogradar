@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { askFixture } from '../../testing/fixtures';
 import { AnswerCardComponent } from './answer-card.component';
 
 describe('AnswerCardComponent', () => {
   function render(answer = askFixture()) {
-    TestBed.configureTestingModule({ imports: [AnswerCardComponent] });
+    TestBed.configureTestingModule({ imports: [AnswerCardComponent], providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(AnswerCardComponent);
     fixture.componentRef.setInput('answer', answer);
     fixture.detectChanges();
@@ -26,11 +27,11 @@ describe('AnswerCardComponent', () => {
     expect(el.querySelector('.meaning a.chip')?.getAttribute('href')).toBe('#src-21-3');
   });
 
-  it('shows the filters used and the coming-soon mission button', () => {
+  it('shows the filters used and the mission link for this turn', () => {
     const { el } = render(askFixture({ filters: { company: 'Sonatype', company_slug: 'sonatype', window: 'last 30 days' } }));
     expect(el.querySelector('.filters')?.textContent).toContain('Sonatype · last 30 days');
     const mission = el.querySelector('.mission')!;
-    expect(mission.getAttribute('aria-disabled')).toBe('true');
+    expect(mission.getAttribute('href')).toMatch(/^\/missions\?turn=\d+$/);
     expect(mission.textContent?.trim()).toBe('Dig deeper with a mission');
   });
 

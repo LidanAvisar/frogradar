@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import type { MatrixRow } from '../../api/models';
 import { firstSentence, segmentLabel, shortDate } from '../../core/format';
@@ -14,13 +15,13 @@ interface Group {
 /**
  * JFrog vs competitor per capability, grouped by segment. Levels are symbol + word; each competitor
  * level links to its evidence signal. Capabilities where the competitor's level is unknown are folded
- * into a "without evidence yet" disclosure (JFrog's level and "Investigate · Coming soon" per row).
+ * into a "without evidence yet" disclosure (JFrog's level and an Investigate link per row that starts a research mission).
  * Tables scroll horizontally inside their own box on narrow screens (focusable, labelled region).
  */
 @Component({
   selector: 'fr-capability-matrix',
   standalone: true,
-  imports: [LevelBadgeComponent, NgTemplateOutlet],
+  imports: [LevelBadgeComponent, NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (known().length) {
@@ -75,8 +76,9 @@ interface Group {
                     @if (r.competitor.evidence; as ev) {
                       <a [href]="ev.url" target="_blank" rel="noopener noreferrer" [attr.title]="ev.title">{{ evidenceText(ev.title, ev.published_at) }}</a>
                     } @else {
-                      <button type="button" class="investigate fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                              [attr.aria-label]="'Investigate ' + r.capability.name + ' (coming soon)'">Investigate · <span class="soon">Coming soon</span></button>
+                      <a class="investigate" routerLink="/missions"
+                         [queryParams]="{ entity_slug: competitorSlug(), capability_slug: r.capability.slug }"
+                         [attr.aria-label]="'Investigate ' + r.capability.name + ' with a research mission'">Investigate</a>
                     }
                   </td>
                 </tr>
@@ -116,16 +118,16 @@ interface Group {
     .rest summary::before { content: '▸'; color: var(--fr-muted); }
     .rest[open] summary::before { content: '▾'; }
     .rest-title { font-weight: 600; color: var(--fr-ink); }
-    .soon { font-weight: 500; }
     .investigate {
-      border: 0; background: none; padding: 0; min-height: 32px; cursor: not-allowed;
-      font-size: var(--fr-text-small); font-weight: 600; color: var(--fr-muted);
+      display: inline-flex; align-items: center; min-height: 32px;
+      font-size: var(--fr-text-small); font-weight: 600; color: var(--fr-accent);
     }
   `],
 })
 export class CapabilityMatrixComponent {
   readonly rows = input.required<MatrixRow[]>();
   readonly competitor = input.required<string>();
+  readonly competitorSlug = input<string>('');
 
   /** Rows with an evidenced competitor level are shown; the rest are folded. */
   protected readonly known = computed(() => this.rows().filter((r) => r.competitor.level !== 'unknown'));

@@ -1,0 +1,233 @@
+<div class="fr-page">
+  <p class="fr-breadcrumb"><a routerLink="/missions">Missions</a> / {{ m()?.title ?? 'Mission' }}</p>
+  <p class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</p>
+
+  @switch (state().status) {
+    @case ('loading') {
+      <div class="fr-panel" aria-busy="true" aria-label="Loading mission"><fr-skeleton [lines]="['30%', '80%', '90%', '60%']" /></div>
+    }
+    @case ('error') {
+      <div class="fr-panel">
+        @if ($any(state()).notFound) {
+          <fr-empty-state title="Mission not found" message="Go back to the missions list." />
+        } @else {
+          <fr-error-state (retry)="retry()" />
+        }
+      </div>
+    }
+    @default {
+      @if (m(); as mi) {
+        <header class="header">
+          <div class="title-block">
+            <div class="chips small">
+              <span [class]="'fr-pill tone-' + status().tone">
+                @if (live()) { <span aria-hidden="true">●</span> }
+                {{ status().label }}
+              </span>
+              <span class="muted">Started by {{ mi.created_by }} · {{ when(mi.created_at) }}</span>
+            </div>
+            <h1 class="fr-page-title" id="mission-title" tabindex="-1">{{ mi.title }}</h1>
+            @if (mi.brief !== mi.title) { <p class="brief">{{ mi.brief }}</p> }
+            <p class="muted small">
+              Scope: {{ mi.scope_label }} · findings must quote their source ·
+              {{ origin(mi.origin_kind) }}@if (mi.origin_link) { : <a [routerLink]="mi.origin_link.split('?')[0]">{{ mi.origin_label }}</a> }
+            </p>
+          </div>
+          <div class="actions">
+            @if (stoppable()) {
+              <button type="button" class="fr-button stop" (click)="stop()">Stop</button>
+            } @else if (mi.stop_requested && live()) {
+              <span class="small muted">Stopping after the current step…</span>
+            }
+          </div>
+        </header>
+
+        @if (mi.error && !live()) {
+          <p class="notice" [class.notice--error]="mi.status === 'failed'" role="status">{{ mi.error }}</p>
+        }
+        @if (actionError()) { <p class="notice notice--error" role="alert">{{ actionError() }}</p> }
+
+        <section class="tiles" aria-label="Budget, steps and findings">
+          <div class="fr-panel tile">
+            <div class="eyebrow">Budget</div>
+            <div class="value mono">{{ usd(mi.cost_usd, 3) }} <span class="of">of {{ usd(mi.budget_usd) }}</span></div>
+            <div class="meter" role="img" [attr.aria-label]="budgetPct() + '% of the budget used'">
+              <div class="meter-fill" [style.width.%]="budgetPct()"></div>
+            </div>
+          </div>
+          <div class="fr-panel tile">
+            <div class="eyebrow">Steps</div>
+            <div class="value mono">{{ mi.steps_used }} <span class="of">of {{ stepsPlanned() || '–' }} planned · max {{ mi.max_steps }}</span></div>
+          </div>
+          <div class="fr-panel tile">
+            <div class="eyebrow">Findings</div>
+            <div class="value mono">{{ findingsNew() }} <span class="of">awaiting your review</span></div>
+            @if (mi.dropped_count) { <div class="small muted">{{ mi.dropped_count }} dropped by the checks</div> }
+          </div>
+        </section>
+
+        <div class="layout">
+          <section class="fr-panel plan" aria-labelledby="plan-heading">
+            <h2 id="plan-heading">Plan</h2>
+            @if (!mi.plan) {
+              <p class="muted small">{{ mi.status === 'planning' || mi.status === 'queued' ? 'The agent is breaking the brief into sub-questions…' : 'No plan.' }}</p>
+            } @else if (awaiting()) {
+              <p class="small">Check the sub-questions. Edit or remove any, then approve: research starts only after you approve.</p>
+              <ol class="draft">
+                @for (q of planDraft(); track $index; let i = $index) {
+                  <li>
+                    <label class="visually-hidden" [for]="'subq-' + i">Sub-question {{ i + 1 }}</label>
+                    <textarea class="fr-textarea" rows="2" [id]="'subq-' + i" maxlength="300"
+                              [ngModel]="q.question" (ngModelChange)="editQuestion(i, $event)"></textarea>
+                    <button type="button" class="fr-button small-btn" (click)="removeQuestion(i)"
+                            [attr.aria-label]="'Remove sub-question ' + (i + 1)">Remove</button>
+                  </li>
+                }
+              </ol>
+              <div class="plan-actions">
+                @if (planDraft().length < 6) { <button type="button" class="fr-button" (click)="addQuestion()">Add a sub-question</button> }
+                <button type="button" class="fr-button fr-button--primary" (click)="approvePlan()" [attr.aria-disabled]="planBusy()">
+                  {{ planBusy() ? 'Approving…' : 'Approve plan and start' }}
+                </button>
+              </div>
+              @if (draftSteps() > mi.max_steps) {
+                <p class="small notice" role="note">This plan needs about {{ draftSteps() }} steps but the limit is {{ mi.max_steps }}: the last
+                  sub-questions may not be researched. Remove one or start a new mission with more steps.</p>
+              }
+            } @else {
+              <ol class="steps">
+                <li class="done">
+                  <span class="mark" aria-label="Done"></span>
+                  <div><div class="label">Break the brief into sub-questions</div>
+                    <div class="small muted">{{ mi.plan.sub_questions.length }} sub-questions@if (mi.plan.approved_by) { · approved by {{ mi.plan.approved_by }} }@if (mi.plan.edited_by_analyst) { · edited }</div></div>
+                </li>
+                @for (q of planRows(); track q.n) {
+                  <li [class]="q.state">
+                    <span class="mark" [attr.aria-label]="q.state === 'done' ? 'Done' : q.state === 'active' ? 'In progress' : q.state === 'skipped' ? 'Not researched' : 'Pending'"></span>
+                    <div><div class="label">{{ q.question }}</div>
+                      @if (q.detail) { <div class="small muted">{{ q.detail }}</div> }</div>
+                  </li>
+                }
+                <li [class]="reportState()">
+                  <span class="mark" [attr.aria-label]="reportState() === 'done' ? 'Done' : 'Pending'"></span>
+                  <div><div class="label">Write the report</div></div>
+                </li>
+              </ol>
+            }
+
+            @if (mi.steps.length) {
+              <div class="log" role="log" aria-label="Live log" tabindex="0">
+                <div class="log-head">Live log</div>
+                @for (s of logSteps(); track s.step_no) {
+                  <div class="log-row"><span class="t">{{ when(s.created_at).split(' ').at(-1) }}</span><span class="k">{{ s.kind }}</span><span>{{ s.summary }}</span>@if (s.cost_usd > 0) { <span class="c">{{ usd(s.cost_usd, 4) }}</span> }</div>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="findings" aria-labelledby="findings-heading">
+            <div class="section-head">
+              <h2 id="findings-heading">{{ live() ? 'Findings so far' : 'Findings' }}</h2>
+              <span class="small muted">Approved findings become signals in the Brief, Ask and battlecards</span>
+            </div>
+
+            @if (mi.report?.summary?.length) {
+              <article class="fr-panel report">
+                <div class="eyebrow">Summary</div>
+                <ul>
+                  @for (p of reportPoints(); track $index) {
+                    <li>{{ p.text }}@for (r of p.refs; track r.id) { <a class="fr-cite" [href]="'#finding-' + r.id">[{{ r.n }}]</a> }</li>
+                  }
+                </ul>
+              </article>
+            }
+
+            @for (f of mi.findings; track f.id; let i = $index) {
+              <article class="fr-panel finding" [id]="'finding-' + f.id" [class.reviewed]="f.status !== 'new'">
+                <div class="chips small">
+                  <span class="fr-pill mono" aria-hidden="true">{{ i + 1 }}</span>
+                  <span [class]="'fr-pill ' + (f.confidence === 'high' ? 'tone-green' : f.confidence === 'medium' ? 'tone-yellow' : '')">{{ f.confidence === 'high' ? 'High' : f.confidence === 'medium' ? 'Medium' : 'Low' }} confidence</span>
+                  <span [class]="'fr-pill ' + (f.verification === 'supported' ? 'tone-green' : 'tone-yellow')"
+                        [attr.title]="f.verification_notes">{{ f.verification_label }}</span>
+                  @if (f.is_claim) { <fr-vendor-claim-tag /> }
+                  @if (f.status === 'approved') { <span class="fr-pill tone-green">Approved</span> }
+                  @if (f.status === 'rejected') { <span class="fr-pill">Rejected</span> }
+                </div>
+                <p class="statement">{{ f.statement }}</p>
+                <blockquote class="quote">“{{ f.evidence_quote }}”</blockquote>
+                @if (f.verification === 'partial' && f.verification_notes) {
+                  <p class="small muted">Check: {{ f.verification_notes }}</p>
+                }
+                <p class="small" style="overflow-wrap: anywhere">
+                  {{ f.source.kind === 'kb' ? 'FrogRadar signal' : 'Source' }}:
+                  <a [href]="f.source.url" target="_blank" rel="noopener noreferrer">{{ f.source.title }}</a>
+                  @if (f.signal_id && f.status === 'approved') { · <a [routerLink]="'/signals'" [queryParams]="{ q: f.statement.slice(0, 60) }">signal #{{ f.signal_id }}</a> }
+                </p>
+                @if (f.status === 'new') {
+                  <div class="finding-actions">
+                    <button type="button" class="fr-button fr-button--primary small-btn" (click)="review(f, 'approve')"
+                            [attr.aria-label]="'Approve finding ' + (i + 1)" [attr.aria-disabled]="busyFinding() !== null">Approve</button>
+                    <button type="button" class="fr-button small-btn" (click)="review(f, 'reject')"
+                            [attr.aria-label]="'Reject finding ' + (i + 1)" [attr.aria-disabled]="busyFinding() !== null">Reject</button>
+                  </div>
+                } @else if (f.status === 'approved') {
+                  <div class="finding-actions">
+                    <button type="button" class="fr-button small-btn" (click)="review(f, 'reject')"
+                            [attr.aria-label]="'Undo: reject finding ' + (i + 1)">Reject instead</button>
+                  </div>
+                }
+              </article>
+            } @empty {
+              @if (!live() && !awaiting()) {
+                <div class="fr-panel"><p class="muted">No finding passed the checks. See the open questions below.</p></div>
+              } @else {
+                <div class="fr-panel"><p class="muted small">Findings appear here as soon as they are verified.</p></div>
+              }
+            }
+
+            @for (q of mi.report?.open_questions ?? []; track $index) {
+              <article class="fr-panel open-question">
+                <div class="eyebrow">Open question</div>
+                <p>{{ q }}</p>
+              </article>
+            }
+            @if (mi.report?.open_questions?.length) {
+              <p class="small muted">Absence of evidence is reported as an open question, never as a finding.</p>
+            }
+
+            @if (dropped().length) {
+              <details class="fr-panel dropped">
+                <summary>{{ mi.dropped_count }} {{ plural(mi.dropped_count, 'finding') }} dropped by the checks</summary>
+                <ul class="small">
+                  @for (d of dropped(); track d.reason) { <li>{{ d.reason }}@if (d.n > 1) { ({{ d.n }}) }</li> }
+                </ul>
+              </details>
+            }
+
+            @if (mi.radar_candidate_id && !live()) {
+              <article class="fr-panel radar">
+                <div class="section-head">
+                  <h3>Radar candidate</h3>
+                  <a [routerLink]="['/radar', mi.radar_candidate_id]" class="small">Open candidate</a>
+                </div>
+                <p class="small muted">Approved findings are added to the candidate's mentions. Refresh its profile to use them
+                  ({{ approvedCount() }} approved so far).</p>
+                <button type="button" class="fr-button" (click)="refreshRadar()" [attr.aria-disabled]="radarBusy() || !approvedCount()">
+                  {{ radarBusy() ? 'Refreshing…' : 'Refresh radar profile' }}
+                </button>
+                @if (radarRefresh(); as r) {
+                  <dl class="before-after small">
+                    <div><dt>Relation</dt><dd>{{ relationLabel(r.before.relation) }} → <strong>{{ relationLabel(r.after.relation) }}</strong></dd></div>
+                    <div><dt>Profile</dt><dd>{{ r.before.profile_status }} → <strong>{{ r.after.profile_status }}</strong></dd></div>
+                    <div><dt>Score</dt><dd>{{ r.before.score?.toFixed(1) ?? '–' }} → <strong>{{ r.after.score?.toFixed(1) ?? '–' }}</strong></dd></div>
+                    <div><dt>Mentions</dt><dd>{{ r.before.mentions }} → <strong>{{ r.after.mentions }}</strong></dd></div>
+                  </dl>
+                }
+              </article>
+            }
+          </section>
+        </div>
+      }
+    }
+  }
+</div>

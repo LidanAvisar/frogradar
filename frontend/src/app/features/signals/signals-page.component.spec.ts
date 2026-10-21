@@ -40,7 +40,7 @@ describe('SignalsPageComponent (URL-synced filters)', () => {
     await router.navigateByUrl(url);
     const fixture = TestBed.createComponent(SignalsPageComponent);
     fixture.detectChanges();
-    http.expectOne('/api/entities').flush([{ slug: 'sonatype', name: 'Sonatype', type: 'company', relationship: 'competitor', is_self: false, signal_count: 3, last_signal_at: null }]);
+    http.expectOne('/api/entities').flush([{ id: 2, slug: 'sonatype', name: 'Sonatype', type: 'company', relationship: 'competitor', is_self: false, signal_count: 3, last_signal_at: null }]);
     return fixture;
   }
 

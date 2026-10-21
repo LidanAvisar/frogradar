@@ -1,14 +1,6 @@
 import { Routes } from '@angular/router';
 
 import { BriefPageComponent } from './features/brief/brief-page.component';
-import { PlaceholderPageComponent } from './features/placeholder/placeholder-page.component';
-
-const soon = (path: string, heading: string, icon: string, description: string) => ({
-  path,
-  component: PlaceholderPageComponent,
-  title: `${heading} · FrogRadar`,
-  data: { heading, icon, description },
-});
 
 // The Brief loads eagerly (first screen); the other pages are lazy chunks.
 export const routes: Routes = [
@@ -19,7 +11,8 @@ export const routes: Routes = [
   { path: 'radar', loadComponent: () => import('./features/radar/radar-page.component').then((m) => m.RadarPageComponent), title: 'Competitor Radar · FrogRadar' },
   { path: 'radar/:id', loadComponent: () => import('./features/radar/radar-detail-page.component').then((m) => m.RadarDetailPageComponent), title: 'Radar candidate · FrogRadar' },
   { path: 'ask', loadComponent: () => import('./features/ask/ask-page.component').then((m) => m.AskPageComponent), title: 'Ask · FrogRadar' },
-  soon('missions', 'Missions', 'missions', 'Give a research agent a task and follow its steps until the report is ready.'),
+  { path: 'missions', loadComponent: () => import('./features/missions/missions-page.component').then((m) => m.MissionsPageComponent), title: 'Missions · FrogRadar' },
+  { path: 'missions/:id', loadComponent: () => import('./features/missions/mission-detail-page.component').then((m) => m.MissionDetailPageComponent), title: 'Mission · FrogRadar' },
   {
     path: 'review',
     loadComponent: () => import('./features/review/review-page.component').then((m) => m.ReviewPageComponent),

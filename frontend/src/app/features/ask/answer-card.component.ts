@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import type { AskAnswer } from '../../api/models';
 import { plural } from '../../core/format';
@@ -13,6 +14,7 @@ export type Feedback = 'helpful' | 'wrong';
 @Component({
   selector: 'fr-answer-card',
   standalone: true,
+  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="card" [class.nee]="a().not_enough_evidence" [attr.aria-labelledby]="headId()">
@@ -63,11 +65,9 @@ export type Feedback = 'helpful' | 'wrong';
                 (click)="rate.emit('helpful')">Helpful</button>
         <button type="button" class="fr-button small-btn" [attr.aria-pressed]="feedback() === 'wrong'"
                 (click)="rate.emit('wrong')">Something's wrong</button>
-        <button type="button" class="fr-button small-btn mission fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                [attr.aria-describedby]="headId() + '-soon'">
+        <a class="fr-button small-btn mission" routerLink="/missions" [queryParams]="{ turn: a().turn_id }">
           {{ a().not_enough_evidence ? 'Send a research mission' : 'Dig deeper with a mission' }}
-        </button>
-        <span class="visually-hidden" [id]="headId() + '-soon'">Coming soon</span>
+        </a>
       </div>
     </article>
   `,

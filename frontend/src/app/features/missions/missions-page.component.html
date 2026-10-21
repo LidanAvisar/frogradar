@@ -1,0 +1,113 @@
+<div class="fr-page">
+  <header class="header">
+    <div>
+      <h1 class="fr-page-title">Research missions</h1>
+      <p class="muted">Give the research agent a question. It plans, you approve the plan, it searches and reads
+        sources, and every finding it reports cites a source and is checked by a second model.</p>
+    </div>
+    @if (!formOpen()) {
+      <button type="button" class="fr-button fr-button--primary" (click)="openForm()">+ New mission</button>
+    }
+  </header>
+
+  @if (formOpen()) {
+    <section class="fr-panel form-panel" aria-labelledby="new-mission-heading">
+      <h2 id="new-mission-heading">New mission</h2>
+      @if (prefill()?.origin_label) {
+        <p class="small muted">Started from: <strong>{{ prefill()?.origin_label }}</strong></p>
+      }
+      @if (prefillError()) { <p class="small error" role="alert">{{ prefillError() }}</p> }
+      <form (ngSubmit)="submit()" class="form">
+        <div class="fr-field">
+          <label for="mission-brief">Research brief</label>
+          <textarea id="mission-brief" #briefField class="fr-textarea" name="brief" rows="4" maxlength="4000"
+                    [ngModel]="brief()" (ngModelChange)="brief.set($event)" required
+                    aria-describedby="brief-hint"></textarea>
+          <span id="brief-hint" class="small muted">What should the agent find out? At least 10 characters.</span>
+        </div>
+
+        <fieldset class="fr-field companies">
+          <legend class="fr-field-label">Companies (optional)</legend>
+          <div class="chips">
+            @for (c of companies(); track c.id) {
+              <label class="fr-chip-choice">
+                <input type="checkbox" [checked]="companyIds().includes(c.id)"
+                       (change)="toggleCompany(c.id, $any($event.target).checked)" />
+                <span>{{ c.name }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <div class="row">
+          <div class="fr-field">
+            <label for="mission-window">Time window</label>
+            <select id="mission-window" class="fr-select" name="days" [ngModel]="days()" (ngModelChange)="days.set($event)">
+              @for (w of windows; track w.label) { <option [ngValue]="w.value">{{ w.label }}</option> }
+            </select>
+          </div>
+          <div class="fr-field">
+            <label for="mission-budget">Budget (USD)</label>
+            <input id="mission-budget" class="fr-input" type="number" name="budget" min="0.01" step="0.05"
+                   [max]="prefill()?.max_budget_usd ?? 2" [ngModel]="budget()" (ngModelChange)="budget.set(+$event)" />
+          </div>
+          <div class="fr-field">
+            <label for="mission-steps">Max steps</label>
+            <input id="mission-steps" class="fr-input" type="number" name="steps" min="1" step="1"
+                   [max]="prefill()?.max_max_steps ?? 40" [ngModel]="maxSteps()" (ngModelChange)="maxSteps.set(+$event)"
+                   aria-describedby="steps-hint" />
+          </div>
+        </div>
+        <p id="steps-hint" class="small muted">Each sub-question uses about 4 steps (search, read, extract, verify).
+          The agent stops at the budget, the step limit or 10 minutes, whichever comes first.</p>
+
+        @if (submitError()) { <p class="small error" role="alert">{{ submitError() }}</p> }
+        <div class="actions">
+          <button type="submit" class="fr-button fr-button--primary" [attr.aria-disabled]="!canSubmit()">
+            {{ submitting() ? 'Starting…' : 'Start planning' }}
+          </button>
+          <button type="button" class="fr-button" (click)="closeForm()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section aria-labelledby="missions-heading">
+    <h2 id="missions-heading" class="visually-hidden">All missions</h2>
+    @switch (list().status) {
+      @case ('loading') {
+        <div class="fr-panel" aria-busy="true" aria-label="Loading missions"><fr-skeleton [lines]="['60%', '80%', '70%']" /></div>
+      }
+      @case ('error') {
+        <div class="fr-panel"><fr-error-state (retry)="load()" /></div>
+      }
+      @default {
+        @if ($any(list()).items.length === 0) {
+          <div class="fr-panel">
+            <fr-empty-state title="No missions yet"
+                            message="Start one here, or use Investigate on a signal, a radar candidate, a battlecard cell or an Ask answer." />
+          </div>
+        } @else {
+          <ul class="missions">
+            @for (m of $any(list()).items; track m.id) {
+              <li class="fr-panel mission">
+                <div class="top">
+                  <span [class]="'fr-pill tone-' + status(m.status).tone">{{ status(m.status).label }}</span>
+                  <span class="small muted">{{ origin(m.origin_kind) }} · {{ when(m.created_at) }} · {{ m.created_by }}</span>
+                </div>
+                <a class="title" [routerLink]="['/missions', m.id]">{{ m.title }}</a>
+                <div class="meta small muted">
+                  <span>{{ m.scope_label }}</span>
+                  <span class="mono">{{ usd(m.cost_usd, 3) }} of {{ usd(m.budget_usd) }}</span>
+                  <span>{{ m.steps_used }} of {{ m.max_steps }} steps</span>
+                  @if (m.findings_new) { <span class="awaiting">{{ m.findings_new }} findings to review</span> }
+                  @if (m.findings_approved) { <span>{{ m.findings_approved }} approved</span> }
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </section>
+</div>

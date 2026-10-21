@@ -22,7 +22,7 @@ describe('SignalActionsService (mocked API)', () => {
     api = jasmine.createSpyObj<ApiService>('ApiService', ['approveSignal', 'correctSignal', 'rejectSignal', 'nav', 'entities']);
     api.nav.and.returnValue(of({ signals: 1, review_queue: 1, radar_new: 0 }));
     api.entities.and.returnValue(
-      of([{ slug: 'sonatype', name: 'Sonatype', type: 'company', relationship: 'competitor', is_self: false, signal_count: 3, last_signal_at: null }]),
+      of([{ id: 2, slug: 'sonatype', name: 'Sonatype', type: 'company', relationship: 'competitor', is_self: false, signal_count: 3, last_signal_at: null }]),
     );
     TestBed.configureTestingModule({
       providers: [provideNoopAnimations(), provideRouter([]), { provide: ApiService, useValue: api }],
