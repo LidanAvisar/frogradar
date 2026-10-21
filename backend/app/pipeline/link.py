@@ -13,7 +13,8 @@ The LLM confirms/corrects these links during enrichment (S6); this step is cheap
 - Evidence goes to meta.entity_links (term, where, mentions) together with a fingerprint of the
   text and the rules, so unchanged signals are skipped and re-runs change nothing.
 - The linker replaces only links it made itself (listed in meta.entity_links); links from other
-  stages (e.g. LLM enrichment) are left alone.
+  stages are left alone, and so are entities the enrichment LLM confirmed, added or dropped
+  (meta.entity_review): the LLM's decision wins over the rules.
 """
 
 import hashlib
@@ -180,6 +181,7 @@ def signal_fingerprint(matcher: Matcher, content_hash: str, source_entity_id: in
 
 def link_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     matcher = Matcher.from_db(session)
+    slug_ids = {e.slug: e.id for e in matcher.entities.values()}
     rows = session.execute(
         select(
             Signal.id,
@@ -218,18 +220,27 @@ def link_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                 select(signal_entities.c.entity_id).where(signal_entities.c.signal_id == r.id)
             )
         )
-        stale = {link["entity_id"] for link in old.get("links", [])} - new_ids
+        # Links the enrichment LLM confirmed, added or dropped are its decision: leave them alone.
+        review = meta.get("entity_review") or {}
+        llm_owned = {
+            slug_ids[slug]
+            for key in ("confirmed", "added", "dropped")
+            for slug in review.get(key, [])
+            if slug in slug_ids
+        }
+        stale = {link["entity_id"] for link in old.get("links", [])} - new_ids - llm_owned
+        writable = [link for link in links if link.entity_id not in llm_owned]
         if stale:
             session.execute(
                 delete(signal_entities).where(
                     signal_entities.c.signal_id == r.id, signal_entities.c.entity_id.in_(stale)
                 )
             )
-        if links:
+        if writable:
             stmt = insert(signal_entities).values(
                 [
                     {"signal_id": r.id, "entity_id": link.entity_id, "is_primary": link.is_primary}
-                    for link in links
+                    for link in writable
                 ]
             )
             session.execute(
