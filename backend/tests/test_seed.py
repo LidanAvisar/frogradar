@@ -47,6 +47,9 @@ def test_seeded_entities_shape(db_session):
     assert rows["aws-codeartifact"].parent_id == rows["aws"].id
     assert rows["github"].relationship == "coopetition"
     assert rows["aws"].aliases == []
+    assert rows["github-packages"].aliases == ["GitHub Container Registry", "GHCR"]
+    assert rows["socket"].match_rules["Socket"]["case_sensitive"] is True
+    assert rows["snyk"].match_rules == {}
     assert all(e.review_status == EntityReviewStatus.APPROVED for e in rows.values())
     # Product-level sources hang off the product, not the company.
     pricing = db_session.scalar(select(Source).where(Source.name == "AWS CodeArtifact Pricing"))

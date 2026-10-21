@@ -2,7 +2,8 @@
 
 Usage: python -m app.db.seed   (or `make seed`)
 
-- Config owns: names, aliases, segments, relationship, parent, source settings, capability text.
+- Config owns: names, aliases, match rules, segments, relationship, parent, source settings,
+  capability text.
 - The DB owns (set on insert, never overwritten): review_status, is_tracked, discovered_by,
   last_fetched_at.
 - Config sources that disappear from config are deactivated, never deleted (signals reference them).
@@ -96,7 +97,8 @@ def _entity_row(
         "type": type_,
         "name": item.name,
         "slug": item.slug,
-        "aliases": list(item.aliases),
+        "aliases": item.alias_names,
+        "match_rules": item.match_rules,
         "segments": [s.value for s in item.segments],
         "website": item.website,
         "description": item.description,
@@ -112,7 +114,7 @@ def _entity_row(
 
 
 ENTITY_UPDATE_COLS = (
-    "type", "name", "aliases", "segments", "website", "description",
+    "type", "name", "aliases", "match_rules", "segments", "website", "description",
     "relationship", "is_self", "parent_id",
 )  # fmt: skip
 SOURCE_UPDATE_COLS = (

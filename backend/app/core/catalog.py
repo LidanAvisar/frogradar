@@ -63,14 +63,65 @@ class SourceConfig(_Strict):
         return self.trust_score if self.trust_score is not None else DEFAULT_TRUST[self.kind]
 
 
+class MatchRule(_Strict):
+    """How strict entity linking is for one name/alias (app.pipeline.link).
+
+    A match counts if it is in the title (and title_suffices), or if the term occurs at least
+    min_mentions times in title + text. Word boundaries always apply. enabled=false turns the term
+    off (company names that are too broad, like Microsoft: linked through products only, D13).
+    """
+
+    enabled: bool = True
+    case_sensitive: bool = False
+    min_mentions: Annotated[int, Field(ge=1, le=50)] = 1
+    title_suffices: bool = True
+
+    @property
+    def is_default(self) -> bool:
+        return self == MatchRule()
+
+
+class AliasConfig(MatchRule):
+    """An alias with its own match rule, e.g. {alias: GHCR, case_sensitive: true}."""
+
+    alias: Annotated[str, Field(min_length=2)]
+
+
 class ProductConfig(_Strict):
     slug: Slug
     name: str
-    aliases: list[str] = Field(default_factory=list)
+    aliases: list[Annotated[str, Field(min_length=2)] | AliasConfig] = Field(default_factory=list)
+    # Match rule for the entity's own name (for names that are common words: Socket, Docker).
+    match: MatchRule | None = None
     segments: list[Segment] = Field(default_factory=list)
     website: Url | None = None
     description: str | None = None
     sources: list[SourceConfig] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _check_aliases(self) -> Self:
+        _assert_unique(f"alias of {self.slug!r}", [t.casefold() for t in self.match_terms])
+        return self
+
+    @property
+    def alias_names(self) -> list[str]:
+        return [a if isinstance(a, str) else a.alias for a in self.aliases]
+
+    @property
+    def match_terms(self) -> list[str]:
+        """Name first, then aliases: every string entity linking looks for."""
+        return [self.name, *self.alias_names]
+
+    @property
+    def match_rules(self) -> dict[str, dict[str, Any]]:
+        """Non-default rules by term, as stored in entities.match_rules."""
+        rules: dict[str, MatchRule] = {}
+        if self.match is not None:
+            rules[self.name] = self.match
+        for a in self.aliases:
+            if isinstance(a, AliasConfig):
+                rules[a.alias] = MatchRule(**a.model_dump(exclude={"alias"}))
+        return {t: r.model_dump() for t, r in rules.items() if not r.is_default}
 
 
 class CompanyConfig(ProductConfig):
@@ -171,6 +222,37 @@ class LLMRoutingFile(_Strict):
         return self
 
 
+# ---------- pipeline.yaml ----------
+
+Similarity = Annotated[float, Field(gt=0, le=1)]
+
+
+class EmbedSettings(_Strict):
+    # Characters of raw_text after the title that go into the embedding input.
+    max_chars: Annotated[int, Field(ge=200, le=30000)] = 2000
+    batch_size: Annotated[int, Field(ge=1, le=2048)] = 64
+
+
+class DedupSettings(_Strict):
+    window_days: Annotated[int, Field(ge=1, le=365)] = 14
+    # Cosine similarity a signal needs to the cluster's canonical signal to join it.
+    cross_source_threshold: Similarity = 0.85
+    # Same-source pairs (templated changelog entries look alike) need much more.
+    same_source_threshold: Similarity = 0.97
+    neighbours: Annotated[int, Field(ge=1, le=200)] = 10
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        if self.same_source_threshold < self.cross_source_threshold:
+            raise ValueError("same_source_threshold must be >= cross_source_threshold")
+        return self
+
+
+class PipelineFile(_Strict):
+    embedding: EmbedSettings = Field(default_factory=EmbedSettings)
+    dedup: DedupSettings = Field(default_factory=DedupSettings)
+
+
 # ---------- loading ----------
 
 
@@ -243,6 +325,16 @@ def _llm_routing(config_dir: Path) -> LLMRoutingFile:
     return _validate(LLMRoutingFile, config_dir, name, data)
 
 
+@lru_cache
+def _pipeline(config_dir: Path) -> PipelineFile:
+    name = "pipeline.yaml"
+    return _validate(PipelineFile, config_dir, name, _read_yaml(config_dir, name))
+
+
+def load_pipeline(config_dir: Path | None = None) -> PipelineFile:
+    return _pipeline(_dir(config_dir))
+
+
 def load_competitors(config_dir: Path | None = None) -> CompetitorsFile:
     return _competitors(_dir(config_dir))
 
@@ -260,5 +352,5 @@ def load_llm_routing(config_dir: Path | None = None) -> LLMRoutingFile:
 
 
 def clear_cache() -> None:
-    for fn in (_competitors, _sources, _capabilities, _llm_routing):
+    for fn in (_competitors, _sources, _capabilities, _llm_routing, _pipeline):
         fn.cache_clear()

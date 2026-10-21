@@ -229,6 +229,77 @@ def test_env_var_overrides_model(monkeypatch):
         get_settings.cache_clear()
 
 
+# ---------- entity-linking match rules (competitors.yaml) ----------
+
+
+def _socket(data: dict) -> dict:
+    return next(c for c in data["companies"] if c["slug"] == "socket")
+
+
+def test_real_match_rules():
+    by_slug = {e.slug: e for c in catalog.load_competitors().companies for e in (c, *c.products)}
+    socket = by_slug["socket"].match_rules["Socket"]
+    assert socket["case_sensitive"] and socket["min_mentions"] >= 2
+    assert by_slug["microsoft"].match_rules["Microsoft"]["enabled"] is False
+    assert by_slug["github-packages"].alias_names == ["GitHub Container Registry", "GHCR"]
+    # Default-rule terms are not stored.
+    assert "Snyk" not in by_slug["snyk"].match_rules
+
+
+def test_alias_object_form():
+    data = _competitors()
+    _socket(data)["aliases"] = ["socket.dev", {"alias": "SKT", "case_sensitive": True}]
+    socket = next(c for c in CompetitorsFile.model_validate(data).companies if c.slug == "socket")
+    assert socket.alias_names == ["socket.dev", "SKT"]
+    assert socket.match_rules["SKT"]["case_sensitive"] is True
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"alias": "X", "case_sensitive": True},  # too short
+        {"alias": "Sock", "min_mentions": 0},
+        {"alias": "Sock", "casesensitive": True},  # typo -> extra field
+        {"case_sensitive": True},  # no alias
+    ],
+)
+def test_bad_alias_rule_rejected(bad):
+    data = _competitors()
+    _socket(data)["aliases"] = [bad]
+    with pytest.raises(ValidationError):
+        CompetitorsFile.model_validate(data)
+
+
+def test_bad_name_rule_rejected():
+    data = _competitors()
+    _socket(data)["match"] = {"min_mentions": "lots"}
+    with pytest.raises(ValidationError):
+        CompetitorsFile.model_validate(data)
+
+
+def test_alias_duplicating_name_rejected():
+    data = _competitors()
+    _socket(data)["aliases"] = ["socket"]
+    with pytest.raises(ValidationError, match="duplicate alias"):
+        CompetitorsFile.model_validate(data)
+
+
+# ---------- pipeline.yaml ----------
+
+
+def test_pipeline_config():
+    p = catalog.load_pipeline()
+    assert p.dedup.cross_source_threshold <= p.dedup.same_source_threshold
+    assert p.embedding.max_chars > 0
+
+
+def test_pipeline_thresholds_ordered():
+    data = copy.deepcopy(_raw("pipeline.yaml"))
+    data["dedup"]["same_source_threshold"] = 0.8
+    with pytest.raises(ValidationError, match="same_source_threshold"):
+        catalog.PipelineFile.model_validate(data)
+
+
 # ---------- loader errors ----------
 
 

@@ -18,6 +18,12 @@
 # except where marked "TODO verify".
 # Aliases are used for entity linking: keep them specific. Broad names that would match unrelated
 # news (e.g. "Amazon", "Microsoft", "Google") are deliberately left out.
+# Entity linking (app/pipeline/link.py) matches the name and every alias on word boundaries,
+# case-insensitive, one mention anywhere. Stricter rules for ambiguous terms:
+#   alias as an object: {alias: GHCR, case_sensitive: true, min_mentions: 1, title_suffices: true}
+#   for the entity's own name: match: {case_sensitive: true, min_mentions: 3}
+#   match: {enabled: false} = never match the name (link through products only)
+# A term matches if it is in the title (title_suffices) or occurs >= min_mentions times.
 
 companies:
   - slug: jfrog
@@ -28,7 +34,7 @@ companies:
     website: https://jfrog.com
     products:
       - {slug: jfrog-artifactory, name: JFrog Artifactory, aliases: [Artifactory], segments: [artifact_management]}
-      - {slug: jfrog-xray, name: JFrog Xray, aliases: [Xray], segments: [supply_chain_security]}
+      - {slug: jfrog-xray, name: JFrog Xray, aliases: [{alias: Xray, case_sensitive: true}], segments: [supply_chain_security]}
       - {slug: jfrog-curation, name: JFrog Curation, segments: [supply_chain_security]}
       - {slug: jfrog-advanced-security, name: JFrog Advanced Security, segments: [supply_chain_security]}
       - {slug: jfrog-ml, name: JFrog ML, aliases: [Qwak], segments: [mlops]}
@@ -47,7 +53,7 @@ companies:
     segments: [artifact_management, supply_chain_security]
     website: https://www.sonatype.com
     products:
-      - {slug: sonatype-nexus-repository, name: Nexus Repository, aliases: [Nexus Repository Manager, Nexus Repo, NXRM], segments: [artifact_management]}
+      - {slug: sonatype-nexus-repository, name: Nexus Repository, aliases: [Nexus Repository Manager, Nexus Repo, {alias: NXRM, case_sensitive: true}], segments: [artifact_management]}
       - {slug: sonatype-lifecycle, name: Sonatype Lifecycle, aliases: [Nexus Lifecycle, Nexus IQ], segments: [supply_chain_security]}
       - {slug: sonatype-firewall, name: Sonatype Repository Firewall, aliases: [Nexus Firewall], segments: [supply_chain_security]}
     sources:
@@ -57,13 +63,14 @@ companies:
 
   - slug: github
     name: GitHub
+    match: {case_sensitive: true, min_mentions: 3}   # ubiquitous in dev news: title or 3+ mentions
     relationship: coopetition
     aliases: [GitHub Inc]
     segments: [artifact_management, supply_chain_security, cicd]
     website: https://github.com
     products:
-      - {slug: github-packages, name: GitHub Packages, aliases: [GitHub Container Registry, GHCR], segments: [artifact_management]}
-      - {slug: github-advanced-security, name: GitHub Advanced Security, aliases: [GHAS, Dependabot, CodeQL], segments: [supply_chain_security]}
+      - {slug: github-packages, name: GitHub Packages, aliases: [GitHub Container Registry, {alias: GHCR, case_sensitive: true}], segments: [artifact_management]}
+      - {slug: github-advanced-security, name: GitHub Advanced Security, aliases: [{alias: GHAS, case_sensitive: true}, Dependabot, CodeQL], segments: [supply_chain_security]}
       - {slug: github-actions, name: GitHub Actions, segments: [cicd]}
     sources:
       - {name: GitHub Changelog, url: https://github.blog/changelog/feed/, kind: official, fetch_method: rss}
@@ -118,6 +125,7 @@ companies:
   # company-wide feeds, so general AWS/Microsoft/Google news doesn't flood the pipeline.
   - slug: aws
     name: Amazon Web Services
+    match: {enabled: false}   # linked through products only (D13)
     relationship: competitor
     aliases: []
     segments: [artifact_management]
@@ -133,6 +141,7 @@ companies:
 
   - slug: microsoft
     name: Microsoft
+    match: {enabled: false}   # linked through products only (D13)
     relationship: competitor
     aliases: []
     segments: [artifact_management, cicd]
@@ -149,6 +158,7 @@ companies:
 
   - slug: google
     name: Google Cloud
+    match: {enabled: false}   # linked through products only (D13)
     relationship: competitor
     aliases: []
     segments: [artifact_management]
@@ -156,7 +166,7 @@ companies:
     products:
       - slug: google-artifact-registry
         name: Google Artifact Registry
-        aliases: [Artifact Registry, GCP Artifact Registry]
+        aliases: [{alias: Artifact Registry, case_sensitive: true}, GCP Artifact Registry]
         segments: [artifact_management]
         sources:
           - {name: Artifact Registry Release Notes, url: https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml, kind: official, fetch_method: rss, options: {keep_fragment: true}, is_active: false}
@@ -164,6 +174,7 @@ companies:
 
   - slug: docker
     name: Docker
+    match: {case_sensitive: true, min_mentions: 3}   # "Docker image" is everywhere: title or 3+ mentions
     relationship: competitor
     aliases: [Docker Inc]
     segments: [artifact_management, supply_chain_security]
@@ -171,7 +182,7 @@ companies:
     products:
       - {slug: docker-hub, name: Docker Hub, segments: [artifact_management]}
       - {slug: docker-scout, name: Docker Scout, segments: [supply_chain_security]}
-      - {slug: docker-hardened-images, name: Docker Hardened Images, aliases: [DHI], segments: [supply_chain_security]}
+      - {slug: docker-hardened-images, name: Docker Hardened Images, aliases: [{alias: DHI, case_sensitive: true}], segments: [supply_chain_security]}
     sources:
       - {name: Docker Blog, url: https://www.docker.com/feed/, kind: official, fetch_method: rss, is_active: false}
       - {name: Docker GitHub, url: https://github.com/docker, kind: github, fetch_method: github, options: {repos: [compose, buildx, scout-cli]}, is_active: false}
@@ -204,6 +215,7 @@ companies:
 
   - slug: socket
     name: Socket
+    match: {case_sensitive: true, min_mentions: 3}   # common word: title or 3+ mentions
     relationship: competitor
     aliases: [Socket Security, socket.dev]
     segments: [supply_chain_security]

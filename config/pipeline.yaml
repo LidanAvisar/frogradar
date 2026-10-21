@@ -1,0 +1,15 @@
+# Pipeline stage settings (embed, dedup). Validated by app/core/catalog.py (PipelineFile).
+# Thresholds are cosine similarity (1 = identical). Calibrate with `make dedup-report`.
+
+embedding:
+  # Embedding input = title + the first max_chars characters of raw_text.
+  max_chars: 2000
+  batch_size: 64        # texts per embed() call (the gateway caches each text separately)
+
+dedup:
+  window_days: 14       # only signals published within ±window_days can be duplicates
+  # A signal joins a cluster only if its similarity to the cluster's canonical signal reaches:
+  cross_source_threshold: 0.85   # ...when they come from different sources
+  same_source_threshold: 0.97    # ...when from the same source (templated changelog entries
+                                 #    look alike but are different news)
+  neighbours: 10        # nearest neighbours fetched per signal (HNSW)

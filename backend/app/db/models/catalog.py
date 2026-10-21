@@ -45,6 +45,9 @@ class Entity(Base):
     name: Mapped[str]
     slug: Mapped[str] = mapped_column(String(100), unique=True)
     aliases: Mapped[list[str]] = mapped_column(ARRAY(String), server_default="{}")
+    # Non-default entity-linking rules by term (name or alias), from competitors.yaml (seed-owned),
+    # e.g. {"Socket": {"enabled": true, "case_sensitive": true, "min_mentions": 3, ...}}
+    match_rules: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
     segments: Mapped[list[str]] = mapped_column(ARRAY(String(32)), server_default="{}")
     website: Mapped[str | None]
     description: Mapped[str | None]
