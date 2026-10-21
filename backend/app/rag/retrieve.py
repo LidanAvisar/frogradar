@@ -32,6 +32,7 @@ class Hit:
     vector_rank: int | None
     text_rank: int | None
     cosine: float | None
+    category_rank: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -40,6 +41,7 @@ class Hit:
             "score": round(self.score, 6),
             "vector_rank": self.vector_rank,
             "text_rank": self.text_rank,
+            "category_rank": self.category_rank,
             "cosine": round(self.cosine, 4) if self.cosine is not None else None,
         }
 
@@ -97,6 +99,29 @@ def _signal_conditions(f: Filters) -> list[Any]:
     return conds
 
 
+def _cut(
+    fused: list[tuple[str, float, list[int | None]]], k: int, max_per_type: dict[str, int]
+) -> list[tuple[str, float, list[int | None]]]:
+    """Top k, at most max_per_type[t] documents of type t (bc: battlecard, radar: radar)."""
+    out, per = [], dict.fromkeys(max_per_type, 0)
+    for item in fused:
+        t = (
+            "battlecard"
+            if item[0].startswith("bc:")
+            else "radar"
+            if item[0].startswith("radar:")
+            else None
+        )
+        if t in per:
+            if per[t] >= max_per_type[t]:
+                continue
+            per[t] += 1
+        out.append(item)
+        if len(out) == k:
+            break
+    return out
+
+
 def _keep_other(doc: Doc, f: Filters) -> bool:
     """Filters for battlecard / radar documents."""
     if doc.type == "battlecard":
@@ -143,6 +168,16 @@ def retrieve(
         .limit(n)
     ).all()
 
+    # Signals of a category the question names (newest high impact first): a third ranked list.
+    cat_rows = []
+    if f.categories:
+        cat_rows = session.execute(
+            select(Signal.id)
+            .where(*conds, Signal.category.in_(f.categories))
+            .order_by(Signal.impact.desc().nulls_last(), event_time().desc(), Signal.id.desc())
+            .limit(n)
+        ).all()
+
     # Battlecard items and radar profiles, filtered in code.
     others = [d for d in (*battlecard_docs(session), *radar_docs(session)) if _keep_other(d, f)]
     other_vec: list[tuple[str, float]] = []
@@ -173,15 +208,23 @@ def retrieve(
     txt = [(f"sig:{r.id}", float(r.rank)) for r in txt_rows] + other_txt
     txt.sort(key=lambda v: -v[1])
     vec, txt = vec[:n], txt[:n]
-    fused = rrf([[d for d, _ in vec], [d for d, _ in txt]], cfg.rrf_k)
+    cat = [f"sig:{r.id}" for r in cat_rows]
+    # Battlecard items of a section the question names, in vector order.
+    order = {d: i for i, (d, _) in enumerate(sorted(other_vec, key=lambda v: -v[1]))}
+    sec = sorted(
+        (d.id for d in others if d.type == "battlecard" and d.id.split(":")[2] in f.sections),
+        key=lambda d: order.get(d, len(order)),
+    )
+    cat += sec  # one "named in the question" list: categories for signals, sections for cards
+    fused = rrf([[d for d, _ in vec], [d for d, _ in txt], cat], cfg.rrf_k)
 
-    top = fused[: min(cfg.k, cfg.max_docs)]
+    top = _cut(fused, min(cfg.k, cfg.max_docs), cfg.max_per_type)
     sig_ids = [int(d[4:]) for d, _, _ in top if d.startswith("sig:")]
     by_id: dict[str, Doc] = {d.id: d for d in others}
     by_id |= {d.id: d for d in signal_docs(session, sig_ids).values()}
     all_cos = {f"sig:{r.id}": float(r.sim) for r in vec_rows} | dict(other_vec)
     hits = [
-        Hit(by_id[d], score, ranks[0], ranks[1], all_cos.get(d))
+        Hit(by_id[d], score, ranks[0], ranks[1], all_cos.get(d), ranks[2])
         for d, score, ranks in top
         if d in by_id
     ]

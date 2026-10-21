@@ -32,6 +32,7 @@ from app.rag.documents import Doc
 from app.rag.filters import Filters, infer_filters
 from app.rag.retrieve import Retrieval, retrieve
 from app.rag.rewrite import PastTurn, rewrite
+from app.rag.schemas import plain
 
 NO_DOCUMENTS_GAP = "FrogRadar has no stored intelligence that matches this question."
 NO_DOCUMENTS_SUGGESTIONS = [
@@ -227,4 +228,5 @@ def stored_answer(turn: AskTurn) -> AskAnswerOut | None:
     if turn.error or not turn.answer:
         return None
     data: dict[str, Any] = dict(turn.answer)
+    data["points"] = [{**p, "lead": plain(p.get("lead", ""))} for p in data.get("points", [])]
     return AskAnswerOut.model_validate(data)

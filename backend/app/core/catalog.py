@@ -443,6 +443,11 @@ class AskSettings(_Strict):
     # Vector hits below this cosine similarity are not candidates (full-text hits still are).
     min_cosine: Annotated[float, Field(ge=-1, le=1)] = 0.25
     history_turns: Annotated[int, Field(ge=0, le=10)] = 3  # turns given to the follow-up rewrite
+    # At most this many battlecard items / radar profiles in the top k: their short, JFrog-centric
+    # texts score high on vectors and would otherwise crowd out the signals they summarize.
+    max_per_type: dict[Literal["battlecard", "radar"], Annotated[int, Field(ge=0, le=30)]] = Field(
+        default_factory=lambda: {"battlecard": 3, "radar": 3}
+    )
     question_max_chars: Annotated[int, Field(ge=10, le=2000)] = 500
     doc_max_chars: Annotated[int, Field(ge=200, le=5000)] = 1200  # one document block
 

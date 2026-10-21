@@ -13,6 +13,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
+from app.api.radar import _relation_source
 from app.db.enums import ProfileStatus, RadarStatus, ReportKind
 from app.db.models import Entity, RadarCandidate, Report, Signal, Source, signal_entities
 from app.pipeline.radar.profile import KEYS as PROFILE_KEYS
@@ -207,6 +208,7 @@ def radar_docs(session: Session) -> list[Doc]:
             ),
         )
     ).all()
+    product_names = dict(session.execute(select(Entity.slug, Entity.name)).all())
     out = []
     for c in rows:
         items = (c.profile or {}).get("items") or {}
@@ -219,8 +221,11 @@ def radar_docs(session: Session) -> list[Doc]:
         if len(lines) == 1:
             continue
         relation = (c.metrics or {}).get("relation")
-        if relation:
-            lines.append(f"JFrog relation used for ranking: {relation}")
+        if relation and "jfrog_relation" not in items:
+            products, check = _relation_source(c)
+            names = ", ".join(product_names.get(p, p) for p in products)
+            note = " (statement only partly verified)" if check == "partial" else ""
+            lines.append(f"JFrog relation: {relation}{' – ' + names if names else ''}{note}")
         out.append(
             Doc(
                 id=f"radar:{c.id}",

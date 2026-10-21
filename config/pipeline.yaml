@@ -102,5 +102,7 @@ ask:
   rrf_k: 60          # score = sum of 1 / (rrf_k + rank)
   min_cosine: 0.25   # vector hits below this are not candidates (full-text hits still are)
   history_turns: 3   # earlier turns given to the follow-up rewrite
+  # At most this many of each in the top k (short JFrog-centric texts would crowd out signals).
+  max_per_type: {battlecard: 3, radar: 3}
   question_max_chars: 500
   doc_max_chars: 1200

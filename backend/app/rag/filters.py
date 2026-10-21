@@ -29,6 +29,11 @@ class Filters:
     since: datetime | None = None
     until: datetime | None = None
     window: str | None = None  # human label: "last 7 days", "October 2026"
+    # Signal categories the question names ("incidents" → security_incident). Not a filter: a third
+    # ranked list in the fusion, so signals of that category rank higher.
+    categories: tuple[str, ...] = ()
+    # Battlecard sections the question names ("weaknesses" → weaknesses): another ranked list.
+    sections: tuple[str, ...] = ()
 
     @property
     def empty(self) -> bool:
@@ -37,6 +42,8 @@ class Filters:
     def as_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["entity_ids"] = list(self.entity_ids)
+        d["categories"] = list(self.categories)
+        d["sections"] = list(self.sections)
         d["since"] = self.since.isoformat() if self.since else None
         d["until"] = self.until.isoformat() if self.until else None
         return d
@@ -118,6 +125,39 @@ def _window(question: str, now: datetime) -> tuple[datetime | None, datetime | N
     return None, None, None
 
 
+CATEGORY_WORDS: dict[str, re.Pattern[str]] = {
+    "security_incident": re.compile(
+        r"\b(incidents?|breach\w*|attacks?|hijack\w*|compromis\w*|malicious|exploit\w*)\b", _I
+    ),
+    "pricing_change": re.compile(r"\b(pric\w*|costs?|charges?|tiers?|plans?|cheaper)\b", _I),
+    "product_launch": re.compile(r"\b(launch\w*|released?|ships?|shipped|introduc\w*)\b", _I),
+    "acquisition": re.compile(r"\b(acqui\w*|bought|buys)\b", _I),
+    "funding": re.compile(r"\b(fund\w*|raised?|investment|valuation)\b", _I),
+    "partnership": re.compile(r"\b(partner\w*|alliance)\b", _I),
+    "analyst_report": re.compile(r"\b(reports?|survey|index|study|research)\b", _I),
+    "leadership_change": re.compile(r"\b(ceo|cto|executive|hired?|appoint\w*)\b", _I),
+}
+
+
+SECTION_WORDS: dict[str, re.Pattern[str]] = {
+    "strengths": re.compile(r"\b(strengths?|strong|advantages?)\b", _I),
+    "weaknesses": re.compile(r"\b(weakness\w*|weak|gaps?|disadvantages?)\b", _I),
+    "opportunities_for_jfrog": re.compile(r"\b(opportunit\w*|win against|beat)\b", _I),
+    "blind_spots_for_jfrog": re.compile(r"\b(blind spots?|risks? for jfrog)\b", _I),
+    "positioning": re.compile(r"\b(position\w*)\b", _I),
+}
+
+
+def infer_sections(question: str) -> tuple[str, ...]:
+    return tuple(s for s, p in SECTION_WORDS.items() if p.search(question))
+
+
+def infer_categories(question: str) -> tuple[str, ...]:
+    """Categories named in the question; more than two → none (too broad to help ranking)."""
+    found = tuple(c for c, p in CATEGORY_WORDS.items() if p.search(question))
+    return found if len(found) <= 2 else ()
+
+
 def infer_filters(session: Session, question: str, now: datetime) -> Filters:
     names, companies, family = entity_names(session)
     cid = _company(question, names)
@@ -130,4 +170,6 @@ def infer_filters(session: Session, question: str, now: datetime) -> Filters:
         since=since,
         until=until,
         window=label,
+        categories=infer_categories(question),
+        sections=infer_sections(question),
     )

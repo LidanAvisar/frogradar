@@ -8,10 +8,15 @@ from typing import Annotated, Self
 from pydantic import BaseModel, BeforeValidator, Field, model_validator
 
 
+def plain(text: str) -> str:
+    """No markdown emphasis: the UI renders text, and leads are bold already."""
+    return text.replace("**", "").replace("__", "").strip()
+
+
 def _cut(limit: int):  # noqa: ANN202
     def cut(v: object) -> object:
         if isinstance(v, str):
-            v = v.strip()
+            v = plain(v)
             return v if len(v) <= limit else v[: limit - 1].rstrip() + "…"
         return v
 

@@ -69,3 +69,28 @@ def test_rrf_counts_a_duplicate_once_and_handles_empty_lists():
 )
 def test_time_windows(question, since, until, label):
     assert _window(question, NOW) == (since, until, label)
+
+
+def test_categories_and_sections_named_in_the_question():
+    from app.rag.filters import infer_categories, infer_sections
+
+    assert infer_categories("What supply-chain security incidents happened?") == (
+        "security_incident",
+    )
+    assert infer_categories("What does GitLab charge for Ultimate?") == ("pricing_change",)
+    assert infer_categories("Who launched a package firewall?") == ("product_launch",)
+    assert infer_categories("Is GitHub moving into license compliance?") == ()
+    # More than two categories is too broad to help ranking.
+    assert infer_categories("pricing, launches, incidents and funding") == ()
+    assert infer_sections("What are Sonatype's weaknesses compared to JFrog?") == ("weaknesses",)
+    assert infer_sections("Where can JFrog win? Any opportunities?") == ("opportunities_for_jfrog",)
+
+
+def test_cut_caps_battlecard_and_radar_documents():
+    from app.rag.retrieve import _cut
+
+    fused = [
+        (d, 1.0, [1]) for d in ["bc:a:x:1", "bc:a:x:2", "radar:1", "bc:a:x:3", "sig:1", "sig:2"]
+    ]
+    got = [d for d, _, _ in _cut(fused, 4, {"battlecard": 1, "radar": 1})]
+    assert got == ["bc:a:x:1", "radar:1", "sig:1", "sig:2"]
