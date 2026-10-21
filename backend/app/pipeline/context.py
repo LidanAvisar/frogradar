@@ -46,6 +46,8 @@ class RunContext:
     session_factory: sessionmaker[Session] | None = None
     # Stages to redo even if already done with the current prompt version: triage/enrich/verify.
     force: frozenset[str] = frozenset()
+    # Battlecards: only these company slugs (empty = every due competitor).
+    only_entities: frozenset[str] = frozenset()
     now: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod

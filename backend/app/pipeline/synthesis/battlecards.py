@@ -143,6 +143,8 @@ def battlecards_step(session: Session, ctx: RunContext) -> dict[str, Any]:
     counts: dict[str, Any] = {"stored": 0, "not_due": 0, "not_eligible": 0, "failed": 0}
     errors: dict[str, str] = {}
     for comp in competitors(session):
+        if ctx.only_entities and comp.slug not in ctx.only_entities:
+            continue
         signals, primary, _ = input_signals(session, comp, since, cfg.max_signals)
         if len(primary) < cfg.min_primary_signals:
             counts["not_eligible"] += 1

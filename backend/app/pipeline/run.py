@@ -59,6 +59,7 @@ def run_steps(
     trigger: RunTrigger = RunTrigger.MANUAL,
     make_ctx: Callable[[int], RunContext] | None = None,
     force: frozenset[str] = frozenset(),
+    only_entities: frozenset[str] = frozenset(),
 ) -> PipelineRun:
     with factory.begin() as s:
         run = PipelineRun(trigger=trigger, counts={"steps": names})
@@ -70,6 +71,8 @@ def run_steps(
         if make_ctx
         else RunContext.create(run_id, session_factory=factory, force=force)
     )
+    if only_entities:
+        ctx.only_entities = only_entities
     counts: dict[str, Any] = {"steps": names}
     status, error = RunStatus.SUCCEEDED, None
     with llm_context(run_id=run_id):
@@ -94,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.pipeline.run")
     parser.add_argument("steps", nargs="+", choices=[*STEPS, "report"])
     parser.add_argument(
+        "--entity", default="", help="battlecards: comma list of company slugs (default: all due)"
+    )
+    parser.add_argument(
         "--force", default="", help="comma list: triage,enrich,verify,brief,battlecards"
     )
     args = parser.parse_args(argv)
@@ -112,7 +118,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("run `report` on its own")
 
     force = frozenset(f.strip() for f in args.force.split(",") if f.strip())
-    run = run_steps(factory, args.steps, force=force)
+    only = frozenset(e.strip() for e in args.entity.split(",") if e.strip())
+    run = run_steps(factory, args.steps, force=force, only_entities=only)
     for name in args.steps:
         if name in run.counts:
             print(f"{name}: {run.counts[name]}")

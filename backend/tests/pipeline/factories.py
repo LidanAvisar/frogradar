@@ -236,6 +236,7 @@ def default_brief(call: Call) -> dict[str, Any]:
         "overview": [
             {"text": "Sonatype launched a new firewall release.", "signal_ids": ids[:1]},
             {"text": "Registry pricing is shifting across vendors.", "signal_ids": ids[-1:]},
+            {"text": "Secret scanning keeps moving into platforms.", "signal_ids": ids[-1:]},
         ],
     }
 

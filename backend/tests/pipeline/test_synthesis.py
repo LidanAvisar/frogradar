@@ -122,7 +122,7 @@ def test_brief_stored_once_per_day_and_force_regenerates(world):
     counts = _step(factory, brief_step, llm)
     assert counts["stored"] == 1 and counts["dropped"] == 0
     (report,) = _reports(factory, ReportKind.DAILY_BRIEF)
-    assert report.content["headline"] and len(report.content["overview_sentences"]) == 2
+    assert report.content["headline"] and len(report.content["overview_sentences"]) == 3
     assert ids["hidden"] not in report.content["input_ids"]
     assert set(report.signal_ids) <= set(report.content["input_ids"])
     assert llm.count("daily_brief") == 1 and llm.count("verify_synthesis") == 1
@@ -166,6 +166,7 @@ def test_hidden_signal_id_counts_as_invalid(world):
             "overview": [
                 {"text": "Sonatype launched Firewall 2 today.", "signal_ids": [ids["fw"]]},
                 {"text": "GitHub changed secret scanning.", "signal_ids": [ids["gh"]]},
+                {"text": "Sonatype added SBOM import.", "signal_ids": [ids["sbom"]]},
             ],
         }
 
@@ -184,7 +185,7 @@ def test_verifier_partial_drops_the_sentence_and_can_reject_the_brief(world):
             "items": [
                 {
                     "key": k,
-                    "verdict": "partial" if k == "overview.1" else "supported",
+                    "verdict": "partial" if k in ("overview.1", "overview.2") else "supported",
                     "note": "The price is not in the cited signal.",
                 }
                 for k in claim_keys_in(call)
@@ -192,7 +193,7 @@ def test_verifier_partial_drops_the_sentence_and_can_reject_the_brief(world):
         }
 
     counts = _step(factory, brief_step, FakeLLM(verify_synthesis=check))
-    assert counts["rejected"] == 1  # only one overview sentence left
+    assert counts["rejected"] == 1  # only one point left
     assert any("overview.1: verifier_partial" in r for r in counts["reasons"])
 
 
@@ -348,3 +349,39 @@ def test_cards_are_not_redone_until_due(world):
     with factory() as s:
         n = s.scalar(select(func.count()).select_from(Report).where(Report.entity_id.is_not(None)))
     assert n == 3
+
+
+def test_points_longer_than_110_chars_fail_validation():
+    from pydantic import ValidationError
+
+    from app.pipeline.synthesis.schemas import DailyBrief
+
+    point = {"text": "Short point about Sonatype.", "signal_ids": [1]}
+    brief = {"headline": {"text": "Sonatype moves", "signal_ids": [1]}, "overview": [point] * 3}
+    DailyBrief.model_validate(brief)
+    with pytest.raises(ValidationError, match="110"):
+        DailyBrief.model_validate(
+            {**brief, "overview": [point, point, {**point, "text": "x" * 111}]}
+        )
+    with pytest.raises(ValidationError):
+        DailyBrief.model_validate({**brief, "overview": [point, point]})  # exactly 3
+
+
+def test_verifier_gets_jfrog_levels_as_trusted_context(world):
+    factory, _ = world
+    llm = FakeLLM()
+    _step(factory, brief_step, llm)
+    (check,) = [c for c in llm.calls if c.operation == "verify_synthesis"]
+    user = check.messages[-1]["content"]
+    assert "JFrog's capability levels (trusted" in user
+    assert "hosted-pipelines | Hosted CI/CD pipelines | none |" in user
+
+
+def test_battlecards_for_selected_companies_only(world):
+    factory, _ = world
+    llm = FakeLLM()
+    c = _ctx(factory, llm)
+    c.only_entities = frozenset({"sonatype"})
+    with factory.begin() as s:
+        counts = battlecards_step(s, c)
+    assert counts["stored"] == 1 and "sonatype" in counts and "github" not in counts

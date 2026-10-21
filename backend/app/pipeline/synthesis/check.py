@@ -1,12 +1,15 @@
 """Second-model check of synthesized claims (verify task: a different model family).
 
 One call per output (the brief, or one battlecard): every claim that passed the citation check is
-judged against the summaries / takeaways / analysis of the signals IT cites. supported → kept;
-partial, unsupported (or no verdict) → dropped, with the verifier's note kept in the report.
+judged against the summaries / takeaways / analysis of the signals IT cites; statements about
+JFrog's own capability levels are judged against config/jfrog_capabilities.yaml (trusted context,
+verify_synthesis.v2). supported → kept; partial, unsupported (or no verdict) → dropped, with the
+verifier's note kept in the report.
 """
 
 from collections.abc import Sequence
 
+from app.core.catalog import load_capabilities, load_self_capabilities
 from app.core.llm import load_prompt
 from app.pipeline.context import CompleteFn
 from app.pipeline.prompting import delimit
@@ -15,6 +18,16 @@ from app.pipeline.synthesis.inputs import BLOCK_MAX_CHARS, SignalFacts
 from app.pipeline.synthesis.schemas import check_schema
 
 PROMPT = "verify_synthesis"
+
+
+def jfrog_levels_text() -> str:
+    """JFrog's own capability levels from config/jfrog_capabilities.yaml (trusted: from JFrog's
+    public docs, not from the LLM), so the verifier can check statements about JFrog's levels."""
+    names = {c.slug: c.name for caps in load_capabilities().segments.values() for c in caps}
+    return "\n".join(
+        f"{slug} | {names.get(slug, slug)} | {cfg.level} | {cfg.note}"
+        for slug, cfg in load_self_capabilities().capabilities.items()
+    )
 
 
 def verify_claims(
@@ -36,7 +49,9 @@ def verify_claims(
         f"{c.key}: {c.text} [cites {', '.join(f'#{i}' for i in c.signal_ids)}]" for c in claims
     )
     tag, body = delimit(f"{signals}\n\nCLAIMS:\n{claims_text}", BLOCK_MAX_CHARS)
-    messages = prompt.messages(tag=tag, text=body, kind=kind, subject=subject)
+    messages = prompt.messages(
+        tag=tag, text=body, kind=kind, subject=subject, jfrog_levels=jfrog_levels_text()
+    )
     schema = check_schema([c.key for c in claims])
     result = complete("verify", PROMPT, messages, schema, prompt_version=prompt.id)
     verdicts = {v.key: v for v in result.items}  # type: ignore[attr-defined]

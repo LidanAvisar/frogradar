@@ -26,9 +26,18 @@ class Headline(CitedSentence):
     text: Annotated[str, Field(min_length=10, max_length=HEADLINE_MAX)]
 
 
+POINT_MAX = 110
+
+
+class Point(CitedSentence):
+    """One "What matters today" point (daily_brief.v2): short enough for one line on the Brief."""
+
+    text: Annotated[str, Field(min_length=10, max_length=POINT_MAX)]
+
+
 class DailyBrief(_Out):
     headline: Headline
-    overview: Annotated[list[CitedSentence], Field(min_length=2, max_length=3)]
+    overview: Annotated[list[Point], Field(min_length=3, max_length=3)]
 
 
 # ---------- battlecard ----------
