@@ -1,0 +1,85 @@
+/*
+ * FrogRadar design tokens. The only place colors, type and layout values are defined.
+ * Components use var(--fr-…) only (checked by `npm run lint:tokens`). Light theme only.
+ */
+:root {
+  /* Surfaces */
+  --fr-page: #F6F7F5;
+  --fr-surface: #FFFFFF;
+  --fr-border: #E3E7E4;
+  --fr-control-border: #D5DBD7;
+  --fr-divider: #EEF1EF;
+
+  /* Text */
+  --fr-ink: #0F1A14;
+  --fr-ink-2: #2E3933;
+  --fr-ink-3: #3E4943;
+  --fr-muted: #59645E;
+  --fr-on-accent: #FFFFFF;
+
+  /* Accent */
+  --fr-accent: #1D6B45;
+  --fr-accent-hover: #124A2F;
+  --fr-accent-tint: #E7F2EB;
+  --fr-why-bg: #F2F8F4;
+
+  /* Impact pills (bg / fg) */
+  --fr-impact-5-bg: #FBE3E1;
+  --fr-impact-5-fg: #9B1C13;
+  --fr-impact-4-bg: #FDEBD8;
+  --fr-impact-4-fg: #8A3B00;
+  --fr-impact-3-bg: #E6EEF8;
+  --fr-impact-3-fg: #1F4E8C;
+  --fr-impact-low-bg: #EEF1EF;
+  --fr-impact-low-fg: #3E4943;
+
+  /* Confidence pills (bg / fg) */
+  --fr-conf-high-bg: #E5F2EA;
+  --fr-conf-high-fg: #1D6B45;
+  --fr-conf-medium-bg: #FBF1D6;
+  --fr-conf-medium-fg: #7A5A00;
+  --fr-conf-low-bg: #EEF1EF;
+  --fr-conf-low-fg: #59645E;
+
+  /* Vendor claim tag */
+  --fr-claim-border: #8A5A00;
+  --fr-claim-fg: #7A4F00;
+  --fr-claim-bg: #FFF8E6;
+
+  /* Type */
+  --fr-font-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fr-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --fr-text-body: 15px;
+  --fr-lh-body: 1.5;
+  --fr-text-small: 13px;
+  --fr-text-h1: 34px;
+  --fr-lh-h1: 1.15;
+  --fr-ls-h1: -0.02em;
+  --fr-text-h2: 18px;
+  --fr-text-card-title: 19px;
+  --fr-lh-card-title: 1.3;
+  --fr-text-eyebrow: 12px;
+  --fr-ls-eyebrow: 0.06em;
+
+  /* Radius */
+  --fr-radius-card: 12px;
+  --fr-radius-control: 8px;
+  --fr-radius-pill: 999px;
+
+  /* Sizing and layout */
+  --fr-touch: 44px;
+  --fr-sidebar-w: 232px;
+  --fr-content-max: 1160px;
+  --fr-content-pad-y: 32px;
+  --fr-content-pad-x: 40px;
+  --fr-content-pad-x-phone: 16px;
+  --fr-card-pad: 22px;
+  --fr-card-pad-tight: 20px;
+  --fr-gap-xs: 8px;
+  --fr-gap-sm: 12px;
+  --fr-gap: 16px;
+  --fr-gap-md: 20px;
+  --fr-gap-lg: 24px;
+  --fr-rail-w: 340px;
+  --fr-focus-ring: 0 0 0 2px var(--fr-surface), 0 0 0 4px var(--fr-accent);
+}
