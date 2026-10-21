@@ -35,6 +35,8 @@ curl localhost:8000/health
 | `make dedup` | Semantic dedup into clusters (no LLM calls) |
 | `make link` | Rule-based entity linking from names/aliases in `competitors.yaml` (no LLM calls) |
 | `make dedup-report` | Calibration report: most similar pairs, similarity distribution, entity link counts |
+| `make pipeline` | The daily pipeline (LangGraph), paid: `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
+| `make pipeline-report` | Quality report of the latest run (`RUN=<id>`): triage, distributions, cost per model, samples |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -46,7 +48,8 @@ All "what to track" settings are YAML, validated by Pydantic on load (`backend/a
 - `sources.yaml` – industry sources not tied to one competitor
 - `capabilities.yaml` – capability taxonomy by segment (artifact management, supply-chain security, MLOps, CI/CD, distribution)
 - `llm_routing.yaml` – model per task (bulk / synthesis / verify), embedding model + dimension, fallback pricing
-- `pipeline.yaml` – embedding input length and batch size; dedup window and similarity thresholds
+- `pipeline.yaml` – embedding input, dedup window and thresholds, LLM parallelism, text limits per stage,
+  confidence weights / caps / bands
 
 Adding a competitor = add a block to `competitors.yaml`, then `make seed`.
 
@@ -128,6 +131,53 @@ cross-source pair is 0.63, so the three sources don't report the same news yet; 
 pair (two GitHub Copilot deprecation notices, 0.89) stays apart as intended. 43 entity links, at most 3 per
 signal. `make dedup-report` shows the pairs and the similarity distribution for calibration.
 
+## Daily pipeline: triage, enrichment, verification, confidence
+
+`make pipeline` runs one LangGraph graph (`backend/app/pipeline/graph.py`):
+
+```
+collect → embed → dedup → link → triage → enrich → verify → score
+```
+
+One `pipeline_runs` row per run with counts per node. A failing node or signal is recorded and the run goes
+on (status `partial`); running out of LLM budget skips the remaining LLM stages.
+
+- **Triage** (`triage.v1`, cheap model): is this about JFrog's market (artifact management, supply-chain
+  security, MLOps, CI/CD, distribution)? When unsure the answer is yes, because a missed signal costs more than
+  an extra enrichment. Irrelevant signals are kept but hidden (`signals.relevant = false`), each with a reason.
+- **Enrich** (`enrich_signal.v1`, cheap model): category, 2–3 sentence summary, *why JFrog cares* (naming
+  JFrog products; when the news is JFrog's own, framed as positioning against competitors), impact 1–5 against a
+  written rubric, an evidence quote, vendor-claim flag, entities, new companies for the Competitor Radar, and
+  capabilities. The evidence quote must appear verbatim in the article; this is checked in code, retried once, then
+  flagged.
+- **Verify** (`verify_signal.v1`, a model from a *different provider*): is the summary supported by the source?
+  `supported` / `partial` / `unsupported`, with notes.
+- **Score**: confidence is computed in code, never by a model.
+
+**What confidence means:** how faithfully the signal reflects what its source says. It is *not* a judgement of
+whether the source's claim is true. Vendor marketing claims carry a separate "vendor claim" label and don't
+change confidence.
+
+```
+confidence = 0.45·verification + 0.25·source trust + 0.15·corroboration + 0.15·evidence quote
+verification: supported 1 · partial 0.5 · unsupported 0      corroboration: 1 source 0 · 2 sources 0.5 · 3+ 1
+caps: unsupported ≤ 0.30 · quote not verbatim ≤ 0.60          bands: high ≥ 0.75 · medium ≥ 0.50 · low
+```
+
+Weights, caps and bands are in `config/pipeline.yaml`; each signal stores its breakdown in `meta.score`.
+
+**Untrusted input:** article text is wrapped in a block tagged with the text's own hash, so the text can't close the
+block. Every prompt says the block is data, not instructions. The pipeline's own checks (verbatim quote, known
+entity and capability slugs only, a second model from another provider, confidence in code) hold even if a model
+follows injected text, and a test proves it.
+
+**First run** (56 in-scope signals, $0.13 total):
+- 26 relevant, 30 irrelevant
+- 24 enriched; 2 failed because output was cut off at the old 1,024-token limit
+- verification: 23 supported, 1 partial
+- confidence: 23 high, 1 medium
+- 0 unverified quotes
+
 ## LLM gateway (`backend/app/core/llm/`)
 
 Every LLM and embedding call goes through one module (LiteLLM underneath):
@@ -183,6 +233,11 @@ Each line: what we chose – why – what we rejected.
 - **D30 Embedding input** – title + first 2,000 chars of raw_text (`pipeline.yaml`), batched through the gateway; a model change re-embeds and re-clusters – rejected full text (cost, dilution) and embedding summaries (dedup runs before enrichment).
 - **D31 Dedup via the canonical** – a signal joins a cluster only at ≥ 0.85 similarity to its canonical signal (≥ 0.97 for the same source, also checked against same-source members), within ±14 days; canonical = highest trust, then earliest; duplicates kept and linked, re-runs change nothing – rejected single-link clustering (chaining), re-clustering every run, deleting duplicates.
 - **D32 Rule-based entity linking** – word-boundary matching of names/aliases with per-term rules in `competitors.yaml` (case-sensitive, min mentions, title suffices, disabled), longest match wins so products beat companies, primary = source entity or title, evidence in `meta.entity_links`; the LLM confirms in S6 – rejected LLM-only linking and rules in code.
+- **D33 LangGraph daily pipeline** – linear graph collect→…→score reusing the step functions; one run row with counts per node; failures isolated per node and per signal (thread pool, one transaction per signal); budget stop skips later LLM nodes; LangGraph pinned with a 14-day supply-chain cooldown, LangSmith tracing off – rejected a plain loop runner and per-stage transactions.
+- **D34 Triage favours recall** – cheap relevance gate per canonical signal, "if unsure, mark relevant"; `signals.relevant` (kept, hidden, not enriched) separate from the analyst's review status; every irrelevant signal listed with its reason – rejected overloading `status` and skipping triage.
+- **D35 Checked enrichment** – per-run schema with enum-validated entity/capability slugs; evidence quote verified verbatim in code (one retry, then flagged); the LLM confirms/corrects rule-based entity links; prompt version stored, re-enrich only on a new version or `--force` – rejected free-text entities and trusting the model's quote.
+- **D36 Confidence = fidelity to the source, computed in code** – weighted verification, source trust, corroboration and quote check with caps and bands from `pipeline.yaml`; vendor claims flagged separately (`is_claim`) – rejected LLM self-reported confidence and a "truth" score.
+- **D37 Prompt-injection defenses** – raw_text in a block tagged with its own hash, "data only" instructions, schema-constrained output, and code checks that hold even if the model obeys the injection – rejected random delimiters (break caching) and stripping instruction-like text.
 
 ## Repository layout
 
