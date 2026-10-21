@@ -235,4 +235,4 @@ def test_thinking_config_values():
     with pytest.raises(ValueError):
         catalog.LLMRoutingFile.model_validate(data)
     routing = load_llm_routing()
-    assert routing.tasks.bulk.thinking == "off" and routing.tasks.verify.thinking == "low"
+    assert routing.tasks.bulk.thinking == "off" and routing.tasks.verify.thinking == "off"

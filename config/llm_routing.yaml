@@ -25,7 +25,10 @@ tasks:
     # diff (#1055) and returned nothing. 4096 is a cap; cost follows actual tokens.
     max_tokens: 4096
     temperature: 0.0
-    thinking: low      # gpt-5.4-mini defaults to no reasoning; low = a little, for fact-checking
+    # off (S8 eval, D44): on the same 35 items "low" marked 18 partial vs 3 for off, mostly by
+    # judging the JFrog-side analysis it is told not to judge; it caught no factual error that
+    # off missed (one false alarm), and cost +56% with 2x latency.
+    thinking: "off"
 
 embedding:
   model: openai/text-embedding-3-small

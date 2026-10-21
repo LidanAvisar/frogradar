@@ -40,6 +40,11 @@ curl localhost:8000/health
 | `make wayback-backfill` | Baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today, diffed in date order (no LLM calls; `SOURCE=` for one) |
 | `make scheduler-up` / `make scheduler-down` | Opt in / out of the daily paid run (`scheduler` compose profile, `DAILY_RUN_CRON`, UTC) |
 | `make scheduler-logs` | Follow the scheduler's log |
+| `make eval-select` / `eval-pairs` | Eval set (40 signals) / dedup pairs (40, across similarity bands) → `eval/` (no LLM calls) |
+| `make eval-embed` | Embed the full catalog for dedup calibration (paid, ~$0.005) |
+| `make eval-label` | Silver labels from the synthesis model for the eval set and the pairs (paid, ~$0.70, cached) |
+| `make eval` | Eval pass (triage → enrich → verify + verifier thinking A/B) vs silver labels → `eval/results/` (paid for uncached items only; never writes to `signals`) |
+| `make eval-compare A=… B=…` | Headline metrics of two eval runs side by side |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -217,8 +222,9 @@ on (status `partial`); running out of LLM budget skips the remaining LLM stages.
   (a typo, a dropped word) is replaced by the real sentence it came from, but only for one sentence or two adjacent
   ones, at ≥ 90% similarity and ≥ 90% coverage, with the same numbers (`meta.quote_repaired`). Anything else is
   retried once, then flagged.
-- **Verify** (`verify_signal.v1`, a model from a *different provider*): is the summary supported by the source?
-  `supported` / `partial` / `unsupported`, with notes.
+- **Verify** (`verify_signal.v1`, a model from a *different provider*, thinking off – see
+  [Evaluation](#evaluation)): is the summary supported by the source? `supported` / `partial` / `unsupported`,
+  with notes.
 - **Score**: confidence is computed in code, never by a model.
 
 **What confidence means:** how faithfully the signal reflects what its source says. It is *not* a judgement of
@@ -244,6 +250,75 @@ follows injected text, and a test proves it.
 - verification: 23 supported, 1 partial
 - confidence: 23 high, 1 medium
 - 0 unverified quotes
+
+## Evaluation
+
+`make eval` measures the pipeline against reference labels and writes a report per run to `eval/results/`
+(latest: [`2026-10-21_…verify_signal.v1.md`](eval/results/2026-10-21_triage.v1_enrich_signal.v1_enrich_page_diff.v2_verify_signal.v1.md)).
+
+> **These are agreement scores with a stronger model, not human-verified accuracy.** The reference ("silver")
+> labels come from the synthesis model (Claude Sonnet 5.5), which is stronger than the bulk model (Claude Haiku 5.5)
+> that runs triage and enrichment, but it is still a model, and from the same provider as the writer.
+
+**How the set was built**
+- **40 signals**, stratified from the full catalog of 1,057 (fixed seed, `app/eval/select.py`): 19 from the 3
+  demo sources and 21 from inactive sources that the pipeline never processed; items the pipeline had kept and
+  dropped; one per category where possible; 3 pricing-page diffs; the known hard cases (#50, #77, #1005, #1053,
+  #1055).
+- **Silver labels** (`eval/silver_labels.csv`, `label_source` column): relevant, category, impact, primary entity.
+  The labeler's prompt (`silver_label.v1`) copies the scope, impact rubric and entity rule from the pipeline's own
+  prompts at render time, so both follow the same rules. It never sees a pipeline output. Unlike the pipeline's
+  triage it has no "if unsure, mark relevant" bias.
+- **40 dedup pairs** (`eval/dedup_pairs.csv`): cross-source pairs within the ±14-day window, sampled across
+  0.05-wide similarity bands from 0.60 to 0.95 (the 493 pairs in range thin out fast: 338 below 0.65, 4 above
+  0.85). Labeled `same_story` by the same model. Precision and recall are weighted by band size.
+- **The eval pass** runs the pipeline's own per-signal functions (`triage_one`, `enrich_one`, `verify_one`),
+  so prompts and cache keys are the pipeline's and re-runs are free. Results go to `eval/results/` only; the eval
+  never writes to `signals`. Verify runs a second time with the other thinking level for an A/B.
+- **No article text in the repo:** the committed files hold ids, titles, URLs, sources, dates, labels and
+  model-written reasons only. The labeler and the eval read `raw_text` from the database at run time (the
+  [raw_text rule](#design-decisions), D25).
+
+**Results** (run 2026-10-21; prompts triage.v1, enrich_signal.v1, enrich_page_diff.v2, verify_signal.v1)
+
+| Metric | Value | Notes |
+|---|---|---|
+| Triage recall | 100% (22/22) | No item the reference called relevant was dropped. |
+| Triage precision | 63% | 13 extra items (minor CLI releases, AI-coding opinion pieces): the recall bias at work (D34). |
+| Category agreement | 68% (15/22) | Most mismatches: feature_update ↔ product_launch (3). The prompt gives category names only, no definitions. |
+| Impact exact / within ±1 | 59% / 100% | Mean signed error +0.23: the pipeline rates slightly higher. |
+| Primary entity | 96% strict, 100% counting product ↔ parent company | |
+| Evidence quote verbatim | 100% of 35 | 11% needed one retry, 0 code repairs. |
+| Verifier partial (thinking low → off) | 51% → 9% | With low, 10 of 18 partials were only about the JFrog-side analysis. |
+| Verifier cost and latency (low → off) | $0.102 → $0.066 per 35 items; 2.1 s → 1.1 s median | |
+| Dedup cross-source threshold | 0.85: precision 100%, recall 33% | 0.80: precision 87%, recall 78%. |
+| Eval cost | $0.93 in total | Embedding $0.004, silver labels $0.71, eval pass $0.21. |
+
+**What changed because of it**
+- **Verifier thinking → off (D45).** On the same 35 items, "low" marked 18 partial and "off" marked 3. Reading the
+  disagreements: "low" judged the JFrog analysis it is told not to judge (Curation overlap, battlecard advice).
+  Its one "factual" catch (#189) was wrong. It found no factual error that "off" missed, and it cost 56% more at
+  twice the latency.
+- **Dedup threshold stays 0.85, now calibrated (D44).** It is the lowest threshold with precision ≥ 90%. At 0.80
+  recall rises to 78%, but the pair at 0.81 is two different vendors' VS Code scanner launches (Endor Labs vs
+  Socket). Merging them would hide one competitor's launch, so a missed merge (a duplicate shown twice) is the
+  cheaper error.
+
+**Limits**
+- Small: 40 items, 40 pairs, 10 same-story pairs. One item is worth 2.5 points.
+- Single labeler, and a model (silver, not gold). It was set up by the system's builder, and it comes from the
+  same provider as the writer, so shared blind spots are possible.
+- Stratified, not random. The numbers describe this mix, not the daily feed's. Dedup recall is measured only
+  inside [0.60, 0.95).
+
+**Production path:** analysts' Approve / Reject / Edit actions in the UI (S13) are gold labels. Each correction is
+stored with its reason code and becomes a labeled eval item (and a few-shot example). The eval set grows from
+daily use, and `make eval` can report human-verified accuracy next to the silver agreement.
+
+**Re-running and comparing:** `make eval-select eval-pairs eval-embed eval-label eval` rebuilds everything
+(paid steps print calls and cost first; `ARGS=--estimate` prints only). After a prompt change, `make eval` writes
+a new file named after the prompt versions; `make eval-compare A=old.json B=new.json` puts the headline metrics
+side by side.
 
 ## LLM gateway (`backend/app/core/llm/`)
 
@@ -284,8 +359,12 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
 - **Page-structure selectors break silently on redesigns.** `options.sections` (e.g. Sonatype's
   `[data-display=repo_cloud]`) targets a vendor's current markup. After a redesign the selectors can match nothing:
   extraction still works, but the Cloud / Self-Hosted labels disappear from the section paths and same-named
-  editions are mixed up again. Check the section paths after a page redesign (a health check that fails the source
-  is planned).
+  editions are mixed up again. Now caught: a live fetch where none of the configured sections match fails the
+  source ("options.sections matched nothing"); archived Wayback captures are exempt, because the sectioned layout
+  can be newer than the capture (Sonatype's 2025 page had no Cloud / Self-Hosted toggle).
+- **More verifier reasoning made it judge what it was told not to.** With thinking "low", GPT-5.4-mini marked half
+  the signals "partial", mostly for the JFrog-side analysis that `verify_signal.v1` says is not judged; with
+  thinking off it followed the rule (3 partials of 35) and caught the same factual issues.
 - **Hidden reasoning can eat the whole output budget.** GPT-5.4-mini with thinking "low" spent all 1,024
   `max_tokens` on reasoning for the largest diff and returned nothing; verify now has 4,096 (a cap, not a cost).
 - **A near-miss quote fix can change its meaning.** "Starting at $1,620 / year" against a source line saying
@@ -335,12 +414,15 @@ Each line: what we chose – why – what we rejected.
 - **D35 Checked enrichment** – per-run schema with enum-validated entity/capability slugs; evidence quote verified verbatim in code (one retry, then flagged); the LLM confirms/corrects rule-based entity links; prompt version stored, re-enrich only on a new version or `--force` – rejected free-text entities and trusting the model's quote.
 - **D36 Confidence = fidelity to the source, computed in code** – weighted verification, source trust, corroboration and quote check with caps and bands from `pipeline.yaml`; vendor claims flagged separately (`is_claim`) – rejected LLM self-reported confidence and a "truth" score.
 - **D37 Prompt-injection defenses** – raw_text in a block tagged with its own hash, "data only" instructions, schema-constrained output, and code checks that hold even if the model obeys the injection – rejected random delimiters (break caching) and stripping instruction-like text.
-- **D38 Soft limits and explicit thinking control** – explanation fields (triage reason, impact rationale, verify notes, unsupported claims) are truncated with "…" instead of failing validation; thinking set per task in `llm_routing.yaml` (bulk `off`, verify `low`) and part of the cache key; reasoning tokens stored per call. A/B on 5 signals: thinking off kept category 5/5 and impact 3/5 (others ±1) at ~40% lower cost with no cut-off outputs, but one evidence quote was stitched from two separate sentences (caught by the code check) – rejected raising limits (still fails on the next long note) and leaving thinking at the model default (hidden tokens, cut-off outputs).
+- **D38 Soft limits and explicit thinking control** – explanation fields (triage reason, impact rationale, verify notes, unsupported claims) are truncated with "…" instead of failing validation; thinking set per task in `llm_routing.yaml` (bulk `off`, verify `off` since D45) and part of the cache key; reasoning tokens stored per call. A/B on 5 signals: thinking off kept category 5/5 and impact 3/5 (others ±1) at ~40% lower cost with no cut-off outputs, but one evidence quote was stitched from two separate sentences (caught by the code check) – rejected raising limits (still fails on the next long note) and leaving thinking at the model default (hidden tokens, cut-off outputs).
 
 - **D39 Quote repair before retry** – a near-miss evidence quote is replaced by the real source span (one sentence or two adjacent ones) when similarity and coverage are both ≥ 0.9 and the numbers are identical; `meta.quote_repaired` – rejected similarity alone (a stitched quote would be "repaired" to its longest part) and repairing to any matching text (changes what the quote proves).
-- **D40 Page diffs: normalized line diff with a price rule and redesign mode** – structure path lines (headings, tab panels, configured sections) so price lines carry their product/edition; text format versioned per snapshot; snapshot only on a new hash; noise threshold except for price lines; moves ignored unless between plan sections; > 50% changed lines = redesign → price-lines-only diff or no signal; diff text with a format note; own prompt; quote from `[after]` only – rejected raw-HTML or visual diffs, a whole-page LLM comparison, and character thresholds that drop `$4 → $5`.
+- **D40 Page diffs: normalized line diff with a price rule and redesign mode** – structure path lines (headings, tab panels, configured sections) so price lines carry their product/edition; text format versioned per snapshot; snapshot only on a new hash; noise threshold except for price lines; moves ignored unless between plan sections; > 50% changed lines = redesign → price-lines-only diff or no signal; diff text with a format note; own prompt; quote from `[after]` only; a live page where none of the configured `options.sections` match fails the source (archived captures exempt) – rejected raw-HTML or visual diffs, a whole-page LLM comparison, and character thresholds that drop `$4 → $5`.
 - **D41 Wayback baseline** – closest CDX capture to ~12/6/3 months (±31 days), raw `id_` HTML, 5 s per request, captures that render differently (length < 50% of today's, or no price lines) reported and skipped; idempotent by capture timestamp – rejected archive.org's availability API (one capture per call, more requests) and diffing every capture.
 - **D42 Scheduler + advisory lock** – opt-in APScheduler service (compose profile `scheduler`, `make scheduler-up`; `make up` never starts paid runs), cron from `DAILY_RUN_CRON` (UTC), one Postgres advisory lock for pipeline, scheduler and backfill (released if the process dies), budget enforced by the gateway – rejected a `pipeline_runs` "running" check (stale after a crash), cron in the host, and Celery (a queue for one daily job).
+- **D43 Silver-label evaluation** – a stronger model (synthesis tier) labels a stratified 40-signal set and 40 dedup pairs, using the pipeline prompts' own rubric text and never seeing pipeline output; the eval runs the pipeline's per-signal functions (cached, never writes `signals`) and reports agreement, clearly labeled as not human accuracy; analyst feedback becomes gold labels in S13; no article text in committed eval files – rejected human labeling for this time box, having the bulk model grade itself, and committing excerpts.
+- **D44 Dedup cross-source threshold 0.85, calibrated** – lowest threshold with precision ≥ 90% on band-weighted silver pairs (precision 100%, recall ~33%); 0.80 merged two vendors' different launches – rejected 0.80 (better F1, but a false merge hides a story) and an unweighted top-40 sample (no data below 0.85).
+- **D45 Verifier thinking off** – on 35 items "low" gave 18 partials vs 3, mostly by judging the JFrog-side analysis it is told to skip, caught no factual error that "off" missed, and cost +56% at 2× latency – rejected keeping "low" and a verify prompt bump first (it would re-verify every signal for a problem the setting already removes).
 
 ## Repository layout
 
@@ -348,5 +430,5 @@ Each line: what we chose – why – what we rejected.
 backend/   FastAPI app (api, core, db, pipeline, agents, mcp, demo) + tests
 frontend/  Angular 18 app
 config/    competitors, sources, capabilities, LLM routing (YAML)
-eval/      labeled evaluation set
+eval/      silver-labelled eval set + dedup pairs (ids, titles, URLs, labels; no article text) and results/
 ```

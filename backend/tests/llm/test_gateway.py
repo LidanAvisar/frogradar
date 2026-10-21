@@ -149,18 +149,26 @@ def test_thinking_setting_is_sent_and_reasoning_tokens_recorded(
     fake_litellm.queue(
         {"content": GOOD, "tokens_out": 50, "reasoning_tokens": 30},
         {"content": GOOD, "tokens_out": 9},
+        {"content": GOOD, "tokens_out": 9},
     )
-    gw = make_gateway()  # real routing: bulk thinking "off", verify "low"
+    gw = make_gateway()  # real routing: bulk thinking "off", verify "off"
 
     gw.complete("bulk", "enrich_signal", MSGS, Answer)
     gw.complete("verify", "verify_signal", MSGS, Answer)
+    # Per-call override (eval A/B): another cache key, so a real call, with low reasoning.
+    assert not gw.cached("verify", MSGS, Answer, thinking="low")
+    gw.complete("verify", "verify_signal", MSGS, Answer, thinking="low")
 
-    bulk_call, verify_call = fake_litellm.calls
+    bulk_call, verify_call, low_call = fake_litellm.calls
     assert bulk_call["thinking"] == {"type": "disabled"} and "reasoning_effort" not in bulk_call
-    assert verify_call["reasoning_effort"] == "low" and "thinking" not in verify_call
-    first, second = _rows(llm_db)
+    assert verify_call["reasoning_effort"] == "none" and "thinking" not in verify_call
+    assert low_call["reasoning_effort"] == "low"
+    first, second, _ = _rows(llm_db)
     assert (first.tokens_out, first.tokens_reasoning) == (50, 30)
     assert second.tokens_reasoning is None  # provider gave no breakdown
+    # Both verify variants are cached now; the probe makes no call and writes no ledger row.
+    assert gw.cached("verify", MSGS, Answer) and gw.cached("verify", MSGS, Answer, thinking="low")
+    assert len(fake_litellm.calls) == 3 and len(_rows(llm_db)) == 3
 
 
 # ---------- reliability ----------

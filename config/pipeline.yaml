@@ -1,5 +1,6 @@
 # Pipeline stage settings (embed, dedup). Validated by app/core/catalog.py (PipelineFile).
-# Thresholds are cosine similarity (1 = identical). Calibrate with `make dedup-report`.
+# Thresholds are cosine similarity (1 = identical). Calibrate with `make dedup-report` and the
+# eval pairs (`make eval-pairs eval-label eval`, README "Evaluation").
 
 embedding:
   # Embedding input = title + the first max_chars characters of raw_text.
@@ -9,6 +10,8 @@ embedding:
 dedup:
   window_days: 14       # only signals published within ±window_days can be duplicates
   # A signal joins a cluster only if its similarity to the cluster's canonical signal reaches:
+  # Calibrated in S8 (D43) on 40 silver-labelled cross-source pairs: 0.85 is the lowest threshold
+  # with precision >= 0.9 (100%, recall ~33%); 0.80 would merge two vendors' different launches.
   cross_source_threshold: 0.85   # ...when they come from different sources
   same_source_threshold: 0.97    # ...when from the same source (templated changelog entries
                                  #    look alike but are different news)
