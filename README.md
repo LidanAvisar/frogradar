@@ -127,6 +127,12 @@ Pricing pages don't publish a feed, so FrogRadar keeps snapshots and reports wha
   "© 2026", "3 days ago", cookie and navigation lines removed; runs of very short lines joined (`$` `4`
   `per user/month` → `$ 4 per user/month`). Prices are never touched. Less than 500 characters left → the page
   probably needs JavaScript: the source fails, no snapshot.
+- **Structure:** headings (h2–h4), tab panels (ARIA `aria-labelledby`) and parts named in `options.sections`
+  (a CSS selector and a label, e.g. Sonatype's Cloud / Self-Hosted toggle) become path lines such as
+  `# Nexus Repository > Cloud > Pro Edition`. Without them, Sonatype's two "Pro Edition" prices (Cloud $1,950,
+  Self-Hosted $7,500) were indistinguishable. Each snapshot records its text format (`meta.normalizer`); snapshots
+  of different formats are never compared, and `make wayback-backfill` re-fetches archived captures to upgrade them
+  (`ONLY_AFTER=YYYY-MM-DD` limits which change signals it rewrites).
 - **Snapshots:** stored only when the normalized text changed (`page_snapshots`, with `captured_at` = when the page
   looked like this and `meta.origin` live / wayback).
 - **What counts as a change:** a line diff against the last snapshot that wasn't noise.
@@ -135,7 +141,9 @@ Pricing pages don't publish a feed, so FrogRadar keeps snapshots and reports wha
   - Changes under 40 characters are noise, except that any change to a price line counts (`$4` → `$5`). Small
     edits add up, because the next diff is still taken against the last non-noise snapshot.
   - More than 50% of lines changed = a **redesign**: the snapshot is stored and marked `page_restructured`, and
-    only the price lines of both versions are compared (`diff_mode: price_lines`). No price-line change → no signal.
+    only the price lines of both versions are compared (`diff_mode: price_lines`), each prefixed with its section
+    (`[Nexus Repository > Cloud > Pro Edition] Starting at $1,950 / year`). No price-line change → no signal. The
+    stored evidence quote is the page text only; the section goes to `meta.quote_section`.
 - **Signal:** title "Pricing page changed: <source>", dated to the later snapshot; its text is a readable diff of the
   changed sections only (`[before]`, `[after]`, `[context]` lines, a format note, and a list of features that moved
   between plans). It goes through triage → enrich → verify like any other signal, with its own prompt
@@ -153,7 +161,7 @@ Pricing pages don't publish a feed, so FrogRadar keeps snapshots and reports wha
 |---|---|
 | Sonatype, Oct → Apr | Nexus Repository editions renamed (Free → Community Edition, Premium → Nexus Repository + Repository Firewall) |
 | Sonatype, Apr → Jul | Redesign (70% of lines): per-user monthly prices ($18.67, $57.50 per user/month) replaced by yearly ones ("Starting at $1,620 / year + consumption") |
-| Sonatype, Jul → today | Redesign (75%): Nexus Repository Pro "$1,620 / year" → "$1,950 / year + consumption"; new "Pro Edition Starting at $7,500 / year" |
+| Sonatype, Jul → today | Redesign (71%): Nexus Repository split into Cloud and Self-Hosted; Cloud Pro Edition "$1,620 / year" → "$1,950 / year + consumption"; new Self-Hosted Pro Edition "$7,500 / year"; Lifecycle and SBOM Manager price cards removed |
 | GitHub, Oct → Apr | "Team discussions" removed from the plan features |
 | GitHub, Apr → Jul | Copilot add-on removed from the featured list; "GitHub sandbox (public preview)", usage-based, added |
 | GitHub, Jul → today | Secret scanning split into "AI detection for alerts" / "for push protection" (usage-based); trial renamed |
@@ -273,6 +281,8 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
   ("$4 per user/month $21 per user/month") shown next to a diff was reported as "$4 → $21" by the writer *and*
   accepted by the verifier. Diff text now carries a format note, context lines are labelled as unchanged, and
   the prompt says only `[before]` → `[after]` is a change.
+- **Hidden reasoning can eat the whole output budget.** GPT-5.4-mini with thinking "low" spent all 1,024
+  `max_tokens` on reasoning for the largest diff and returned nothing; verify now has 4,096 (a cap, not a cost).
 - **A near-miss quote fix can change its meaning.** "Starting at $1,620 / year" against a source line saying
   "$1,950" is 94% similar. Quote repair requires identical numbers.
 - **Wayback captures come gzip-encoded** with the `id_` URLs (httpx decodes them; raw curl doesn't), and
@@ -323,7 +333,7 @@ Each line: what we chose – why – what we rejected.
 - **D38 Soft limits and explicit thinking control** – explanation fields (triage reason, impact rationale, verify notes, unsupported claims) are truncated with "…" instead of failing validation; thinking set per task in `llm_routing.yaml` (bulk `off`, verify `low`) and part of the cache key; reasoning tokens stored per call. A/B on 5 signals: thinking off kept category 5/5 and impact 3/5 (others ±1) at ~40% lower cost with no cut-off outputs, but one evidence quote was stitched from two separate sentences (caught by the code check) – rejected raising limits (still fails on the next long note) and leaving thinking at the model default (hidden tokens, cut-off outputs).
 
 - **D39 Quote repair before retry** – a near-miss evidence quote is replaced by the real source span (one sentence or two adjacent ones) when similarity and coverage are both ≥ 0.9 and the numbers are identical; `meta.quote_repaired` – rejected similarity alone (a stitched quote would be "repaired" to its longest part) and repairing to any matching text (changes what the quote proves).
-- **D40 Page diffs: normalized line diff with a price rule and redesign mode** – snapshot only on a new hash; noise threshold except for price lines; moves ignored unless between plan sections; > 50% changed lines = redesign → price-lines-only diff or no signal; diff text with a format note; own prompt; quote from `[after]` only – rejected raw-HTML or visual diffs, a whole-page LLM comparison, and character thresholds that drop `$4 → $5`.
+- **D40 Page diffs: normalized line diff with a price rule and redesign mode** – structure path lines (headings, tab panels, configured sections) so price lines carry their product/edition; text format versioned per snapshot; snapshot only on a new hash; noise threshold except for price lines; moves ignored unless between plan sections; > 50% changed lines = redesign → price-lines-only diff or no signal; diff text with a format note; own prompt; quote from `[after]` only – rejected raw-HTML or visual diffs, a whole-page LLM comparison, and character thresholds that drop `$4 → $5`.
 - **D41 Wayback baseline** – closest CDX capture to ~12/6/3 months (±31 days), raw `id_` HTML, 5 s per request, captures that render differently (length < 50% of today's, or no price lines) reported and skipped; idempotent by capture timestamp – rejected archive.org's availability API (one capture per call, more requests) and diffing every capture.
 - **D42 Scheduler + advisory lock** – opt-in APScheduler service (compose profile `scheduler`, `make scheduler-up`; `make up` never starts paid runs), cron from `DAILY_RUN_CRON` (UTC), one Postgres advisory lock for pipeline, scheduler and backfill (released if the process dies), budget enforced by the gateway – rejected a `pipeline_runs` "running" check (stale after a crash), cron in the host, and Celery (a queue for one daily job).
 
