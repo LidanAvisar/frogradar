@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import select, update
 
-from app.core.llm import BudgetExceeded
+from app.core.llm import BudgetExceeded, load_prompt
 from app.db.enums import Relationship, Verification
 from app.db.models import Entity, Signal, Source, signal_capabilities, signal_entities
 from app.pipeline.enrich import enrich_signals
@@ -146,7 +146,8 @@ def test_enrich_writes_fields_links_and_capabilities(world):
 
     sig = _get(factory, sid)
     assert sig.category == "product_launch" and sig.impact == 4
-    assert sig.evidence_quote_verified is True and sig.enrich_prompt_version == "enrich_signal.v1"
+    assert sig.evidence_quote_verified is True
+    assert sig.enrich_prompt_version == load_prompt("enrich_signal").id
     assert sig.verification == Verification.PENDING and sig.enriched_at is not None
     # Source entity stays primary; the LLM's links replace the unconfirmed rule link.
     assert _links(factory, sid) == {
@@ -244,7 +245,7 @@ def test_verification_mapping(world):
     assert sig.verification_notes == (
         "Launch confirmed; the price is not in the source. Unsupported: costs $5"
     )
-    assert sig.meta["verify"]["prompt_version"] == "verify_signal.v1"
+    assert sig.meta["verify"]["prompt_version"] == load_prompt("verify_signal").id
     assert llm.calls[-1].task == "verify"  # the verify tier (a different provider)
 
 
@@ -473,7 +474,7 @@ def test_page_diff_signal_uses_the_diff_prompt_and_after_text_quotes(world):
     _run(factory, llm, triage_signals, enrich_signals)
 
     sig = _get(factory, sid)
-    assert sig.enrich_prompt_version == "enrich_page_diff.v2"
+    assert sig.enrich_prompt_version == load_prompt("enrich_page_diff").id
     assert llm.count("enrich_page_diff") == 2 and llm.count("enrich_signal") == 1  # other signal
     retry = [c for c in llm.calls if c.operation == "enrich_page_diff"][1]
     assert "[after] section" in retry.messages[-1]["content"]

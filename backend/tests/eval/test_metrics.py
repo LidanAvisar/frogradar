@@ -130,3 +130,10 @@ def test_dedup_sweep_falls_back_to_f1_when_no_threshold_is_precise():
     pairs = [(0.96, False, "x", 1), (0.9, True, "y", 1), (0.9, False, "y", 1)]
     sweep = metrics.dedup_sweep(pairs, min_precision=0.99)
     assert sweep["recommended"] is not None and "F1" in sweep["rule"]
+
+
+def test_claim_attribution_uses_the_v2_field_prefix():
+    s = metrics.attribute_claim("summary: It competes directly with JFrog Curation", SUMMARY, WHY)
+    assert s.field == "summary" and not s.analysis  # the verifier's own label wins
+    w = metrics.attribute_claim("why_jfrog_cares: overlaps with JFrog Curation", SUMMARY, WHY)
+    assert w.field == "why_jfrog_cares" and w.analysis

@@ -192,11 +192,18 @@ class ClaimSource:
 
 
 def attribute_claim(claim: str, summary: str, why: str, quote: str = "") -> ClaimSource:
-    """Which checked text an unsupported claim came from, by word overlap (heuristic).
+    """Which checked text an unsupported claim came from: the field prefix if the verifier gave
+    one (verify_signal.v2), else word overlap (heuristic).
 
     A claim counts as JFrog-side analysis if it overlaps most with why_jfrog_cares and mentions
     JFrog, its products or competitive-positioning terms that the summary does not use.
     """
+    low_claim, low_summary = claim.lower(), summary.lower()
+    jfrog_side = any(t in low_claim and t not in low_summary for t in ANALYSIS_TERMS)
+    # verify_signal.v2 names the field itself: "summary: …" / "why_jfrog_cares: …".
+    for field in ("summary", "why_jfrog_cares"):
+        if low_claim.startswith(field + ":"):
+            return ClaimSource(field, field == "why_jfrog_cares" and jfrog_side)
     cw = words(claim)
     if not cw:
         return ClaimSource("unclear", False)
@@ -208,8 +215,6 @@ def attribute_claim(claim: str, summary: str, why: str, quote: str = "") -> Clai
     best = max(scores, key=lambda k: scores[k])
     if scores[best] < 0.25:
         best = "unclear"
-    low_claim, low_summary = claim.lower(), summary.lower()
-    jfrog_side = any(t in low_claim and t not in low_summary for t in ANALYSIS_TERMS)
     if best != "why_jfrog_cares" and jfrog_side and scores["why_jfrog_cares"] >= 0.25:
         best = "why_jfrog_cares"  # a JFrog-side statement can only come from the analysis
     return ClaimSource(best, best == "why_jfrog_cares" and jfrog_side)

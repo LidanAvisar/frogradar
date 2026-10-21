@@ -214,7 +214,7 @@ def render(r: dict[str, Any]) -> str:
         f"Exact {fmt(i['exact'])}, within ±1 {fmt(i['within_1'])}, mean signed error "
         f"{num(i['mean_signed_error'])} (pipeline − silver; > 0 = the pipeline rates higher), "
         f"mean absolute error {num(i['mean_abs_error']).lstrip('+')}. Error distribution: "
-        + ", ".join(f"{k:+d}: {v}" for k, v in i["errors"].items())
+        + ", ".join(f"{int(k):+d}: {v}" for k, v in i["errors"].items())
         + ".",
         "",
     ]
@@ -265,7 +265,7 @@ def render(r: dict[str, Any]) -> str:
         + ", ".join(f"{k} {n}" for k, n in sorted(v["verdicts"].items()))
         + f". Partial or unsupported: {fmt(v['partial_or_unsupported'])}.",
         "",
-        f"Partials whose every unsupported claim is JFrog-side analysis (which verify_signal.v1 "
+        f"Partials whose every unsupported claim is JFrog-side analysis (which the verify prompt "
         f"says is not judged): **{v['analysis_only_partials']} of {v['partials']}** "
         f"({v['why_only_partials']} have all claims in why_jfrog_cares). Heuristic: word overlap "
         "with summary vs why_jfrog_cares, plus JFrog/positioning terms. Every partial:",

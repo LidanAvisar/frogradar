@@ -178,3 +178,15 @@ def test_compare_runs_flags_prompt_changes_and_label_differences():
     assert "50%" in out and "75%" in out and "WARNING" not in out
     b["set"] = {**b["set"], "items": 3}
     assert "WARNING" in report.compare_runs(a, b)
+
+
+def test_report_renders_again_from_its_saved_json(tmp_path, monkeypatch):
+    """JSON turns int keys (impact errors) into strings; re-rendering a saved run must work."""
+    import json
+
+    monkeypatch.setenv("EVAL_DIR", str(tmp_path))
+    r = _results()
+    r["impact"]["errors"] = {-1: 2, 0: 5}
+    path = report.write(r)
+    saved = json.loads(path.with_suffix(".json").read_text())
+    assert report.render(saved) + "\n" == path.read_text()
