@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/api/battlecards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Battlecards
+         * @description Tracked competitors for the switcher: those with a card first (by signal count), then the
+         *     rest ("no card yet").
+         */
+        get: operations["list_battlecards_api_battlecards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/brief": {
         parameters: {
             query?: never;
@@ -234,6 +255,23 @@ export interface components {
             /** Name */
             name: string;
             relationship: components["schemas"]["Relationship"];
+            /** Segments */
+            segments?: string[];
+            /** Slug */
+            slug: string;
+        };
+        /** BattlecardListItem */
+        BattlecardListItem: {
+            /**
+             * Generated At
+             * @description Latest card; null = no card yet
+             */
+            generated_at: string | null;
+            /** Name */
+            name: string;
+            relationship: components["schemas"]["Relationship"];
+            /** Signal Count */
+            signal_count: number;
             /** Slug */
             slug: string;
         };
@@ -686,6 +724,16 @@ export interface components {
              * @enum {string}
              */
             profile_status: "none" | "ok" | "rejected";
+            /**
+             * Relation
+             * @description JFrog relation used for ranking (null = no trusted profile relation)
+             */
+            relation?: ("threatens" | "complements" | "both" | "none") | null;
+            /**
+             * Relation Products
+             * @description JFrog product names the relation statement names
+             */
+            relation_products?: string[];
             /** Repo Url */
             repo_url: string | null;
             /** Score */
@@ -701,6 +749,16 @@ export interface components {
              * @enum {string}
              */
             status: "new" | "watching" | "approved" | "dismissed";
+            /**
+             * What It Is
+             * @description Profile statement (accepted profiles only)
+             */
+            what_it_is?: string | null;
+            /**
+             * Why Notable Now
+             * @description Profile statement (accepted profiles only)
+             */
+            why_notable_now?: string | null;
         };
         /** RadarCandidateOut */
         RadarCandidateOut: {
@@ -746,6 +804,16 @@ export interface components {
              * @enum {string}
              */
             profile_status: "none" | "ok" | "rejected";
+            /**
+             * Relation
+             * @description JFrog relation used for ranking (null = no trusted profile relation)
+             */
+            relation?: ("threatens" | "complements" | "both" | "none") | null;
+            /**
+             * Relation Products
+             * @description JFrog product names the relation statement names
+             */
+            relation_products?: string[];
             /** Repo Url */
             repo_url: string | null;
             /** Score */
@@ -759,6 +827,16 @@ export interface components {
              * @enum {string}
              */
             status: "new" | "watching" | "approved" | "dismissed";
+            /**
+             * What It Is
+             * @description Profile statement (accepted profiles only)
+             */
+            what_it_is?: string | null;
+            /**
+             * Why Notable Now
+             * @description Profile statement (accepted profiles only)
+             */
+            why_notable_now?: string | null;
         };
         /** RadarDismissIn */
         RadarDismissIn: {
@@ -774,6 +852,11 @@ export interface components {
         RadarListOut: {
             /** Items */
             items: components["schemas"]["RadarCandidateOut"][];
+            /**
+             * Lower Relevance Below
+             * @description Score below which (or with relation none) the UI lists a candidate under 'Lower relevance' (config/discovery.yaml radar.ui)
+             */
+            lower_relevance_below: number;
             /** Total */
             total: number;
         };
@@ -1183,6 +1266,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_battlecards_api_battlecards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BattlecardListItem"][];
+                };
+            };
+        };
+    };
     get_brief_api_brief_get: {
         parameters: {
             query?: {
@@ -1290,6 +1393,10 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string;
+                /** @description Comma list: threatens, both, complements, none, unknown (no relation) */
+                relation?: string | null;
+                /** @description Comma list: company, product, open_source_project */
+                kind?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -1307,14 +1414,12 @@ export interface operations {
                     "application/json": components["schemas"]["RadarListOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -1540,6 +1645,12 @@ export interface operations {
                 relevant?: boolean | null;
                 since?: string | null;
                 until?: string | null;
+                /** @description Relative window ending now (server clock, as the Brief stats) */
+                window?: ("24h" | "7d" | "30d" | "90d") | null;
+                /** @description page_diff = pricing pages */
+                kind?: ("article" | "page_diff") | null;
+                /** @description Include signals whose summary the verifier did not support */
+                include_unsupported?: boolean;
                 /** @description Full-text search */
                 q?: string | null;
                 page?: number;

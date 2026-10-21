@@ -10,6 +10,13 @@
           "relationship": {
             "$ref": "#/components/schemas/Relationship"
           },
+          "segments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -21,6 +28,47 @@
           "relationship"
         ],
         "title": "BattlecardEntity",
+        "type": "object"
+      },
+      "BattlecardListItem": {
+        "properties": {
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Latest card; null = no card yet",
+            "title": "Generated At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/Relationship"
+          },
+          "signal_count": {
+            "title": "Signal Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "relationship",
+          "signal_count",
+          "generated_at"
+        ],
+        "title": "BattlecardListItem",
         "type": "object"
       },
       "BattlecardOut": {
@@ -1256,6 +1304,32 @@
             "title": "Profile Status",
             "type": "string"
           },
+          "relation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "threatens",
+                  "complements",
+                  "both",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "JFrog relation used for ranking (null = no trusted profile relation)",
+            "title": "Relation"
+          },
+          "relation_products": {
+            "description": "JFrog product names the relation statement names",
+            "items": {
+              "type": "string"
+            },
+            "title": "Relation Products",
+            "type": "array"
+          },
           "repo_url": {
             "anyOf": [
               {
@@ -1305,6 +1379,30 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "what_it_is": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profile statement (accepted profiles only)",
+            "title": "What It Is"
+          },
+          "why_notable_now": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profile statement (accepted profiles only)",
+            "title": "Why Notable Now"
           }
         },
         "required": [
@@ -1438,6 +1536,32 @@
             "title": "Profile Status",
             "type": "string"
           },
+          "relation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "threatens",
+                  "complements",
+                  "both",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "JFrog relation used for ranking (null = no trusted profile relation)",
+            "title": "Relation"
+          },
+          "relation_products": {
+            "description": "JFrog product names the relation statement names",
+            "items": {
+              "type": "string"
+            },
+            "title": "Relation Products",
+            "type": "array"
+          },
           "repo_url": {
             "anyOf": [
               {
@@ -1480,6 +1604,30 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "what_it_is": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profile statement (accepted profiles only)",
+            "title": "What It Is"
+          },
+          "why_notable_now": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Profile statement (accepted profiles only)",
+            "title": "Why Notable Now"
           }
         },
         "required": [
@@ -1545,6 +1693,11 @@
             "title": "Items",
             "type": "array"
           },
+          "lower_relevance_below": {
+            "description": "Score below which (or with relation none) the UI lists a candidate under 'Lower relevance' (config/discovery.yaml radar.ui)",
+            "title": "Lower Relevance Below",
+            "type": "number"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -1552,7 +1705,8 @@
         },
         "required": [
           "items",
-          "total"
+          "total",
+          "lower_relevance_below"
         ],
         "title": "RadarListOut",
         "type": "object"
@@ -2774,6 +2928,32 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/battlecards": {
+      "get": {
+        "description": "Tracked competitors for the switcher: those with a card first (by signal count), then the\nrest (\"no card yet\").",
+        "operationId": "list_battlecards_api_battlecards_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BattlecardListItem"
+                  },
+                  "title": "Response List Battlecards Api Battlecards Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Battlecards",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
     "/api/brief": {
       "get": {
         "operationId": "get_brief_api_brief_get",
@@ -2934,6 +3114,42 @@
             }
           },
           {
+            "description": "Comma list: threatens, both, complements, none, unknown (no relation)",
+            "in": "query",
+            "name": "relation",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma list: threatens, both, complements, none, unknown (no relation)",
+              "title": "Relation"
+            }
+          },
+          {
+            "description": "Comma list: company, product, open_source_project",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma list: company, product, open_source_project",
+              "title": "Kind"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -2958,14 +3174,7 @@
             "description": "Successful Response"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "List Candidates",
@@ -3336,6 +3545,64 @@
                 }
               ],
               "title": "Until"
+            }
+          },
+          {
+            "description": "Relative window ending now (server clock, as the Brief stats)",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "24h",
+                    "7d",
+                    "30d",
+                    "90d"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Relative window ending now (server clock, as the Brief stats)",
+              "title": "Window"
+            }
+          },
+          {
+            "description": "page_diff = pricing pages",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "article",
+                    "page_diff"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "page_diff = pricing pages",
+              "title": "Kind"
+            }
+          },
+          {
+            "description": "Include signals whose summary the verifier did not support",
+            "in": "query",
+            "name": "include_unsupported",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Include signals whose summary the verifier did not support",
+              "title": "Include Unsupported",
+              "type": "boolean"
             }
           },
           {
