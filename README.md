@@ -446,8 +446,7 @@ All three reuse the Brief's components and tokens; every claim links to its sour
   ![Sonatype battlecard, 1440 px](docs/screenshots/battlecard-sonatype-1440.png)
 - **Radar (`/radar`, `/radar/:id`):** candidates by emergence score with status / JFrog relation / kind filters
   (in the URL), "what it is" and "why now" from the verified profile, the relation chip with the JFrog products
-  (marked "partly verified" when the ranking uses a relation statement the verifier found only partly supported –
-  that statement itself is not shown), and the score as a number, a stacked bar (decorative) and the same
+  (marked "partly verified" when the verifier found the relation statement only partly supported), and the score as a number, a stacked bar (decorative) and the same
   breakdown as text. Candidates below `radar.ui.lower_relevance_below` (config/discovery.yaml, 35) or with relation
   "none" are collapsed under "Lower relevance (N)"; the Radar nav pill counts only new candidates in the top
   section (same rule, in SQL, tested against the list). The detail page shows the cited profile, mentions, metrics, the
@@ -645,9 +644,9 @@ findings become intelligence.
 
 - **(a) GitGuardian before → after:** relation **none → complements** (Artifactory package-registry and container
   registry secret scanning, partly verified), score **37.3 → 70.8**, mentions 1 → 7. The old profile said "the
-  signals don't describe its products". The new profile was rejected by its own check: the verifier marked every
-  statement partial (e.g. "developer workstations" isn't in the sources), so only "why notable now" is shown and
-  the relation counts as partly verified (the S11 verifier-strictness issue).
+  signals don't describe its products". The verifier marked four of the five new statements partial (e.g.
+  "developer workstations" isn't in the sources). Under the old radar rule that rejected the profile; since the
+  re-check below they are shown as Partly verified with the verifier's notes (see Competitor Radar).
 - **(b) Sonatype matrix cell "Contextual / reachability analysis": unknown → full**, evidence = the approved finding
   from help.sonatype.com (Java/JVM, JavaScript/Node.js, .NET; Reachable / Not Reachable labels). The new card also
   lists two weaknesses (no container targets; call-path evidence only for Java) and an opportunity for JFrog.
@@ -656,7 +655,8 @@ Finished mission: [1440 px](docs/screenshots/mission-finished-1440.png), [390 px
 running at [390 px](docs/screenshots/mission-running-390.png); run (b): [1440 px](docs/screenshots/mission-reachability-finished-1440.png).
 
 Known limits: duplicates are removed within one sub-question only (run (b) found the same fact three times);
-"not found" can still come back as a low-confidence finding; the radar profile's verifier is strict; the worker is
+"not found" can still come back as a low-confidence finding; the radar profile's verifier is strict (most
+statements come back partly verified); the worker is
 in-process (one mission at a time, no resume after a restart); the SSRF check resolves DNS separately from the
 HTTP client (a rebinding host could answer differently).
 
@@ -729,7 +729,7 @@ recency           0.15  0.5 ^ (days since last mention / 14)
 ```
 "Weighted" means each mention or source counts by credibility: press and official 1.0, community and GitHub 0.5,
 discovery sources (HN, GitHub search, CNCF) 0.35. One viral HN post adds at most 5 points. The profile's JFrog
-relation counts if the statement was kept, or dropped only as "partial" (the core is right). A candidate whose
+relation counts if the statement was kept (supported or partly verified). A candidate whose
 relation is "none" never appears in the Brief teaser. Star velocity is the difference between snapshots; on the
 first sighting it is stars ÷ repo age (the breakdown says which).
 
@@ -738,7 +738,20 @@ first sighting it is stars ÷ repo age (the breakdown says which).
 none + JFrog products), stage and why it is notable now. Each statement cites signal ids. Code drops any
 statement citing an id it wasn't given. `verify_profile.v2` (verify model, other family) judges each statement
 against the cited signals' text, the same excerpt the writer saw, with JFrog's product list as trusted context.
-Only `supported` statements are kept; if "what it is" fails, the profile is rejected.
+Same rule as research missions (check rule 2, S15): `supported` statements are shown as Verified; `partial` ones
+(core right, a detail missing or overstated) are kept and shown as **Partly verified** with the verifier's note,
+medium confidence at most; only `unsupported` statements (and invalid citations) are dropped. A profile is
+rejected only if "what it is" is dropped. `make radar-recheck` moved the 11 stored profiles to this rule without
+an LLM call (the verdicts and notes were stored): GitGuardian, Code Genome Project and StepSecurity went from
+rejected to shown; VoidZero and abundant.ai stay rejected ("what it is" unsupported). Scores didn't change: the
+ranking already counted partial relations.
+
+![GitGuardian radar profile after the re-check, 1440 px](docs/screenshots/radar-gitguardian-1440.png)
+
+GitGuardian ([390 px](docs/screenshots/radar-gitguardian-390.png)): what it is, segments, JFrog relation
+(complements JFrog Advanced Security, Artifactory, Xray) and stage are Partly verified, each with what wasn't
+confirmed (e.g. "developer workstations or CI/CD pipelines" aren't in the cited sources); why notable now is
+Verified. Mentions from research missions show "Research mission #N" as their source.
 
 **Analyst actions** (`/api/radar`): list by score (filters `status`, `relation`, `kind`), detail (cited statements, mentions, merges), `watch`,
 `approve` (creates an entity `discovered_by radar`, relationship competitor by default, aliases from merged names,
@@ -768,6 +781,9 @@ mid-table until more evidence arrives.
   calls (60/hour unauthenticated).
 - Star velocity is an average over the repo's age until a second daily snapshot exists.
 - Discovery signals are not verified one by one; only the profile statements are.
+- Research missions' SSRF guard resolves a host's DNS in the check and the HTTP client resolves it again when it
+  connects (lookup separate from connect). A host that answers with a public address first and a private one
+  second (DNS rebinding) could get through. Closing it means connecting to the checked IP (pinning).
 
 ## LLM gateway (`backend/app/core/llm/`)
 
@@ -912,7 +928,7 @@ Each line: what we chose – why – what we rejected.
 - **D57 Discovery sources feed the Radar only** – HN (title search, typo tolerance off), GitHub repos created in the last 90 days (code noise filter, star snapshots), CNCF landscape copies diffed for new names; discovery items get a stricter triage (`triage_discovery.v1`: the product itself must operate in a JFrog segment) and are enriched (`enrich_discovery.v1`) but not verified one by one, not deduped against news and never shown in the Brief / feed / battlecards – rejected scraping product directories, whole-org scans and verifying every post.
 - **D58 Conservative candidate resolution** – normalized name keys; skip anything matching a tracked name / alias / website / GitHub org / the ignore list; attach by key, repo, host, or fuzzy only when name ratio ≥ 0.92 AND embedding cosine ≥ 0.90; merges logged; decided candidates never absorbed; only an analyst's approve creates an entity – rejected LLM resolution and embedding-only matching.
 - **D59 Emergence score in code (v2: relevance first)** – relevance to JFrog 0.35 (enrich impact, then the profile's relation), credibility-weighted mentions 0.10 and sources 0.20, velocity 0.10, traction 0.10 with HN points capped, recency 0.15; weights in config, breakdown stored and shown; "none" candidates never teased – rejected v1's segment overlap (full points for 94% of candidates), an LLM "threat score" and raw star counts.
-- **D60 Checked radar profiles** – bulk writer, five cited statements, code citation check, verify model against the cited signals' text (same excerpt) with JFrog's product list as trusted context; relation "none" allowed (v2) – rejected checking against the unverified enrich summaries.
+- **D60 Checked radar profiles** – bulk writer, five cited statements, code citation check, verify model against the cited signals' text (same excerpt) with JFrog's product list as trusted context; relation "none" allowed (v2); partial statements kept and labelled since D74 – rejected checking against the unverified enrich summaries.
 - **D61 First write endpoints without auth** – watch / approve / dismiss with feedback rows; approve creates an entity and an optional disabled GitHub source; auth is a known limitation – rejected auto-activating sources.
 - **D62 Radar list from the API, threshold in config** – the list returns the profile's statements, the ranking relation with its JFrog products and the verifier's check (supported / partial), plus `lower_relevance_below` from config; the nav pill counts only the top section (same rule); relation and kind filters in SQL – rejected a hard-coded threshold in the UI and showing partial statements as fact.
 - **D63 Signals filters match the Brief** – `window` computed on the server clock and unsupported summaries hidden by default, so each Brief tile equals its Signals total; all filters live in the URL – rejected client-computed dates and component-only filter state.
@@ -924,6 +940,7 @@ Each line: what we chose – why – what we rejected.
 - **D70 Scorecard and gold labels from reviews** – the scorecard classifies each reviewed signal by its current state (approved as is / corrected / rejected) with per-field rates and per-week figures; `make eval-gold` exports reviews in the silver-label format and `make eval --labels` scores against them – rejected counting raw feedback rows (re-corrections would double count).
 - **D71 Research missions: plan gate, LangGraph loop, in-process worker** – the plan waits for the analyst; per sub-question search (own knowledge + Tavily) → read → extract (bulk, quote checked in code) → verify (other provider) → report citing kept findings only; budget, max steps, wall clock and Stop checked before every counted step, a limit jumps to a no-LLM report; one worker thread, interrupted missions failed on startup – rejected an autonomous tool-calling loop (unbounded cost, no plan review), a task queue service (Celery/Redis for one job type) and LangGraph checkpoints (resume not needed yet).
 - **D72 SSRF guard on every hop** – scheme, credentials, port and every resolved address checked before each request (page, robots.txt, redirects), plus size / time / redirect / content-type caps; blocked URLs are step notes – rejected a domain allow-list (missions must reach new vendors) and checking only the first URL (redirects reach internal hosts).
+- **D74 One verification rule for missions and radar profiles** – `partial` is kept and labelled "Partly verified" with the verifier's note, never high confidence; only `unsupported` is dropped; a radar profile is rejected only when "what it is" is dropped; stored profiles moved with `make radar-recheck` from the stored verdicts – rejected re-verifying every profile (cost, and a new sample of the same verdicts) and keeping the stricter radar-only rule.
 - **D73 Findings become signals only when an analyst approves** – a verified finding is a candidate; approve creates a source-less signal with `mission_id` (approved, its verification, checked quote, company + capability links) or links the existing signal; partly verified stays labelled and capped at medium confidence; radar findings join the candidate's mentions – rejected auto-publishing verified findings and re-running enrichment on them.
 - **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
