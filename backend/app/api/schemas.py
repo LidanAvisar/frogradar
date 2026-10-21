@@ -134,7 +134,11 @@ class BriefOut(BaseModel):
     headline: str | None = Field(None, description="From the latest daily_brief report, if any")
     overview: str | None = Field(None, description="From the latest daily_brief report, if any")
     top: list[RankedSignalOut]
-    since_yesterday: list[SinceYesterdayItem]
+    since_yesterday: list[SinceYesterdayItem] = Field(
+        description="New in the last 24h, without the signals already in top"
+    )
+    since_yesterday_total: int = Field(description="All new signals, including those in top")
+    since_yesterday_high_impact: int = Field(description="New signals with impact >= 4")
     filtered_not_relevant: int
     pricing_watch: list[PricingItem]
     pipeline: PipelineInfo
@@ -148,6 +152,22 @@ class EntityOut(BaseModel):
     is_self: bool
     signal_count: int
     last_signal_at: datetime | None
+
+
+class SelfOut(BaseModel):
+    """Our own company (JFrog) and the terms the UI highlights as its products."""
+
+    slug: str
+    name: str
+    product_terms: list[str] = Field(
+        description="Full product names and aliases, longest first: always ours"
+    )
+    bare_terms: list[str] = Field(
+        description=(
+            "Product names without the company prefix ('Advanced Security'), longest first: ours "
+            "unless another capitalized word comes right before ('GitHub Advanced Security')"
+        )
+    )
 
 
 class NavCounts(BaseModel):

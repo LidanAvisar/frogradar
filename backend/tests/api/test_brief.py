@@ -60,15 +60,17 @@ def test_top_excludes_unshowable_signals(client, build):
 
 
 def test_since_yesterday_uses_publish_date(client, build):
-    fresh = build.signal("fresh", hours_ago=5, impact=2)
-    high = build.signal("fresh high", hours_ago=20, impact=5)
+    # Pending verification: new, but never in the Top 5, so the list isn't deduped here.
+    pending = {"verification": Verification.PENDING}
+    fresh = build.signal("fresh", hours_ago=5, impact=2, **pending)
+    high = build.signal("fresh high", hours_ago=20, impact=5, **pending)
     # Backfilled: published three weeks ago but fetched an hour ago. Not new.
-    backfilled = build.signal("backfilled", hours_ago=24 * 21, fetched_hours_ago=1)
+    backfilled = build.signal("backfilled", hours_ago=24 * 21, fetched_hours_ago=1, **pending)
     # No publish date: falls back to fetched_at.
-    undated = build.signal("undated", published=False, fetched_hours_ago=3)
-    old_undated = build.signal("old undated", published=False, fetched_hours_ago=30)
-    build.signal("yesterday-ish", hours_ago=25)
-    build.signal("irrelevant", hours_ago=1, relevant=False)
+    undated = build.signal("undated", published=False, fetched_hours_ago=3, **pending)
+    old_undated = build.signal("old undated", published=False, fetched_hours_ago=30, **pending)
+    build.signal("yesterday-ish", hours_ago=25, **pending)
+    build.signal("irrelevant", hours_ago=1, relevant=False, **pending)
 
     items = brief(client)["since_yesterday"]
     ids = [i["id"] for i in items]
@@ -172,3 +174,27 @@ def test_headline_from_latest_daily_brief(client, build):
 def test_invalid_params(client):
     assert client.get("/api/brief", params={"days": 0}).status_code == 422
     assert client.get("/api/brief", params={"limit": 50}).status_code == 422
+
+
+def test_since_yesterday_leaves_out_top_but_counts_it(client, build):
+    in_top = build.signal("in top", hours_ago=2, impact=5)
+    only_new = [build.signal(f"new {i}", hours_ago=3, impact=2) for i in range(2)]
+    build.signal("old", hours_ago=24 * 3, impact=1)
+
+    data = brief(client, limit=1)
+
+    assert [t["id"] for t in data["top"]] == [in_top.id]
+    assert {i["id"] for i in data["since_yesterday"]} == {s.id for s in only_new}
+    assert data["since_yesterday_total"] == 3
+    assert data["since_yesterday_high_impact"] == 1
+
+
+def test_pricing_watch_ordered_by_impact_then_date(client, build):
+    meta = {"kind": "page_diff"}
+    pages = [build.source(f"P{i}", method=FetchMethod.PAGE_DIFF) for i in range(3)]
+    low_new = build.signal("low new", source=pages[0], hours_ago=1, impact=2, meta=meta)
+    high_old = build.signal("high old", source=pages[1], hours_ago=24 * 20, impact=4, meta=meta)
+    high_new = build.signal("high new", source=pages[2], hours_ago=24 * 2, impact=4, meta=meta)
+
+    ids = [i["signal"]["id"] for i in brief(client)["pricing_watch"]]
+    assert ids == [high_new.id, high_old.id, low_new.id]

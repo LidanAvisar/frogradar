@@ -20,5 +20,6 @@ export type PriceChange = Schemas['PriceChange'];
 export type PipelineInfo = Schemas['PipelineInfo'];
 export type Entity = Schemas['EntityOut'];
 export type NavCounts = Schemas['NavCounts'];
+export type SelfInfo = Schemas['SelfOut'];
 export type SignalCategory = Schemas['SignalCategory'];
 export type Verification = Schemas['Verification'];

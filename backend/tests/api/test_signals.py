@@ -138,3 +138,30 @@ def test_nav_counts(client, build):
     build.signal("approved", status=ReviewStatus.APPROVED)
     build.signal("irrelevant", relevant=False)
     assert client.get("/api/nav").json() == {"signals": 2, "review_queue": 1}
+
+
+def test_self_product_terms(client, build):
+    jfrog = build.entity("jfrog", "JFrog", relationship=Relationship.SELF, is_self=True)
+    build.entity("jfrog-xray", "JFrog Xray", parent=jfrog, aliases=["Xray"])
+    build.entity("jfrog-advanced-security", "JFrog Advanced Security", parent=jfrog)
+    build.entity("jfrog-ml", "JFrog ML", parent=jfrog, aliases=["Qwak"])
+    other = build.entity("github", "GitHub")
+    build.entity("github-actions", "GitHub Actions", parent=other)
+
+    data = client.get("/api/self").json()
+
+    assert data["slug"] == "jfrog"
+    # Longest first; "ML" alone is too short; other companies' products are not included.
+    assert data["product_terms"] == [
+        "JFrog Advanced Security",
+        "JFrog Xray",
+        "JFrog ML",
+        "Qwak",
+        "Xray",
+    ]
+    assert data["bare_terms"] == ["Advanced Security"]  # "Xray" is an alias, so not bare
+
+
+def test_self_404_without_self_entity(client, build):
+    build.entity("github", "GitHub")
+    assert client.get("/api/self").status_code == 404

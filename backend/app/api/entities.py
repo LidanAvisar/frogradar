@@ -1,12 +1,12 @@
 """GET /api/entities (tracked companies with signal counts) and GET /api/nav (sidebar counts)."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import aliased
 
 from app.api.deps import DbSession
 from app.api.queries import event_time, visible
-from app.api.schemas import EntityOut, NavCounts
+from app.api.schemas import EntityOut, NavCounts, SelfOut
 from app.db.enums import EntityReviewStatus, EntityType, ReviewStatus
 from app.db.models import Entity, Signal, signal_entities
 
@@ -60,4 +60,37 @@ def nav_counts(session: DbSession) -> NavCounts:
     return NavCounts(
         signals=session.scalar(base) or 0,
         review_queue=session.scalar(base.where(Signal.status == ReviewStatus.NEW)) or 0,
+    )
+
+
+# Bare product names shorter than this ("ML") are too generic to highlight on their own.
+MIN_BARE_TERM = 4
+
+
+@router.get("/self", response_model=SelfOut, responses={404: {}})
+def get_self(session: DbSession) -> SelfOut:
+    company = session.scalar(
+        select(Entity).where(Entity.is_self, Entity.type == EntityType.COMPANY)
+    )
+    if company is None:
+        raise HTTPException(status_code=404, detail="No self entity configured")
+    products = session.scalars(select(Entity).where(Entity.parent_id == company.id)).all()
+    prefix = f"{company.name} "
+    terms: set[str] = set()
+    bare: set[str] = set()
+    for p in products:
+        terms.add(p.name)
+        terms.update(a for a in p.aliases if a)
+        short = p.name.removeprefix(prefix)
+        if short != p.name and len(short) >= MIN_BARE_TERM:
+            bare.add(short)
+
+    def longest_first(items: set[str]) -> list[str]:
+        return sorted(items, key=lambda t: (-len(t), t))
+
+    return SelfOut(
+        slug=company.slug,
+        name=company.name,
+        product_terms=longest_first(terms),
+        bare_terms=longest_first(bare - terms),
     )

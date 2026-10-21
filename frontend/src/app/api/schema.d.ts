@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/self": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Self */
+        get: operations["get_self_api_self_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/signals": {
         parameters: {
             query?: never;
@@ -132,8 +149,21 @@ export interface components {
             pipeline: components["schemas"]["PipelineInfo"];
             /** Pricing Watch */
             pricing_watch: components["schemas"]["PricingItem"][];
-            /** Since Yesterday */
+            /**
+             * Since Yesterday
+             * @description New in the last 24h, without the signals already in top
+             */
             since_yesterday: components["schemas"]["SinceYesterdayItem"][];
+            /**
+             * Since Yesterday High Impact
+             * @description New signals with impact >= 4
+             */
+            since_yesterday_high_impact: number;
+            /**
+             * Since Yesterday Total
+             * @description All new signals, including those in top
+             */
+            since_yesterday_total: number;
             /** Top */
             top: components["schemas"]["RankedSignalOut"][];
             window: components["schemas"]["BriefWindow"];
@@ -337,6 +367,26 @@ export interface components {
          */
         RunStatus: "running" | "succeeded" | "partial" | "failed";
         /**
+         * SelfOut
+         * @description Our own company (JFrog) and the terms the UI highlights as its products.
+         */
+        SelfOut: {
+            /**
+             * Bare Terms
+             * @description Product names without the company prefix ('Advanced Security'), longest first: ours unless another capitalized word comes right before ('GitHub Advanced Security')
+             */
+            bare_terms: string[];
+            /** Name */
+            name: string;
+            /**
+             * Product Terms
+             * @description Full product names and aliases, longest first: always ours
+             */
+            product_terms: string[];
+            /** Slug */
+            slug: string;
+        };
+        /**
          * SignalCategory
          * @enum {string}
          */
@@ -517,6 +567,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NavCounts"];
                 };
+            };
+        };
+    };
+    get_self_api_self_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

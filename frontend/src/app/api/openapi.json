@@ -47,11 +47,22 @@
             "type": "array"
           },
           "since_yesterday": {
+            "description": "New in the last 24h, without the signals already in top",
             "items": {
               "$ref": "#/components/schemas/SinceYesterdayItem"
             },
             "title": "Since Yesterday",
             "type": "array"
+          },
+          "since_yesterday_high_impact": {
+            "description": "New signals with impact >= 4",
+            "title": "Since Yesterday High Impact",
+            "type": "integer"
+          },
+          "since_yesterday_total": {
+            "description": "All new signals, including those in top",
+            "title": "Since Yesterday Total",
+            "type": "integer"
           },
           "top": {
             "items": {
@@ -69,6 +80,8 @@
           "window",
           "top",
           "since_yesterday",
+          "since_yesterday_total",
+          "since_yesterday_high_impact",
           "filtered_not_relevant",
           "pricing_watch",
           "pipeline"
@@ -648,6 +661,43 @@
         "title": "RunStatus",
         "type": "string"
       },
+      "SelfOut": {
+        "description": "Our own company (JFrog) and the terms the UI highlights as its products.",
+        "properties": {
+          "bare_terms": {
+            "description": "Product names without the company prefix ('Advanced Security'), longest first: ours unless another capitalized word comes right before ('GitHub Advanced Security')",
+            "items": {
+              "type": "string"
+            },
+            "title": "Bare Terms",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_terms": {
+            "description": "Full product names and aliases, longest first: always ours",
+            "items": {
+              "type": "string"
+            },
+            "title": "Product Terms",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "product_terms",
+          "bare_terms"
+        ],
+        "title": "SelfOut",
+        "type": "object"
+      },
       "SignalCategory": {
         "enum": [
           "product_launch",
@@ -1112,6 +1162,30 @@
           }
         },
         "summary": "Nav Counts",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/self": {
+      "get": {
+        "operationId": "get_self_api_self_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelfOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "summary": "Get Self",
         "tags": [
           "entities"
         ]

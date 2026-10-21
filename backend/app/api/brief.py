@@ -37,6 +37,7 @@ router = APIRouter(prefix="/api", tags=["brief"])
 SINCE_YESTERDAY_MAX = 10
 PRICING_WATCH_DAYS = 90
 PRICING_WATCH_MAX = 4
+HIGH_IMPACT = 4
 FEED_METHODS = (FetchMethod.RSS, FetchMethod.GITHUB, FetchMethod.WEB)
 
 
@@ -71,15 +72,21 @@ def get_brief(
 
     # New = published in the last 24h. Backfilled old articles fetched today don't count;
     # fetched_at is used only when the source gave no publish date.
+    is_new = (
+        visible(),
+        Signal.relevant.is_(True),
+        Signal.verification != Verification.UNSUPPORTED,
+        event_time() >= now - timedelta(hours=24),
+        event_time() <= now,
+    )
+    new_total, new_high = session.execute(
+        select(func.count(), func.count().filter(Signal.impact >= HIGH_IMPACT)).where(*is_new)
+    ).one()
+    # The list leaves out what the Top 5 already shows; the totals above count everything new.
+    top_ids = [t.id for t in top]
     new_rows = session.scalars(
         select(Signal)
-        .where(
-            visible(),
-            Signal.relevant.is_(True),
-            Signal.verification != Verification.UNSUPPORTED,
-            event_time() >= now - timedelta(hours=24),
-            event_time() <= now,
-        )
+        .where(*is_new, Signal.id.not_in(top_ids))
         .order_by(Signal.impact.desc().nulls_last(), event_time().desc(), Signal.id.desc())
         .limit(SINCE_YESTERDAY_MAX)
     ).all()
@@ -109,6 +116,8 @@ def get_brief(
         **_headline(session),
         top=top,
         since_yesterday=since_yesterday,
+        since_yesterday_total=new_total,
+        since_yesterday_high_impact=new_high,
         filtered_not_relevant=filtered or 0,
         pricing_watch=_pricing_watch(session, now),
         pipeline=_pipeline_info(session),
@@ -131,7 +140,7 @@ def _headline(session: DbSession) -> dict[str, str | None]:
 
 
 def _pricing_watch(session: DbSession, now: Now) -> list[PricingItem]:
-    """Latest relevant page-diff signal per watched page."""
+    """Latest relevant page-diff signal per watched page; highest impact first, then newest."""
     latest = (
         select(Signal.id)
         .where(
@@ -148,7 +157,7 @@ def _pricing_watch(session: DbSession, now: Now) -> list[PricingItem]:
     rows = session.scalars(
         signals_query()
         .where(Signal.id.in_(select(latest.c.id)))
-        .order_by(event_time().desc(), Signal.id.desc())
+        .order_by(Signal.impact.desc().nulls_last(), event_time().desc(), Signal.id.desc())
         .limit(PRICING_WATCH_MAX)
     ).all()
     return [
