@@ -23,7 +23,7 @@ RELEASES = "https://api.github.com/repos/acme/acme-cli/releases"
 
 @pytest.fixture
 def seeded(collect_db):
-    """Acme with RSS, GitHub and page_diff sources; an industry feed without an entity."""
+    """Acme with RSS, GitHub and a stub (web) source; an industry feed without an entity."""
     with collect_db.begin() as s:
         acme = Entity(
             type=EntityType.COMPANY, name="Acme", slug="acme", relationship=Relationship.COMPETITOR
@@ -48,7 +48,7 @@ def seeded(collect_db):
                 kind=SourceKind.GITHUB,
                 options={"repos": ["acme-cli"]},
             ),  # fmt: skip
-            "pricing": src("Acme Pricing", "https://acme.test/pricing", FetchMethod.PAGE_DIFF),
+            "pricing": src("Acme Pricing", "https://acme.test/pricing", FetchMethod.WEB),
             "news": src(
                 "Industry News",
                 "https://news.test/feed",

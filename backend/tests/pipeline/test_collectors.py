@@ -8,7 +8,7 @@ from app.db.enums import FetchMethod
 from app.pipeline.collectors import NotImplementedCollector, SourceRef
 from app.pipeline.collectors.github import GitHubCollector, GitHubRateLimited
 from app.pipeline.collectors.rss import RSSCollector
-from app.pipeline.collectors.stubs import PageDiffCollector
+from app.pipeline.collectors.stubs import WebCollector
 from tests.pipeline.conftest import fixture
 
 SINCE = datetime(2026, 7, 22, tzinfo=UTC)  # "90 days" before 2026-10-20
@@ -244,9 +244,7 @@ def test_github_owner_from_org_url_or_explicit_repo(web, make_client):
 # ---------- stubs ----------
 
 
-def test_page_diff_is_a_stub():
-    src = SourceRef(
-        id=3, name="p", url="https://x.test", fetch_method=FetchMethod.PAGE_DIFF, options={}
-    )
+def test_web_is_a_stub():
+    src = SourceRef(id=3, name="p", url="https://x.test", fetch_method=FetchMethod.WEB, options={})
     with pytest.raises(NotImplementedCollector):
-        PageDiffCollector().collect(src, since=SINCE, backfill=False, known={})
+        WebCollector().collect(src, since=SINCE, backfill=False, known={})

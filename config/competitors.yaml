@@ -1,6 +1,7 @@
-# DEMO SCOPE: the demo runs on 3 curated sources (Sonatype Blog, GitHub Changelog, The New Stack);
-# every other source below has `is_active: false`. Nothing is deleted: to enable a source, set
-# `is_active: true` (or remove the flag) and run `make seed`. See README "Demo scope".
+# DEMO SCOPE: the demo runs on 3 curated sources (Sonatype Blog, GitHub Changelog, The New Stack)
+# plus 2 page_diff sources (Sonatype Pricing, GitHub Pricing; URLs + robots.txt re-checked
+# 2026-10-21). Every other source below has `is_active: false`. Nothing is deleted: to enable a
+# source, set `is_active: true` (or remove the flag) and run `make seed`. See README "Demo scope".
 #
 # Companies FrogRadar tracks, their products, and where to watch them.
 # Validated by app/core/catalog.py (CompetitorsFile). Loaded into the DB by `make seed`.
@@ -12,6 +13,7 @@
 #               is_active: false = keep the row but don't fetch it
 #               github sources need options.repos: repos under the org whose releases we collect
 #               (each checked on 2026-10-20 to publish releases)
+#               page_diff sources may set options.selector (CSS) and options.label ("Pricing page")
 #               rss sources may set options.keep_fragment: true when feed items are #anchors on one page
 #
 # Every URL below was checked on 2026-10-20 (HTTP 200; RSS URLs return a feed; GitHub orgs exist),
@@ -59,7 +61,7 @@ companies:
     sources:
       - {name: Sonatype Blog, url: https://www.sonatype.com/blog/rss.xml, kind: official, fetch_method: rss}
       - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github, options: {repos: [nexus-public]}, is_active: false}
-      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff, is_active: false}
+      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff}
 
   - slug: github
     name: GitHub
@@ -75,7 +77,7 @@ companies:
     sources:
       - {name: GitHub Changelog, url: https://github.blog/changelog/feed/, kind: official, fetch_method: rss}
       - {name: GitHub Blog, url: https://github.blog/feed/, kind: official, fetch_method: rss, is_active: false}
-      - {name: GitHub Pricing, url: https://github.com/pricing, kind: official, fetch_method: page_diff, is_active: false}
+      - {name: GitHub Pricing, url: https://github.com/pricing, kind: official, fetch_method: page_diff}
       - {name: GitHub Advanced Security page, url: https://github.com/security/advanced-security, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: gitlab

@@ -4,7 +4,8 @@
 - robots.txt checked per host (cached for the client's lifetime, i.e. one run). Per RFC 9309:
   robots.txt 4xx → everything allowed; 5xx / unreachable → nothing allowed on that host.
   Documented APIs we call as an API client (api.github.com) are exempt.
-- minimum delay between requests to the same host (robots.txt Crawl-delay wins if larger)
+- minimum delay between requests to the same host (robots.txt Crawl-delay or a per-host
+  override wins if larger)
 - redirects followed by hand, so every hop is checked against robots.txt and rate-limited
 - conditional GET via If-None-Match / If-Modified-Since
 """
@@ -60,8 +61,11 @@ class PoliteClient:
         transport: httpx.BaseTransport | None = None,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
+        host_delays: dict[str, float] | None = None,
     ) -> None:
         self.settings = settings
+        # Slower minimum gaps for specific hosts (e.g. web.archive.org); the larger delay wins.
+        self.host_delays = {h.lower(): d for h, d in (host_delays or {}).items()}
         self.user_agent = settings.collector_user_agent
         self._client = httpx.Client(
             headers={"User-Agent": self.user_agent},
@@ -103,8 +107,12 @@ class PoliteClient:
 
         for _ in range(MAX_REDIRECTS + 1):
             host = urlsplit(url).netloc.lower()
-            if host not in ROBOTS_EXEMPT_HOSTS and not self._robots_for(url).allowed(url):
-                raise RobotsDisallowed(f"robots.txt disallows {url}")
+            if host not in ROBOTS_EXEMPT_HOSTS:
+                robots = self._robots_for(url)
+                if not robots.allowed(url):
+                    if robots.parser is None:  # 5xx / unreachable: RFC 9309 says stay away
+                        raise RobotsDisallowed(f"robots.txt unavailable for {host}: not fetching")
+                    raise RobotsDisallowed(f"robots.txt disallows {url}")
             resp = self._send(url, req_headers)
             if resp.is_redirect and "location" in resp.headers:
                 url = urljoin(url, resp.headers["location"])
@@ -128,7 +136,7 @@ class PoliteClient:
             self._last_request[host] = self._clock()
 
     def _delay_for(self, host: str) -> float:
-        delay = self.settings.collector_domain_delay_s
+        delay = max(self.settings.collector_domain_delay_s, self.host_delays.get(host, 0.0))
         robots = self._robots.get(host)
         crawl_delay = robots.crawl_delay() if robots else None
         if crawl_delay:

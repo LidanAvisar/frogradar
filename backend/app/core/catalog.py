@@ -3,6 +3,7 @@
 Each file maps to a Pydantic model with extra="forbid", so typos fail loudly at load time.
 """
 
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
@@ -280,6 +281,9 @@ class EnrichSettings(_Strict):
     max_chars: Annotated[int, Field(ge=1000, le=100000)] = 12000
     # Extra attempts when the evidence quote is not verbatim in raw_text.
     quote_retries: Annotated[int, Field(ge=0, le=3)] = 1
+    # Near-miss quotes are replaced by the real source span (one or two adjacent sentences) when
+    # both similarity and coverage reach this (D39); otherwise the retry runs.
+    quote_repair_threshold: Similarity = 0.9
 
 
 class VerifySettings(_Strict):
@@ -335,6 +339,40 @@ class ScoreSettings(_Strict):
     bands: ScoreBands = Field(default_factory=ScoreBands)
 
 
+class WaybackSettings(_Strict):
+    cdx_url: str = "https://web.archive.org/cdx/search/cdx"
+    snapshot_url: str = "https://web.archive.org/web/{timestamp}id_/{url}"
+    target_days_ago: list[Annotated[int, Field(ge=1, le=3650)]] = Field(
+        default_factory=lambda: [365, 182, 91]
+    )
+    window_days: Annotated[int, Field(ge=1, le=180)] = 31  # max distance from a target date
+    host_delay_s: Annotated[float, Field(ge=1, le=60)] = 5.0  # web.archive.org politeness
+    # An archived page whose text is much shorter than today's probably didn't render (JS).
+    min_length_ratio: Unit = 0.5
+
+
+class PageDiffSettings(_Strict):
+    min_text_chars: Annotated[int, Field(ge=50, le=100000)] = 500  # less → JS shell, no snapshot
+    short_line_chars: Annotated[int, Field(ge=0, le=200)] = 30  # runs of short lines are joined
+    min_changed_chars: Annotated[int, Field(ge=0, le=100000)] = 40  # smaller diffs are noise
+    restructure_ratio: Unit = 0.5  # changed-line share above which the page counts as redesigned
+    context_lines: Annotated[int, Field(ge=0, le=5)] = 1
+    max_diff_chars: Annotated[int, Field(ge=1000, le=100000)] = 12000
+    noise_patterns: list[str] = Field(default_factory=list)  # removed from lines
+    drop_line_patterns: list[str] = Field(default_factory=list)  # whole lines removed
+    price_patterns: list[str] = Field(default_factory=list)  # lines that state a price/limit
+    wayback: WaybackSettings = Field(default_factory=WaybackSettings)
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        for pattern in (*self.noise_patterns, *self.drop_line_patterns, *self.price_patterns):
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise ValueError(f"bad regex {pattern!r}: {e}") from None
+        return self
+
+
 class PipelineFile(_Strict):
     embedding: EmbedSettings = Field(default_factory=EmbedSettings)
     dedup: DedupSettings = Field(default_factory=DedupSettings)
@@ -343,6 +381,7 @@ class PipelineFile(_Strict):
     enrich: EnrichSettings = Field(default_factory=EnrichSettings)
     verify: VerifySettings = Field(default_factory=VerifySettings)
     score: ScoreSettings = Field(default_factory=ScoreSettings)
+    page_diff: PageDiffSettings = Field(default_factory=PageDiffSettings)
 
 
 # ---------- loading ----------

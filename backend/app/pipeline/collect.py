@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import Settings, get_settings
 from app.db.enums import FetchMethod, RunStatus, RunTrigger
 from app.db.models import PipelineRun, Source
-from app.pipeline import store
+from app.pipeline import snapshots, store
 from app.pipeline.collectors import (
     Collector,
     NotImplementedCollector,
@@ -157,7 +157,11 @@ def collect_source(
         report.status = "not_modified"
 
     with session_factory() as s:
+        # page_diff: the new snapshot goes in the same transaction as its change signal.
+        snapshot_ids = {snap.key: snapshots.insert(s, ref.id, snap).id for snap in result.snapshots}
         for item in result.items:
+            if (key := item.meta.pop("after_snapshot_key", None)) is not None:
+                item.meta["after_snapshot_id"] = snapshot_ids[key]
             try:
                 with s.begin_nested():
                     outcome = store.save_item(s, ref, run_id, item)
@@ -193,7 +197,7 @@ def collect_all(
 ) -> RunReport:
     """Collect every selected source into an existing pipeline run (each source fails alone)."""
     since = since or datetime.now(UTC) - timedelta(days=DEFAULT_SINCE_DAYS)
-    collectors = build_collectors(client, settings)
+    collectors = build_collectors(client, settings, session_factory)
     with session_factory() as s:
         refs = [_ref(src) for src in select_sources(s, source)]
 

@@ -23,6 +23,9 @@ triage:
 enrich:
   max_chars: 12000      # the verifier gets the same text, so it checks exactly what the writer saw
   quote_retries: 1      # extra attempt when evidence_quote is not verbatim in the source
+  # Near-miss quote → replaced by the real span (1 sentence or 2 adjacent ones) when difflib
+  # similarity AND coverage of the quote are both >= this; no retry needed (D39).
+  quote_repair_threshold: 0.9
 verify:
   max_chars: 12000
 
@@ -38,3 +41,38 @@ score:
   no_source_trust: 0.5
   caps: {unsupported: 0.30, quote_unverified: 0.60}
   bands: {high: 0.75, medium: 0.50}    # >= high → high, >= medium → medium, else low
+
+# Page diff watcher (fetch_method page_diff) and its Wayback Machine baseline (D40, D41).
+# Text = trafilatura extraction (or options.selector), normalized line by line.
+page_diff:
+  min_text_chars: 500       # extracted text shorter than this = JS shell / error page: no snapshot
+  short_line_chars: 30      # consecutive lines shorter than this are joined ("$" "19" "per user")
+  min_changed_chars: 40     # changed non-whitespace chars below this = noise (unless a price line changed)
+  restructure_ratio: 0.5    # changed lines / all lines above this = redesign: no normal signal
+  context_lines: 1          # unchanged lines shown around each change
+  max_diff_chars: 12000     # diff text cap (= enrich.max_chars, so the model sees all of it)
+  # Removed from every line before comparing (case-insensitive). Never touch prices.
+  noise_patterns:
+    - '\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2},? \d{4}\b'
+    - '\b\d{1,2} (?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]* \d{4}\b'
+    - '\b\d{4}-\d{2}-\d{2}(?:t[\d:.]+z?)?\b'
+    - '(?:©|\(c\)|copyright)\s*(?:\d{4}\s*[-–]\s*)?\d{4}'
+    - '\b\d+ (?:seconds?|minutes?|hours?|days?|weeks?|months?) ago\b'
+  # Lines dropped entirely (case-insensitive): cookie banners, consent, newsletter boxes.
+  drop_line_patterns:
+    - '\bcookies?\b'
+    - '\b(?:privacy|consent) (?:preferences|settings|choices)\b'
+    - '^(?:skip to (?:main )?content|back to top|sign in|sign up|log in)$'
+  # A line states a price or a plan limit (used for the price-only diff after a redesign).
+  price_patterns:
+    - '[$€£]\s?\d'
+    - '\b\d[\d,.]*\s?(?:usd|eur|gbp)\b'
+    - '\b(?:usd|eur|gbp)\s?\d'
+    - '\bper (?:user|seat|month|year|developer|committer|contributor|gb)\b'
+    - '/\s?(?:user|seat|mo|month|yr|year|gb)\b'
+    - '\b(?:starting at|contact sales|custom pricing)\b'
+  wayback:
+    target_days_ago: [365, 182, 91]   # ~12, 6 and 3 months back
+    window_days: 31         # nearest capture must be within this many days of the target
+    host_delay_s: 5.0       # >= 5 s between requests to web.archive.org
+    min_length_ratio: 0.5   # archived text < 50% of today's length = rendered differently: skip
