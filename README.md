@@ -38,6 +38,8 @@ curl localhost:8000/health
 | `make pipeline` | The daily pipeline (LangGraph), paid: `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
 | `make brief` | The daily brief only (1 synthesis + 1 verify call, once per UTC day; `ARGS="--force brief"`) |
 | `make battlecards` | Battlecards for due competitors (1 synthesis + 1 verify call each; `ARGS="--force battlecards"`) |
+| `make radar-backfill` | Competitor Radar discovery for the last 90 days: Hacker News, GitHub new repos, CNCF landscape copies (no LLM calls) |
+| `make radar` | Radar step: candidates, emergence score, profiles of the top candidates (paid: bulk + verify; `ARGS="--force radar"`) |
 | `make pipeline-report` | Quality report of the latest run (`RUN=<id>`): triage, distributions, cost per model, samples |
 | `make wayback-backfill` | Baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today, diffed in date order (no LLM calls; `SOURCE=` for one) |
 | `make scheduler-up` / `make scheduler-down` | Opt in / out of the daily paid run (`scheduler` compose profile, `DAILY_RUN_CRON`, UTC) |
@@ -64,6 +66,8 @@ All "what to track" settings are YAML, validated by Pydantic on load (`backend/a
 - `llm_routing.yaml` – model per task (bulk / synthesis / verify), embedding model + dimension, fallback pricing
 - `pipeline.yaml` – embedding input, dedup window and thresholds, LLM parallelism, text limits per stage,
   confidence weights / caps / bands, daily brief window, battlecard refresh rules
+- `discovery.yaml` – Competitor Radar: discovery sources and their queries (Hacker News, GitHub search, CNCF
+  categories), the GitHub noise filter, the ignore list, merge thresholds, emergence-score weights, profile limits
 
 Adding a competitor = add a block to `competitors.yaml`, then `make seed`.
 
@@ -74,7 +78,9 @@ confidence, evidence quote, verification, embedding) · `signal_entities` · `in
 `feedback` (analyst actions) · `missions` + `mission_steps` · `capabilities` + `capability_matrix` ·
 `page_snapshots` · `watch_topics` · `pipeline_runs` · `llm_calls` (tokens, cost, latency, prompt version) ·
 `llm_cache` (validated LLM outputs and embeddings by content hash; also feeds demo mode) · `reports`
-(stored briefs, battlecards, digests). Models: `backend/app/db/models/`.
+(stored briefs, battlecards, digests) · `radar_candidates` (discovered players: mentions, sources, metrics,
+score + breakdown, profile, status, merges) · `repo_star_snapshots` (GitHub stars per repo per day).
+Models: `backend/app/db/models/`.
 
 ## Demo scope
 
@@ -426,6 +432,78 @@ Two pipeline nodes after `score`, on the synthesis model. The pattern: **the LLM
 
 Run 33 (S10): 80 calls, $0.216 – re-enrichment and re-verification of 32 signals, one brief, two battlecards.
 
+## Competitor Radar: players nobody configured (`backend/app/pipeline/radar/`)
+
+New tools and companies appear overnight; tracking the configured competitors can't surface them. The radar
+finds candidates, ranks them with a transparent score, writes a short checked profile, and leaves the decision to
+the analyst. **Nothing becomes a tracked entity unless an analyst approves it.**
+
+**Discovery sources** (queries in `config/discovery.yaml`, one line each):
+- **Hacker News** (Algolia HN Search API): stories whose *title* matches a keyword (≥ 15 points) and Show HN posts
+  matching it in title or text (≥ 10 points), last 90 days. Typo tolerance is off: with it on, "SBOM" matched 286
+  unrelated stories. The linked page's text (robots.txt respected) or the GitHub README is added.
+- **GitHub search**: repositories created in the last 90 days by topic / description (≥ 30 stars). A code filter
+  drops forks, archived repos, lists, tutorials, demos, courses, CTFs and homework before anything is stored.
+  Stars go to `repo_star_snapshots` on every run (never into the text), so star velocity works across runs.
+- **CNCF landscape**: a flattened copy of the watched categories is stored and diffed. Newly added names are
+  candidates; a project that only moved category is not. The backfill uses the copies at -90 / -60 / -30 days
+  (commits API).
+
+Discovery items are ordinary signals (`meta.kind = discovery`). Triage filters them and `enrich_discovery.v1`
+enriches them, naming the item's own subject as a new entity, with a URL only if it appears in the text. They are
+not verified one by one, never join news dedup clusters and never appear in the Brief, feed or battlecards.
+
+**Candidates**: from enrich's `new_entities` of *any* relevant signal (news included), plus relevant GitHub
+repos and CNCF additions. Names are normalized ("Endor Labs" → `endor`, "socket.dev" → `socket`). A candidate is
+skipped if it matches a tracked entity's name or alias, its website host, a GitHub org we already collect, or the
+ignore list. Mentions attach by exact key, then repo URL, then homepage host (shared hosts like github.com never
+count), then fuzzy (name ratio ≥ 0.92 **and** name-embedding cosine ≥ 0.90). A merge pass joins candidates that
+turn out to be the same player, and every merge is logged on both rows.
+
+**Emergence score** (0–100, weights in `discovery.yaml`, breakdown stored and returned by the API):
+
+```
+score = 100 × Σ weight × factor          (every factor in [0, 1])
+mentions          0.20  ln(1 + mentions) / ln(1 + 10)
+source_diversity  0.15  distinct sources / 3
+mention_velocity  0.10  recent / (recent + prior × 14/76) × min(1, recent / 3)   recent = last 14 days of 90
+traction          0.20  max(ln(1 + stars/day) / ln(1 + 50),  ln(1 + HN points) / ln(1 + 500))
+segment_overlap   0.25  max segment weight (artifact mgmt, supply chain 1.0 · MLOps 0.8 · CI/CD, distribution 0.6)
+recency           0.10  0.5 ^ (days since last mention / 14)
+```
+Star velocity is the difference between snapshots. On the first sighting it is stars ÷ repo age (the repo is at
+most 90 days old); the breakdown says which one was used.
+
+**Profile** (top 10 candidates ≥ 35 points per run, regenerated when the mentions or the prompt change):
+`radar_profile.v2` (bulk model) writes what it is, segments, JFrog relation (threatens / complements / both /
+none + JFrog products), stage and why it is notable now. Each statement cites signal ids. Code drops any
+statement citing an id it wasn't given. `verify_profile.v2` (verify model, other family) judges each statement
+against the cited signals' text, the same excerpt the writer saw, with JFrog's product list as trusted context.
+Only `supported` statements are kept; if "what it is" fails, the profile is rejected.
+
+**Analyst actions** (`/api/radar`): list by score, detail (cited statements, mentions, merges), `watch`,
+`approve` (creates an entity `discovered_by radar`, relationship competitor by default, aliases from merged names,
+and optionally a *disabled* GitHub releases source) and `dismiss` (reason code). Each action writes a `feedback`
+row. The Brief's right rail shows "New on the radar" (top 3, watching badge, score, sources).
+
+**First run (S11, 2026-10-21)**: HN 301 stories (144 relevant), GitHub 96 repos (78 relevant, 12 dropped by the
+noise filter), CNCF 7 additions (1 relevant) → 249 observations → 159 candidates (153 via discovery sources, 5
+via news `new_entities`). Cost $0.53: triage $0.12, enrich $0.32, profiles + checks $0.09.
+
+**What the first run taught us (tuning, not done yet)**:
+- `segment_overlap` gives 149 of 159 candidates full points (triage always names a segment), so it doesn't
+  separate anything. HN points then decide the ranking, and an email app or a Redis clone can reach the top 10.
+- The profile catches this ("no overlap with JFrog products" for 6 of the top 10), but the score doesn't use it.
+- Players found in news articles (GitGuardian, StepSecurity) have no stars or HN points and rank #66–67.
+- The verifier rejects many segment / stage statements as overstated, including some fair ones.
+
+### Known limitations
+- No authentication: the radar's write endpoints are open and record the analyst as "anonymous".
+- GitHub without `GITHUB_TOKEN`: 10 searches/minute (requests are spaced 6.5 s); the CNCF history uses 3 core-API
+  calls (60/hour unauthenticated).
+- Star velocity is an average over the repo's age until a second daily snapshot exists.
+- Discovery signals are not verified one by one; only the profile statements are.
+
 ## LLM gateway (`backend/app/core/llm/`)
 
 Every LLM and embedding call goes through one module (LiteLLM underneath):
@@ -545,6 +623,11 @@ Each line: what we chose – why – what we rejected.
 - **D52 Takeaway, display title, verified price changes** – one-sentence takeaway (≤ 160 hard) from enrichment; diffs get a headline and model-proposed prices that code accepts only when both strings are in the right side of the same change, with the same billing unit – rejected overwriting the collected title (part of the content hash) and showing unchecked model prices.
 - **D51 Takeaway-first Brief cards** – cards collapsed by default (header + first sentence of "why"), expanded state in memory for the session; JFrog product names highlighted from config through a text-segment pipe (no innerHTML), bare names like "Advanced Security" skipped after another vendor's name; since yesterday doesn't repeat the Top 5 – rejected a hard-coded product list and highlighting every bare name.
 - **D50 Generated API types** – `make api-types` turns FastAPI's OpenAPI into TypeScript types (committed; a test fails when they are stale) – rejected hand-written interfaces.
+- **D57 Discovery sources feed the Radar only** – HN (title search, typo tolerance off), GitHub repos created in the last 90 days (code noise filter, star snapshots), CNCF landscape copies diffed for new names; discovery items are triaged and enriched (`enrich_discovery.v1`) but not verified one by one, not deduped against news and never shown in the Brief / feed / battlecards – rejected scraping product directories, whole-org scans and verifying every post.
+- **D58 Conservative candidate resolution** – normalized name keys; skip anything matching a tracked name / alias / website / GitHub org / the ignore list; attach by key, repo, host, or fuzzy only when name ratio ≥ 0.92 AND embedding cosine ≥ 0.90; merges logged; decided candidates never absorbed; only an analyst's approve creates an entity – rejected LLM resolution and embedding-only matching.
+- **D59 Emergence score in code** – six factors (mentions, sources, velocity, traction, segment overlap, recency), weights in config, breakdown stored and shown – rejected an LLM "threat score" and raw star counts.
+- **D60 Checked radar profiles** – bulk writer, five cited statements, code citation check, verify model against the cited signals' text (same excerpt) with JFrog's product list as trusted context; relation "none" allowed (v2) – rejected checking against the unverified enrich summaries.
+- **D61 First write endpoints without auth** – watch / approve / dismiss with feedback rows; approve creates an entity and an optional disabled GitHub source; auth is a known limitation – rejected auto-activating sources.
 
 ## Repository layout
 
