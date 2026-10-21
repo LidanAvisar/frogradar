@@ -29,6 +29,18 @@ describe('SignalCardComponent', () => {
     });
   });
 
+  it('puts the chips and chevron on one row and the title on its own row below', () => {
+    render({ is_claim: true });
+    const head = el.querySelector('.head')!;
+    const chips = head.querySelector('.chips-row')!;
+    expect(chips.querySelector('fr-impact-badge')).not.toBeNull();
+    expect(chips.querySelector('fr-vendor-claim-tag')).not.toBeNull();
+    expect(chips.querySelector('fr-confidence-badge')).not.toBeNull();
+    expect(chips.querySelector('.chevron')).not.toBeNull();
+    expect(chips.querySelector('.title')).toBeNull();
+    expect(head.lastElementChild?.classList).toContain('title');
+  });
+
   it('starts collapsed with an accessible chevron button', () => {
     render();
     const button = el.querySelector<HTMLButtonElement>('button.chevron')!;

@@ -55,6 +55,8 @@
   --fr-text-h1: 34px;
   --fr-lh-h1: 1.15;
   --fr-ls-h1: -0.02em;
+  --fr-text-headline: 28px; /* the daily brief headline (smaller than a page h1) */
+  --fr-lh-headline: 1.2;
   --fr-text-h2: 18px;
   --fr-text-card-title: 19px;
   --fr-text-takeaway: 16px;

@@ -38,11 +38,12 @@ import { SourceLinkComponent } from '../../shared/source-link.component';
                   @for (c of item.changes; track $index) {
                     <li>
                       @if (c.label) { <span class="label small">{{ c.label }}</span> }
-                      <span class="prices mono">
-                        <s><span class="visually-hidden">was </span>{{ c.before }}</s>
-                        <span aria-hidden="true">→</span>
-                        <strong><span class="visually-hidden">now </span>{{ c.after }}</strong>
-                      </span>
+                      <dl class="prices">
+                        <dt class="small">Was</dt>
+                        <dd class="mono"><s>{{ c.before }}</s></dd>
+                        <dt class="small">Now</dt>
+                        <dd class="mono"><strong>{{ c.after }}</strong></dd>
+                      </dl>
                     </li>
                   }
                 </ul>
@@ -70,7 +71,11 @@ import { SourceLinkComponent } from '../../shared/source-link.component';
     .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .changes { display: flex; flex-direction: column; gap: 6px; }
     .label { display: block; color: var(--fr-muted); }
-    .prices { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; color: var(--fr-ink); }
+    /* Old and new price on their own aligned lines: never an arrow that wraps mid-price. */
+    .prices { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline;
+      gap: 2px 10px; margin: 2px 0 0; color: var(--fr-ink); }
+    .prices dt { color: var(--fr-muted); text-transform: uppercase; letter-spacing: var(--fr-ls-eyebrow); }
+    .prices dd { margin: 0; overflow-wrap: anywhere; }
     s { color: var(--fr-muted); }
     strong { font-weight: 500; }
     .summary { color: var(--fr-ink-2); }

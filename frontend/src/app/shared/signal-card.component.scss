@@ -12,12 +12,28 @@
   }
 }
 
-/* Row 1: rank · impact · company · (claim) · title · confidence · chevron. The whole row toggles. */
+/* Header (all of it toggles): row 1 = chips (rank · impact · company · claim · confidence) and the
+   chevron, wrapping on narrow screens with the chevron kept top-right; row 2 = the title, full width. */
 .head {
   display: flex;
-  align-items: center;
-  gap: var(--fr-gap-xs) var(--fr-gap-sm);
+  flex-direction: column;
+  gap: var(--fr-gap-xs);
   cursor: pointer;
+}
+
+.chips-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fr-gap-sm);
+}
+
+.chips {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--fr-gap-sm);
 }
 
 .rank {
@@ -35,8 +51,6 @@ fr-vendor-claim-tag {
 }
 
 .title {
-  flex: 1 1 auto;
-  min-width: 0;
   font-size: var(--fr-text-card-title);
   line-height: var(--fr-lh-card-title);
   font-weight: 600;
@@ -188,25 +202,10 @@ fr-vendor-claim-tag {
   color: var(--fr-ink-2);
 }
 
-/* Phone: row 1 = rank, impact, company … chevron; row 2 = title; row 3 = confidence. */
+/* Phone: the chips wrap inside their row; title stays below, full width. */
 @media (max-width: 720px) {
-  .head {
-    flex-wrap: wrap;
-    row-gap: 6px;
-  }
-
   .chevron {
-    order: 1;
-    margin: -8px -10px -8px auto;
-  }
-
-  .title {
-    order: 2;
-    flex-basis: 100%;
-  }
-
-  .conf {
-    order: 3;
+    margin: -8px -10px -8px 0;
   }
 
   .takeaway {

@@ -29,14 +29,93 @@
 }
 
 h1 {
-  font-size: var(--fr-text-h1);
-  line-height: var(--fr-lh-h1);
+  font-size: var(--fr-text-headline);
+  line-height: var(--fr-lh-headline);
   letter-spacing: var(--fr-ls-h1);
   font-weight: 600;
 }
 
-.overview {
-  color: var(--fr-ink-2);
+/* "What matters today": up to 3 rows – company chip | sentence + (affects · sources). */
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-xs);
+  margin-top: var(--fr-gap-xs);
+}
+
+.today-heading {
+  color: var(--fr-muted);
+}
+
+.today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.today-item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--fr-gap-sm);
+  padding: 10px 0;
+  border-top: 1px solid var(--fr-divider);
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 2px;
+  }
+}
+
+.today-company {
+  grid-column: 1;
+  padding-top: 1px;
+}
+
+.today-body {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.today-text {
+  color: var(--fr-ink);
+
+  &.clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+}
+
+.today-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--fr-gap-sm);
+}
+
+.affects {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: var(--fr-radius-pill);
+  background: var(--fr-accent-tint);
+  color: var(--fr-accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.affects-label {
+  color: var(--fr-ink-3);
+  font-weight: 500;
 }
 
 // Numbered source links after each sentence of the generated headline / overview.
@@ -211,7 +290,17 @@ h1 .cite {
   }
 
   h1 {
-    font-size: 28px;
+    font-size: 24px;
+  }
+
+  .today-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .today-company,
+  .today-body {
+    grid-column: 1;
   }
 
   .controls {

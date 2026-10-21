@@ -17,19 +17,23 @@
 } @else {
   <article class="card" [class.open]="expanded()" [attr.aria-labelledby]="ids().title">
     <div class="head" (click)="onHeaderClick()">
-      @if (rank() !== null) { <span class="rank mono" aria-hidden="true">{{ rankLabel() }}</span> }
-      <fr-impact-badge [impact]="signal().impact" />
-      @if (company(); as c) { <fr-company-chip [name]="c.name" /> }
-      @if (signal().is_claim) { <fr-vendor-claim-tag /> }
+      <div class="chips-row">
+        <div class="chips">
+          @if (rank() !== null) { <span class="rank mono" aria-hidden="true">{{ rankLabel() }}</span> }
+          <fr-impact-badge [impact]="signal().impact" />
+          @if (company(); as c) { <fr-company-chip [name]="c.name" /> }
+          @if (signal().is_claim) { <fr-vendor-claim-tag /> }
+          <fr-confidence-badge class="conf" [confidence]="signal().confidence" />
+        </div>
+        <button type="button" class="chevron" [attr.aria-expanded]="expanded()" [attr.aria-controls]="ids().details"
+                [attr.aria-label]="toggleLabel()">
+          <fr-icon name="chevron" [size]="20" />
+        </button>
+      </div>
       <h3 class="title" [id]="ids().title">
         @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
         {{ signal().title }}
       </h3>
-      <fr-confidence-badge class="conf" [confidence]="signal().confidence" />
-      <button type="button" class="chevron" [attr.aria-expanded]="expanded()" [attr.aria-controls]="ids().details"
-              [attr.aria-label]="toggleLabel()">
-        <fr-icon name="chevron" [size]="20" />
-      </button>
     </div>
 
     @if (takeaway()) {

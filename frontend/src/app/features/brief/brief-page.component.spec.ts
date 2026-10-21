@@ -83,18 +83,29 @@ describe('BriefPageComponent', () => {
         headline_citations: [a],
         overview: 'Two moves matter today. Firewall 2 shipped.',
         overview_sentences: [
-          { text: 'Two moves matter today.', citations: [a, b] },
-          { text: 'Firewall 2 shipped.', citations: [b] },
+          { text: 'Two moves matter today.', citations: [a, b], company: 'Sonatype', affects: ['JFrog Curation'] },
+          { text: 'Firewall 2 shipped.', citations: [b], company: null, affects: [] },
+          { text: 'x'.repeat(130), citations: [a], company: 'GitHub', affects: [] },
+          { text: 'A fourth sentence is not shown.', citations: [a], company: null, affects: [] },
         ],
       }),
     );
     expect(el.querySelector('h1')?.textContent).toContain('Sonatype reprices Nexus');
     expect(el.querySelector('h1 .cite a')?.getAttribute('href')).toBe('https://s.test/7');
-    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.overview .cite a'));
-    expect(links.map((l) => l.textContent?.trim())).toEqual(['1', '2', '2']);
+    expect(el.querySelector('.today-heading')?.textContent).toContain('What matters today');
+    const items = el.querySelectorAll<HTMLElement>('.today-item');
+    expect(items.length).toBe(3);
+    expect(items[0].querySelector('fr-company-chip')?.textContent).toContain('Sonatype');
+    expect(items[0].querySelector('.affects')?.textContent).toContain('JFrog Curation');
+    expect(items[1].querySelector('fr-company-chip')).toBeNull();
+    expect(items[1].querySelector('.affects')).toBeNull();
+    expect(items[0].querySelector('.today-text')?.classList).not.toContain('clamp');
+    expect(items[2].querySelector('.today-text')?.classList).toContain('clamp');
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.today .cite a'));
+    expect(links.map((l) => l.textContent?.trim())).toEqual(['1', '2', '2', '1']);
     expect(links[1].getAttribute('aria-label')).toBe('Source 2: Firewall 2');
     expect(links[1].getAttribute('rel')).toContain('noopener');
-    expect(el.querySelector('.overview')?.textContent).toContain('Firewall 2 shipped.');
+    expect(el.textContent).not.toContain('A fourth sentence');
   });
 
   it('switches to one-line cards and remembers it', () => {

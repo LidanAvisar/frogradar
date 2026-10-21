@@ -370,8 +370,9 @@ side by side.
 
 The first screen (`/`): the top 5 developments of the last 7 days, ranked by impact × confidence. Each card starts
 collapsed: impact, company, title, confidence and the takeaway (one sentence written at enrichment, naming the
-affected JFrog product; highlighted). The headline and overview at the top are the daily brief, each sentence
-followed by numbered links to the signals it relies on. Expanding a card (chevron, header row, or "Expand all") shows the summary, the full
+affected JFrog product; highlighted). The headline at the top is the daily brief's; below it "What matters today" lists up to 3 points,
+each with the company, the JFrog products it names ("Affects …") and numbered links to the signals it relies on
+(long sentences are clamped to two lines). Expanding a card (chevron, header row, or "Expand all") shows the summary, the full
 "Why JFrog cares", the verbatim evidence quote, the source link and actions; expanded cards are remembered for the
 session only. The right rail shows the pricing watch (latest change per watched pricing page, highest impact
 first, compared with a Wayback Machine capture), what else was published since yesterday (without repeating the
