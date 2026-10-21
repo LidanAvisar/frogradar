@@ -423,8 +423,9 @@ All three reuse the Brief's components and tokens; every claim links to its sour
 - **Battlecard (`/battlecards/:slug`; `/battlecards` opens the top competitor):** switcher (competitors without a
   card are marked "no card yet"), relationship and segments, three tiles (positioning, latest move = newest
   impact 4-5 signal, coverage), the capability matrix (JFrog level from config vs the competitor's level from
-  evidence, each a symbol and a word, evidence link per cell, "Changed recently", unknown cells offer Investigate,
-  scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
+  evidence, each a symbol and a word, evidence link per cell, "Changed recently"; capabilities where the
+  competitor's level is unknown are folded into "N capabilities without evidence yet", each with JFrog's level and
+  "Investigate · Coming soon"; scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
   numbering across the card, and the strategy timeline newest first.
   ![Sonatype battlecard, 1440 px](docs/screenshots/battlecard-sonatype-1440.png)
 - **Radar (`/radar`, `/radar/:id`):** candidates by emergence score with status / JFrog relation / kind filters
@@ -432,7 +433,8 @@ All three reuse the Brief's components and tokens; every claim links to its sour
   (marked "partly verified" when the ranking uses a relation statement the verifier found only partly supported –
   that statement itself is not shown), and the score as a number, a stacked bar (decorative) and the same
   breakdown as text. Candidates below `radar.ui.lower_relevance_below` (config/discovery.yaml, 35) or with relation
-  "none" are collapsed under "Lower relevance (N)". The detail page shows the cited profile, mentions, metrics, the
+  "none" are collapsed under "Lower relevance (N)"; the Radar nav pill counts only new candidates in the top
+  section (same rule, in SQL, tested against the list). The detail page shows the cited profile, mentions, metrics, the
   score explained per component, merges and other names. Watch / Track / Dismiss are optimistic (rolled back on
   error) and announced in a snackbar; Track and Dismiss open Material dialogs themed with the tokens (full width
   on phones). Investigate and "Send a research mission" say "Coming soon".
@@ -674,7 +676,7 @@ Each line: what we chose – why – what we rejected.
 - **D59 Emergence score in code (v2: relevance first)** – relevance to JFrog 0.35 (enrich impact, then the profile's relation), credibility-weighted mentions 0.10 and sources 0.20, velocity 0.10, traction 0.10 with HN points capped, recency 0.15; weights in config, breakdown stored and shown; "none" candidates never teased – rejected v1's segment overlap (full points for 94% of candidates), an LLM "threat score" and raw star counts.
 - **D60 Checked radar profiles** – bulk writer, five cited statements, code citation check, verify model against the cited signals' text (same excerpt) with JFrog's product list as trusted context; relation "none" allowed (v2) – rejected checking against the unverified enrich summaries.
 - **D61 First write endpoints without auth** – watch / approve / dismiss with feedback rows; approve creates an entity and an optional disabled GitHub source; auth is a known limitation – rejected auto-activating sources.
-- **D62 Radar list from the API, threshold in config** – the list returns the profile's statements, the ranking relation with its JFrog products and the verifier's check (supported / partial), plus `lower_relevance_below` from config; relation and kind filters in SQL – rejected a hard-coded threshold in the UI and showing partial statements as fact.
+- **D62 Radar list from the API, threshold in config** – the list returns the profile's statements, the ranking relation with its JFrog products and the verifier's check (supported / partial), plus `lower_relevance_below` from config; the nav pill counts only the top section (same rule); relation and kind filters in SQL – rejected a hard-coded threshold in the UI and showing partial statements as fact.
 - **D63 Signals filters match the Brief** – `window` computed on the server clock and unsupported summaries hidden by default, so each Brief tile equals its Signals total; all filters live in the URL – rejected client-computed dates and component-only filter state.
 - **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
