@@ -1,0 +1,58 @@
+@if (variant() === 'executive') {
+  <article class="exec" [attr.aria-labelledby]="titleId()">
+    @if (rank() !== null) { <span class="rank mono" aria-hidden="true">{{ rankLabel() }}</span> }
+    <fr-impact-badge [impact]="signal().impact" />
+    @if (companies()[0]; as c) { <fr-company-chip [name]="c.name" /> }
+    <h3 class="exec-title" [id]="titleId()">
+      @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
+      <a [href]="signal().url" target="_blank" rel="noopener noreferrer">{{ signal().title }}<span class="visually-hidden"> (opens in a new tab)</span></a>
+    </h3>
+    <fr-confidence-badge class="exec-conf" [confidence]="signal().confidence" />
+  </article>
+} @else {
+  <article class="card" [attr.aria-labelledby]="titleId()">
+    <div class="meta">
+      @if (rank() !== null) { <span class="rank mono" aria-hidden="true">{{ rankLabel() }}</span> }
+      <fr-impact-badge [impact]="signal().impact" />
+      @for (c of companies(); track c.slug) { <fr-company-chip [name]="c.name" /> }
+      @if (category()) { <span class="category small">{{ category() }}</span> }
+      @if (signal().is_claim) { <fr-vendor-claim-tag /> }
+      <fr-confidence-badge class="conf" [confidence]="signal().confidence" />
+    </div>
+
+    <h3 class="title" [id]="titleId()">
+      @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
+      {{ signal().title }}
+    </h3>
+
+    @if (signal().summary) { <p class="summary">{{ signal().summary }}</p> }
+
+    @if (signal().why_jfrog_cares) {
+      <div class="why">
+        <p class="eyebrow why-label">Why JFrog cares</p>
+        <p>{{ signal().why_jfrog_cares }}</p>
+      </div>
+    }
+
+    <fr-evidence-quote [evidence]="signal().evidence" [sourceName]="signal().source?.name" />
+
+    <footer class="footer">
+      <div class="facts small">
+        <fr-source-link [url]="signal().url" [label]="sourceLabel()" />
+        @if (date()) { <span class="mono muted">{{ date() }}</span> }
+        <span class="muted">{{ verification() }}</span>
+        @if (signal().sources_count > 1) { <span class="muted">{{ signal().sources_count }} sources</span> }
+      </div>
+      <div class="actions">
+        <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
+                [attr.aria-describedby]="'soon-' + signal().id">Approve</button>
+        <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
+                [attr.aria-describedby]="'soon-' + signal().id">Correct</button>
+        <span class="visually-hidden" [id]="'soon-' + signal().id">Coming soon</span>
+        <a class="fr-button" routerLink="/missions" [queryParams]="{ signal: signal().id }">
+          Investigate <fr-icon name="arrow" [size]="14" />
+        </a>
+      </div>
+    </footer>
+  </article>
+}

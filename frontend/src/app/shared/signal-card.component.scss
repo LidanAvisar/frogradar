@@ -1,0 +1,138 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-sm);
+  padding: var(--fr-card-pad);
+  background: var(--fr-surface);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-card);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fr-gap-xs);
+}
+
+.rank {
+  font-size: var(--fr-text-small);
+  font-weight: 500;
+  color: var(--fr-muted);
+  min-width: 22px;
+}
+
+.category {
+  color: var(--fr-muted);
+  font-weight: 500;
+}
+
+.conf {
+  margin-left: auto;
+}
+
+.title {
+  font-size: var(--fr-text-card-title);
+  line-height: var(--fr-lh-card-title);
+  font-weight: 600;
+}
+
+.summary {
+  color: var(--fr-ink-2);
+}
+
+.why {
+  padding: 12px 14px;
+  background: var(--fr-why-bg);
+  border-radius: var(--fr-radius-control);
+  color: var(--fr-ink-2);
+}
+
+.why-label {
+  color: var(--fr-accent);
+  margin-bottom: 2px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fr-gap-xs) var(--fr-gap);
+  padding-top: var(--fr-gap-sm);
+  border-top: 1px solid var(--fr-divider);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--fr-gap-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fr-gap-xs);
+}
+
+/* Executive: one line per signal. */
+.exec {
+  display: flex;
+  align-items: center;
+  gap: var(--fr-gap-xs) var(--fr-gap-sm);
+  min-height: 56px;
+  padding: 10px var(--fr-card-pad-tight);
+  background: var(--fr-surface);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-card);
+}
+
+.exec-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fr-text-body);
+  font-weight: 600;
+  line-height: 1.35;
+
+  a {
+    color: var(--fr-ink);
+    text-decoration: none;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  a:hover {
+    color: var(--fr-accent);
+    text-decoration: underline;
+  }
+}
+
+.exec-conf {
+  flex: none;
+}
+
+@media (max-width: 720px) {
+  .exec {
+    flex-wrap: wrap;
+  }
+
+  .exec-title {
+    flex-basis: 100%;
+    order: 5;
+
+    a {
+      -webkit-line-clamp: 2;
+    }
+  }
+
+  .exec-conf {
+    margin-left: auto;
+  }
+
+  .conf {
+    margin-left: 0;
+  }
+}
