@@ -13,7 +13,10 @@ from app.db.models import Signal, Source
 
 def in_scope() -> ColumnElement[bool]:
     """WHERE clause for signals the pipeline should process."""
-    active_source = exists().where(Source.id == Signal.source_id, Source.is_active)
+    # correlate_except: stays a real subquery even when the caller's query joins `sources`.
+    active_source = (
+        exists().where(Source.id == Signal.source_id, Source.is_active).correlate_except(Source)
+    )
     return or_(Signal.source_id.is_(None), active_source)
 
 

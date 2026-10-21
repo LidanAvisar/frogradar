@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 
 from app.db.enums import FetchMethod, SourceKind
 from app.db.models import Signal, Source
-from app.pipeline.scope import count_in_scope, in_scope_signals
+from app.pipeline.scope import count_in_scope, in_scope, in_scope_signals
 
 pytestmark = pytest.mark.db
 
@@ -32,6 +32,10 @@ def test_only_signals_from_active_sources_or_without_source(collect_db):
         assert count_in_scope(s) == (2, 3)
         # Composes with a stage's own filters.
         assert s.scalars(in_scope_signals().where(Signal.title == "t2")).all() == []
+
+        # Still works when the caller joins sources (e.g. to read trust_score).
+        joined = select(Signal.title, Source.trust_score).join(Source).where(in_scope())
+        assert [t for t, _ in s.execute(joined)] == ["t1"]
 
     # Deactivating a source takes its signals out of scope without deleting them.
     with collect_db.begin() as s:
