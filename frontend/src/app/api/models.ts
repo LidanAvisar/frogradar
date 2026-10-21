@@ -23,3 +23,6 @@ export type NavCounts = Schemas['NavCounts'];
 export type SelfInfo = Schemas['SelfOut'];
 export type SignalCategory = Schemas['SignalCategory'];
 export type Verification = Schemas['Verification'];
+export type CitationRef = Schemas['CitationRef'];
+export type CitedSentence = Schemas['CitedSentenceOut'];
+export type Battlecard = Schemas['BattlecardOut'];

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.battlecards import router as battlecards_router
 from app.api.brief import router as brief_router
 from app.api.entities import router as entities_router
 from app.api.health import router as health_router
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(brief_router)
     app.include_router(signals_router)
     app.include_router(entities_router)
+    app.include_router(battlecards_router)
     return app
 
 

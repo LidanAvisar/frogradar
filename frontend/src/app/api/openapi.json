@@ -1,6 +1,149 @@
 {
   "components": {
     "schemas": {
+      "BattlecardEntity": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/Relationship"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "relationship"
+        ],
+        "title": "BattlecardEntity",
+        "type": "object"
+      },
+      "BattlecardOut": {
+        "properties": {
+          "blind_spots_for_jfrog": {
+            "items": {
+              "$ref": "#/components/schemas/CitedText"
+            },
+            "title": "Blind Spots For Jfrog",
+            "type": "array"
+          },
+          "citations": {
+            "description": "Every signal the card's items cite",
+            "items": {
+              "$ref": "#/components/schemas/CitationRef"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "entity": {
+            "$ref": "#/components/schemas/BattlecardEntity"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "matrix": {
+            "items": {
+              "$ref": "#/components/schemas/MatrixRow"
+            },
+            "title": "Matrix",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "opportunities_for_jfrog": {
+            "items": {
+              "$ref": "#/components/schemas/CitedText"
+            },
+            "title": "Opportunities For Jfrog",
+            "type": "array"
+          },
+          "positioning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CitedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "strengths": {
+            "items": {
+              "$ref": "#/components/schemas/CitedText"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineItem"
+            },
+            "title": "Timeline",
+            "type": "array"
+          },
+          "weaknesses": {
+            "items": {
+              "$ref": "#/components/schemas/CitedText"
+            },
+            "title": "Weaknesses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entity",
+          "report_id",
+          "generated_at",
+          "model",
+          "positioning",
+          "strengths",
+          "weaknesses",
+          "opportunities_for_jfrog",
+          "blind_spots_for_jfrog",
+          "citations",
+          "matrix",
+          "timeline",
+          "coverage"
+        ],
+        "title": "BattlecardOut",
+        "type": "object"
+      },
       "BriefOut": {
         "properties": {
           "filtered_not_relevant": {
@@ -24,6 +167,14 @@
             "description": "From the latest daily_brief report, if any",
             "title": "Headline"
           },
+          "headline_citations": {
+            "description": "Signals the headline relies on",
+            "items": {
+              "$ref": "#/components/schemas/CitationRef"
+            },
+            "title": "Headline Citations",
+            "type": "array"
+          },
           "overview": {
             "anyOf": [
               {
@@ -35,6 +186,14 @@
             ],
             "description": "From the latest daily_brief report, if any",
             "title": "Overview"
+          },
+          "overview_sentences": {
+            "description": "The overview, sentence by sentence, with its sources",
+            "items": {
+              "$ref": "#/components/schemas/CitedSentenceOut"
+            },
+            "title": "Overview Sentences",
+            "type": "array"
           },
           "pipeline": {
             "$ref": "#/components/schemas/PipelineInfo"
@@ -108,6 +267,163 @@
         "title": "BriefWindow",
         "type": "object"
       },
+      "CapabilityRef": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "segment": {
+            "title": "Segment",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "segment"
+        ],
+        "title": "CapabilityRef",
+        "type": "object"
+      },
+      "CitationRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "published_at"
+        ],
+        "title": "CitationRef",
+        "type": "object"
+      },
+      "CitedSentenceOut": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationRef"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "citations"
+        ],
+        "title": "CitedSentenceOut",
+        "type": "object"
+      },
+      "CitedText": {
+        "properties": {
+          "signal_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Signal Ids",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "signal_ids"
+        ],
+        "title": "CitedText",
+        "type": "object"
+      },
+      "CompetitorLevel": {
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CitationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified At"
+          },
+          "level": {
+            "enum": [
+              "full",
+              "partial",
+              "planned",
+              "none",
+              "unknown"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "level",
+          "note",
+          "evidence",
+          "last_verified_at"
+        ],
+        "title": "CompetitorLevel",
+        "type": "object"
+      },
       "ConfidenceOut": {
         "properties": {
           "band": {
@@ -129,6 +445,65 @@
           "band"
         ],
         "title": "ConfidenceOut",
+        "type": "object"
+      },
+      "Coverage": {
+        "properties": {
+          "capabilities_known": {
+            "title": "Capabilities Known",
+            "type": "integer"
+          },
+          "capabilities_total": {
+            "title": "Capabilities Total",
+            "type": "integer"
+          },
+          "first_signal_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Signal At"
+          },
+          "high_impact": {
+            "title": "High Impact",
+            "type": "integer"
+          },
+          "last_signal_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Signal At"
+          },
+          "signals": {
+            "title": "Signals",
+            "type": "integer"
+          },
+          "sources": {
+            "title": "Sources",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "signals",
+          "high_impact",
+          "sources",
+          "capabilities_known",
+          "capabilities_total",
+          "first_signal_at",
+          "last_signal_at"
+        ],
+        "title": "Coverage",
         "type": "object"
       },
       "EntityOut": {
@@ -300,6 +675,43 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "JFrogLevel": {
+        "properties": {
+          "level": {
+            "enum": [
+              "full",
+              "partial",
+              "planned",
+              "none",
+              "unknown"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Public JFrog doc the level is based on",
+            "title": "Source"
+          }
+        },
+        "required": [
+          "level",
+          "note"
+        ],
+        "title": "JFrogLevel",
+        "type": "object"
+      },
       "LastRun": {
         "properties": {
           "finished_at": {
@@ -334,6 +746,32 @@
           "status"
         ],
         "title": "LastRun",
+        "type": "object"
+      },
+      "MatrixRow": {
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/CapabilityRef"
+          },
+          "changed_recently": {
+            "description": "The competitor's level changed in the last days",
+            "title": "Changed Recently",
+            "type": "boolean"
+          },
+          "competitor": {
+            "$ref": "#/components/schemas/CompetitorLevel"
+          },
+          "jfrog": {
+            "$ref": "#/components/schemas/JFrogLevel"
+          }
+        },
+        "required": [
+          "capability",
+          "jfrog",
+          "competitor",
+          "changed_recently"
+        ],
+        "title": "MatrixRow",
         "type": "object"
       },
       "NavCounts": {
@@ -460,12 +898,28 @@
       "PricingItem": {
         "properties": {
           "changes": {
-            "description": "Deterministic before \u2192 after price pairs from the diff; empty = none found",
+            "description": "Before \u2192 after prices: model-proposed and verified against the diff in code, else the deterministic parser; empty = none found",
             "items": {
               "$ref": "#/components/schemas/PriceChange"
             },
             "title": "Changes",
             "type": "array"
+          },
+          "changes_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "verified_llm",
+                  "parser"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where `changes` came from (null = no changes)",
+            "title": "Changes Source"
           },
           "signal": {
             "$ref": "#/components/schemas/SignalOut"
@@ -544,6 +998,11 @@
             "title": "Kind",
             "type": "string"
           },
+          "original_title": {
+            "description": "The title as collected",
+            "title": "Original Title",
+            "type": "string"
+          },
           "page_diff": {
             "anyOf": [
               {
@@ -596,7 +1055,20 @@
             ],
             "title": "Summary"
           },
+          "takeaway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One sentence: the single most important point for JFrog",
+            "title": "Takeaway"
+          },
           "title": {
+            "description": "Display title: the generated headline of a page diff, if any",
             "title": "Title",
             "type": "string"
           },
@@ -622,6 +1094,7 @@
         "required": [
           "id",
           "title",
+          "original_title",
           "url",
           "kind",
           "source",
@@ -783,6 +1256,11 @@
             "title": "Kind",
             "type": "string"
           },
+          "original_title": {
+            "description": "The title as collected",
+            "title": "Original Title",
+            "type": "string"
+          },
           "page_diff": {
             "anyOf": [
               {
@@ -831,7 +1309,20 @@
             ],
             "title": "Summary"
           },
+          "takeaway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One sentence: the single most important point for JFrog",
+            "title": "Takeaway"
+          },
           "title": {
+            "description": "Display title: the generated headline of a page diff, if any",
             "title": "Title",
             "type": "string"
           },
@@ -857,6 +1348,7 @@
         "required": [
           "id",
           "title",
+          "original_title",
           "url",
           "kind",
           "source",
@@ -1006,6 +1498,65 @@
         "title": "SourceOut",
         "type": "object"
       },
+      "TimelineItem": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "title",
+          "category",
+          "impact",
+          "url"
+        ],
+        "title": "TimelineItem",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1141,6 +1692,48 @@
           }
         },
         "summary": "List Entities",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/entities/{slug}/battlecard": {
+      "get": {
+        "operationId": "get_battlecard_api_entities__slug__battlecard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BattlecardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Battlecard",
         "tags": [
           "entities"
         ]

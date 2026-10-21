@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/entities/{slug}/battlecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Battlecard */
+        get: operations["get_battlecard_api_entities__slug__battlecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nav": {
         parameters: {
             query?: never;
@@ -127,6 +144,43 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BattlecardEntity */
+        BattlecardEntity: {
+            /** Name */
+            name: string;
+            relationship: components["schemas"]["Relationship"];
+            /** Slug */
+            slug: string;
+        };
+        /** BattlecardOut */
+        BattlecardOut: {
+            /** Blind Spots For Jfrog */
+            blind_spots_for_jfrog: components["schemas"]["CitedText"][];
+            /**
+             * Citations
+             * @description Every signal the card's items cite
+             */
+            citations: components["schemas"]["CitationRef"][];
+            coverage: components["schemas"]["Coverage"];
+            entity: components["schemas"]["BattlecardEntity"];
+            /** Generated At */
+            generated_at: string | null;
+            /** Matrix */
+            matrix: components["schemas"]["MatrixRow"][];
+            /** Model */
+            model: string | null;
+            /** Opportunities For Jfrog */
+            opportunities_for_jfrog: components["schemas"]["CitedText"][];
+            positioning: components["schemas"]["CitedText"] | null;
+            /** Report Id */
+            report_id: number | null;
+            /** Strengths */
+            strengths: components["schemas"]["CitedText"][];
+            /** Timeline */
+            timeline: components["schemas"]["TimelineItem"][];
+            /** Weaknesses */
+            weaknesses: components["schemas"]["CitedText"][];
+        };
         /** BriefOut */
         BriefOut: {
             /** Filtered Not Relevant */
@@ -142,10 +196,20 @@ export interface components {
              */
             headline?: string | null;
             /**
+             * Headline Citations
+             * @description Signals the headline relies on
+             */
+            headline_citations?: components["schemas"]["CitationRef"][];
+            /**
              * Overview
              * @description From the latest daily_brief report, if any
              */
             overview?: string | null;
+            /**
+             * Overview Sentences
+             * @description The overview, sentence by sentence, with its sources
+             */
+            overview_sentences?: components["schemas"]["CitedSentenceOut"][];
             pipeline: components["schemas"]["PipelineInfo"];
             /** Pricing Watch */
             pricing_watch: components["schemas"]["PricingItem"][];
@@ -178,6 +242,53 @@ export interface components {
              */
             since: string;
         };
+        /** CapabilityRef */
+        CapabilityRef: {
+            /** Name */
+            name: string;
+            /** Segment */
+            segment: string;
+            /** Slug */
+            slug: string;
+        };
+        /** CitationRef */
+        CitationRef: {
+            /** Id */
+            id: number;
+            /** Published At */
+            published_at: string | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** CitedSentenceOut */
+        CitedSentenceOut: {
+            /** Citations */
+            citations: components["schemas"]["CitationRef"][];
+            /** Text */
+            text: string;
+        };
+        /** CitedText */
+        CitedText: {
+            /** Signal Ids */
+            signal_ids: number[];
+            /** Text */
+            text: string;
+        };
+        /** CompetitorLevel */
+        CompetitorLevel: {
+            evidence: components["schemas"]["CitationRef"] | null;
+            /** Last Verified At */
+            last_verified_at: string | null;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "full" | "partial" | "planned" | "none" | "unknown";
+            /** Note */
+            note: string | null;
+        };
         /** ConfidenceOut */
         ConfidenceOut: {
             /**
@@ -187,6 +298,23 @@ export interface components {
             band: "high" | "medium" | "low";
             /** Score */
             score: number;
+        };
+        /** Coverage */
+        Coverage: {
+            /** Capabilities Known */
+            capabilities_known: number;
+            /** Capabilities Total */
+            capabilities_total: number;
+            /** First Signal At */
+            first_signal_at: string | null;
+            /** High Impact */
+            high_impact: number;
+            /** Last Signal At */
+            last_signal_at: string | null;
+            /** Signals */
+            signals: number;
+            /** Sources */
+            sources: number;
         };
         /** EntityOut */
         EntityOut: {
@@ -259,6 +387,21 @@ export interface components {
              */
             status: "ok" | "degraded";
         };
+        /** JFrogLevel */
+        JFrogLevel: {
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "full" | "partial" | "planned" | "none" | "unknown";
+            /** Note */
+            note: string;
+            /**
+             * Source
+             * @description Public JFrog doc the level is based on
+             */
+            source?: string | null;
+        };
         /** LastRun */
         LastRun: {
             /** Finished At */
@@ -271,6 +414,17 @@ export interface components {
              */
             started_at: string;
             status: components["schemas"]["RunStatus"];
+        };
+        /** MatrixRow */
+        MatrixRow: {
+            capability: components["schemas"]["CapabilityRef"];
+            /**
+             * Changed Recently
+             * @description The competitor's level changed in the last days
+             */
+            changed_recently: boolean;
+            competitor: components["schemas"]["CompetitorLevel"];
+            jfrog: components["schemas"]["JFrogLevel"];
         };
         /** NavCounts */
         NavCounts: {
@@ -312,9 +466,14 @@ export interface components {
         PricingItem: {
             /**
              * Changes
-             * @description Deterministic before → after price pairs from the diff; empty = none found
+             * @description Before → after prices: model-proposed and verified against the diff in code, else the deterministic parser; empty = none found
              */
             changes: components["schemas"]["PriceChange"][];
+            /**
+             * Changes Source
+             * @description Where `changes` came from (null = no changes)
+             */
+            changes_source?: ("verified_llm" | "parser") | null;
             signal: components["schemas"]["SignalOut"];
         };
         /** RankedSignalOut */
@@ -335,6 +494,11 @@ export interface components {
              * @enum {string}
              */
             kind: "article" | "page_diff";
+            /**
+             * Original Title
+             * @description The title as collected
+             */
+            original_title: string;
             page_diff?: components["schemas"]["PageDiffOut"] | null;
             /** Published At */
             published_at: string | null;
@@ -348,7 +512,15 @@ export interface components {
             sources_count: number;
             /** Summary */
             summary: string | null;
-            /** Title */
+            /**
+             * Takeaway
+             * @description One sentence: the single most important point for JFrog
+             */
+            takeaway?: string | null;
+            /**
+             * Title
+             * @description Display title: the generated headline of a page diff, if any
+             */
             title: string;
             /** Url */
             url: string;
@@ -409,6 +581,11 @@ export interface components {
              * @enum {string}
              */
             kind: "article" | "page_diff";
+            /**
+             * Original Title
+             * @description The title as collected
+             */
+            original_title: string;
             page_diff?: components["schemas"]["PageDiffOut"] | null;
             /** Published At */
             published_at: string | null;
@@ -420,7 +597,15 @@ export interface components {
             sources_count: number;
             /** Summary */
             summary: string | null;
-            /** Title */
+            /**
+             * Takeaway
+             * @description One sentence: the single most important point for JFrog
+             */
+            takeaway?: string | null;
+            /**
+             * Title
+             * @description Display title: the generated headline of a page diff, if any
+             */
             title: string;
             /** Url */
             url: string;
@@ -470,6 +655,20 @@ export interface components {
              * @description Source trust score, 0-1
              */
             trust: number;
+        };
+        /** TimelineItem */
+        TimelineItem: {
+            category: components["schemas"]["SignalCategory"] | null;
+            /** Date */
+            date: string | null;
+            /** Id */
+            id: number;
+            /** Impact */
+            impact: number | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -546,6 +745,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntityOut"][];
+                };
+            };
+        };
+    };
+    get_battlecard_api_entities__slug__battlecard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BattlecardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

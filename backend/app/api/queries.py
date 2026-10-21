@@ -10,10 +10,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, and_, func, or_, select
+from sqlalchemy import ColumnElement, Select, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.schemas import (
+    CitationRef,
     ConfidenceOut,
     EntityRef,
     EvidenceOut,
@@ -22,25 +23,18 @@ from app.api.schemas import (
     SourceOut,
 )
 from app.core.catalog import load_pipeline
-from app.db.enums import FetchMethod, Verification
+from app.db.enums import FetchMethod
 from app.db.models import Entity, Signal, Source, signal_entities
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import (  # noqa: F401 - re-exported for the routers
+    SHOWN_VERIFICATIONS,
+    canonical,
+    event_time,
+    ranked,
+    usable,
+    visible,
+)
 from app.pipeline.score import band
-
-SHOWN_VERIFICATIONS = (Verification.SUPPORTED, Verification.PARTIAL)
-
-
-def canonical() -> ColumnElement[bool]:
-    return or_(Signal.dedup_cluster_id.is_(None), Signal.dedup_cluster_id == Signal.id)
-
-
-def visible() -> ColumnElement[bool]:
-    return and_(in_scope(), canonical(), Signal.enriched_at.is_not(None))
-
-
-def event_time() -> ColumnElement[datetime]:
-    """When the event happened: publish date, else when we first saw it."""
-    return func.coalesce(Signal.published_at, Signal.fetched_at)
+from app.pipeline.synthesis.inputs import display_title
 
 
 def is_page_diff() -> ColumnElement[bool]:
@@ -131,7 +125,8 @@ def to_out(sig: Signal, entities: list[EntityRef]) -> SignalOut:
     src = sig.source
     return SignalOut(
         id=sig.id,
-        title=sig.title,
+        title=display_title(sig),
+        original_title=sig.title,
         url=sig.url,
         kind=kind,
         source=SourceOut(name=src.name, kind=src.kind, trust=src.trust_score) if src else None,
@@ -141,6 +136,7 @@ def to_out(sig: Signal, entities: list[EntityRef]) -> SignalOut:
         is_claim=sig.is_claim,
         summary=sig.summary,
         why_jfrog_cares=sig.why_jfrog_cares,
+        takeaway=sig.takeaway,
         evidence=evidence,
         verification=sig.verification,
         confidence=confidence,
@@ -153,3 +149,15 @@ def to_out(sig: Signal, entities: list[EntityRef]) -> SignalOut:
 def to_outs(session: Session, signals: Sequence[Signal]) -> list[SignalOut]:
     refs = entity_refs(session, [s.id for s in signals])
     return [to_out(s, refs.get(s.id, [])) for s in signals]
+
+
+def citation_refs(session: Session, ids: Sequence[int]) -> dict[int, CitationRef]:
+    """Usable signals among `ids` (relevant, visible, not unsupported) as citation links.
+    A synthesized sentence whose sources are no longer all here is not shown (read-time check)."""
+    if not ids:
+        return {}
+    rows = session.scalars(select(Signal).where(Signal.id.in_(sorted(set(ids))), usable())).all()
+    return {
+        s.id: CitationRef(id=s.id, title=display_title(s), url=s.url, published_at=s.published_at)
+        for s in rows
+    }

@@ -1,20 +1,22 @@
 """GET /api/brief – Morning Brief: top developments, what's new, pricing watch, pipeline."""
 
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import DbSession, Now
 from app.api.prices import price_changes
 from app.api.queries import (
-    SHOWN_VERIFICATIONS,
     canonical,
+    citation_refs,
     entity_refs,
     event_time,
     is_page_diff,
+    ranked,
     signals_query,
     to_outs,
     visible,
@@ -22,10 +24,14 @@ from app.api.queries import (
 from app.api.schemas import (
     BriefOut,
     BriefWindow,
+    CitationRef,
+    CitedSentenceOut,
     LastRun,
     PipelineInfo,
+    PriceChange,
     PricingItem,
     RankedSignalOut,
+    SignalOut,
     SinceYesterdayItem,
 )
 from app.db.enums import FetchMethod, ReportKind, Verification
@@ -50,20 +56,9 @@ def get_brief(
 ) -> BriefOut:
     since = now - timedelta(days=days)
 
-    # Ranked: relevant, verified (supported or partial), impact × confidence.
+    # Ranked: relevant, verified (supported or partial), impact × confidence (scope.ranked).
     top_rows = session.scalars(
-        signals_query()
-        .where(
-            visible(),
-            Signal.relevant.is_(True),
-            Signal.verification.in_(SHOWN_VERIFICATIONS),
-            Signal.impact.is_not(None),
-            Signal.confidence.is_not(None),
-            event_time() >= since,
-            event_time() <= now,
-        )
-        .order_by((Signal.impact * Signal.confidence).desc(), event_time().desc(), Signal.id.desc())
-        .limit(limit)
+        ranked(since, now).options(selectinload(Signal.source)).limit(limit)
     ).all()
     top = [
         RankedSignalOut(rank=i, **out.model_dump())
@@ -124,7 +119,9 @@ def get_brief(
     )
 
 
-def _headline(session: DbSession) -> dict[str, str | None]:
+def _headline(session: DbSession) -> dict[str, Any]:
+    """Headline + overview of the latest daily_brief, with their sources. Read-time check: a
+    sentence is shown only while every signal it cites is still usable."""
     report = session.scalar(
         select(Report)
         .where(Report.kind == ReportKind.DAILY_BRIEF)
@@ -132,11 +129,36 @@ def _headline(session: DbSession) -> dict[str, str | None]:
         .limit(1)
     )
     content = report.content if report else {}
-    headline, overview = content.get("headline"), content.get("overview")
+    headline_ids = _ids(content.get("headline_signal_ids"))
+    sentences = [
+        (s.get("text"), _ids(s.get("signal_ids")))
+        for s in content.get("overview_sentences") or []
+        if isinstance(s, dict)
+    ]
+    refs = citation_refs(session, [*headline_ids, *(i for _, ids in sentences for i in ids)])
+
+    def cited(ids: list[int]) -> list[CitationRef] | None:
+        return [refs[i] for i in ids] if ids and all(i in refs for i in ids) else None
+
+    headline = content.get("headline")
+    headline_refs = cited(headline_ids)
+    if not (isinstance(headline, str) and headline.strip() and headline_refs):
+        headline, headline_refs = None, []
+    overview = [
+        CitedSentenceOut(text=text, citations=c)
+        for text, ids in sentences
+        if isinstance(text, str) and text.strip() and (c := cited(ids))
+    ]
     return {
-        "headline": headline if isinstance(headline, str) and headline.strip() else None,
-        "overview": overview if isinstance(overview, str) and overview.strip() else None,
+        "headline": headline,
+        "headline_citations": headline_refs,
+        "overview": " ".join(o.text for o in overview) or None,
+        "overview_sentences": overview,
     }
+
+
+def _ids(value: Any) -> list[int]:
+    return [int(v) for v in value if isinstance(v, int)] if isinstance(value, list) else []
 
 
 def _pricing_watch(session: DbSession, now: Now) -> list[PricingItem]:
@@ -160,10 +182,21 @@ def _pricing_watch(session: DbSession, now: Now) -> list[PricingItem]:
         .order_by(Signal.impact.desc().nulls_last(), event_time().desc(), Signal.id.desc())
         .limit(PRICING_WATCH_MAX)
     ).all()
-    return [
-        PricingItem(signal=out, changes=price_changes(sig.raw_text))
-        for sig, out in zip(rows, to_outs(session, rows), strict=True)
+    return [_pricing_item(sig, out) for sig, out in zip(rows, to_outs(session, rows), strict=True)]
+
+
+def _pricing_item(sig: Signal, out: SignalOut) -> PricingItem:
+    """Verified model-proposed changes (meta.price_changes, D52) first, the parser (D48) as the
+    fallback. Both are short strings checked against the stored diff."""
+    verified = [
+        PriceChange(label=c["label"], before=c["before"], after=c["after"])
+        for c in (sig.meta or {}).get("price_changes") or []
+        if isinstance(c, dict) and {"label", "before", "after"} <= c.keys()
     ]
+    if verified:
+        return PricingItem(signal=out, changes=verified, changes_source="verified_llm")
+    parsed = price_changes(sig.raw_text)
+    return PricingItem(signal=out, changes=parsed, changes_source="parser" if parsed else None)
 
 
 def _pipeline_info(session: DbSession) -> PipelineInfo:

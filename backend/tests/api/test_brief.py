@@ -123,7 +123,26 @@ def test_pricing_watch_latest_diff_per_page(client, build):
     ]
     assert items[0]["signal"]["kind"] == "page_diff"
     assert items[0]["signal"]["page_diff"]["before_origin"] == "wayback"
-    assert items[1]["changes"] == []
+    assert items[0]["changes_source"] == "parser"
+    assert items[1]["changes"] == [] and items[1]["changes_source"] is None
+
+
+def test_pricing_watch_prefers_verified_model_changes_and_display_title(client, build):
+    page = build.source("A Pricing", method=FetchMethod.PAGE_DIFF)
+    verified = [
+        {"label": "Cloud > Pro Edition", "before": "$1,620 / year", "after": "$1,950 / year"}
+    ]
+    sig = build.signal(
+        "Pricing page changed: A Pricing", source=page, raw_text=_diff("$1,000", "$2,000"),
+        takeaway="A raises Pro: an opening for JFrog Artifactory.",
+        meta={"kind": "page_diff", "price_changes": verified,
+              "display_title": "A raises Cloud Pro to $1,950 a year"},
+    )  # fmt: skip
+    (item,) = brief(client)["pricing_watch"]
+    assert item["changes"] == verified and item["changes_source"] == "verified_llm"
+    assert item["signal"]["title"] == "A raises Cloud Pro to $1,950 a year"
+    assert item["signal"]["original_title"] == sig.title
+    assert item["signal"]["takeaway"] == "A raises Pro: an opening for JFrog Artifactory."
 
 
 def test_pipeline_info_skips_eval_runs(client, build):
@@ -157,18 +176,45 @@ def test_no_runs_and_empty_db(client):
     assert data["headline"] is None and data["overview"] is None
 
 
-def test_headline_from_latest_daily_brief(client, build):
+def test_headline_from_latest_daily_brief_with_citations(client, build):
+    a, b = build.signal("Nexus price rise"), build.signal("Firewall 2")
+    hidden = build.signal("Re-collected, pending re-enrichment", enriched=False)
     s = build.s
     s.add(Report(kind=ReportKind.DAILY_BRIEF, content={"headline": "Old", "overview": "o"},
                  created_at=NOW - timedelta(days=1)))  # fmt: skip
-    s.add(Report(kind=ReportKind.DAILY_BRIEF, content={"headline": "Sonatype reprices Nexus"},
-                 created_at=NOW - timedelta(hours=1)))  # fmt: skip
+    s.add(Report(
+        kind=ReportKind.DAILY_BRIEF, created_at=NOW - timedelta(hours=1),
+        content={
+            "headline": "Sonatype reprices Nexus", "headline_signal_ids": [a.id],
+            "overview": "joined text is recomputed",
+            "overview_sentences": [
+                {"text": "Sonatype raised Nexus Cloud Pro.", "signal_ids": [a.id]},
+                {"text": "It also shipped Firewall 2.", "signal_ids": [b.id, a.id]},
+                # a cited signal is no longer usable → the sentence is not shown
+                {"text": "Something unsupported now.", "signal_ids": [b.id, hidden.id]},
+            ],
+        },
+    ))  # fmt: skip
     s.add(Report(kind=ReportKind.BATTLECARD, content={"headline": "Not a brief"}, created_at=NOW))
     s.flush()
 
     data = brief(client)
     assert data["headline"] == "Sonatype reprices Nexus"
-    assert data["overview"] is None
+    assert [c["id"] for c in data["headline_citations"]] == [a.id]
+    assert data["headline_citations"][0]["url"] == a.url
+    assert [o["text"] for o in data["overview_sentences"]] == [
+        "Sonatype raised Nexus Cloud Pro.", "It also shipped Firewall 2.",
+    ]  # fmt: skip
+    assert [c["id"] for c in data["overview_sentences"][1]["citations"]] == [b.id, a.id]
+    assert data["overview"] == "Sonatype raised Nexus Cloud Pro. It also shipped Firewall 2."
+
+
+def test_uncited_headline_is_not_shown(client, build):
+    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, content={"headline": "No sources"},
+                       created_at=NOW))  # fmt: skip
+    build.s.flush()
+    data = brief(client)
+    assert data["headline"] is None and data["overview"] is None
 
 
 def test_invalid_params(client):
