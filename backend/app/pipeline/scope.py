@@ -53,6 +53,21 @@ def eval_set(ids: Iterable[int]) -> ColumnElement[bool]:
     return Signal.id.in_(sorted(set(ids)))
 
 
+# ---------- discovery signals (Competitor Radar, D57) ----------
+
+
+def discovery() -> ColumnElement[bool]:
+    """Signals from the discovery sources (Hacker News, GitHub search, CNCF landscape):
+    meta.kind = "discovery". They are triaged and enriched like any signal, but feed only the
+    Competitor Radar: they are not verified one by one, not deduplicated against the news, and
+    never shown in the Brief, battlecards or the signal feed."""
+    return Signal.meta["kind"].astext == "discovery"
+
+
+def not_discovery() -> ColumnElement[bool]:
+    return Signal.meta["kind"].astext.is_distinct_from("discovery")
+
+
 # ---------- what screens and synthesis may use ----------
 
 
@@ -63,8 +78,9 @@ def canonical() -> ColumnElement[bool]:
 
 def visible() -> ColumnElement[bool]:
     """In scope, canonical and enriched: what any screen may show (D47). Rows whose text changed
-    after enrichment have enriched_at reset and stay hidden until re-enriched."""
-    return and_(in_scope(), canonical(), Signal.enriched_at.is_not(None))
+    after enrichment have enriched_at reset and stay hidden until re-enriched. Discovery signals
+    are never visible here: the Radar shows them as candidate evidence instead (D57)."""
+    return and_(in_scope(), canonical(), Signal.enriched_at.is_not(None), not_discovery())
 
 
 def usable() -> ColumnElement[bool]:

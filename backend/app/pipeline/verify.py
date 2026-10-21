@@ -27,7 +27,7 @@ from app.pipeline.llm_steps import (
 )
 from app.pipeline.prompting import SignalInput, verify_messages
 from app.pipeline.schemas import VerifyResult
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import in_scope, not_discovery
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,7 @@ def verify_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     cfg = ctx.config.verify
     todo = [
         in_scope(),
+        not_discovery(),  # discovery signals: the radar profile verifier checks them (D60)
         canonical_or_unclustered(),
         Signal.relevant.is_(True),
         Signal.enriched_at.is_not(None),

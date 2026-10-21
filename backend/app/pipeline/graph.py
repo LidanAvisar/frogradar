@@ -1,6 +1,7 @@
 """The daily pipeline as a LangGraph graph:
 
     collect → embed → dedup → link → triage → enrich → verify → score → brief → battlecards
+            → radar
 
     python -m app.pipeline.graph                         # everything (make pipeline)
     python -m app.pipeline.graph --skip collect          # process what is already stored
@@ -39,6 +40,7 @@ from app.pipeline.embed import embed_signals
 from app.pipeline.enrich import enrich_signals
 from app.pipeline.link import link_signals
 from app.pipeline.lock import PipelineLocked, pipeline_lock
+from app.pipeline.radar.step import radar_step
 from app.pipeline.score import score_signals
 from app.pipeline.synthesis.battlecards import battlecards_step
 from app.pipeline.synthesis.brief import brief_step
@@ -59,9 +61,10 @@ NODES = (
     "score",
     "brief",
     "battlecards",
+    "radar",
 )
-LLM_NODES = frozenset({"embed", "triage", "enrich", "verify", "brief", "battlecards"})
-FORCEABLE = frozenset({"triage", "enrich", "verify", "brief", "battlecards"})
+LLM_NODES = frozenset({"embed", "triage", "enrich", "verify", "brief", "battlecards", "radar"})
+FORCEABLE = frozenset({"triage", "enrich", "verify", "brief", "battlecards", "radar"})
 
 
 def collect_step(session: Session, ctx: RunContext) -> dict[str, Any]:
@@ -95,6 +98,7 @@ STEPS: dict[str, Step] = {
     "score": score_signals,
     "brief": brief_step,
     "battlecards": battlecards_step,
+    "radar": radar_step,
 }
 
 

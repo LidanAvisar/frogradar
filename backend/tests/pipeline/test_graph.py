@@ -49,7 +49,7 @@ def test_nodes_run_in_order_into_one_run_row(collect_db):
 
     assert order == list(NODES) == [
         "collect", "embed", "dedup", "link", "triage", "enrich", "verify", "score",
-        "brief", "battlecards",
+        "brief", "battlecards", "radar",
     ]  # fmt: skip
     assert run.status == RunStatus.SUCCEEDED
     assert all(run.counts[n] == {"done": 1} for n in NODES)

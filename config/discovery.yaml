@@ -176,6 +176,7 @@ radar:
     sources_full_at: 3
     velocity_recent_days: 14
     velocity_window_days: 90
+    velocity_recent_full_at: 3
     stars_per_day_full_at: 50
     hn_points_full_at: 500
     recency_half_life_days: 14

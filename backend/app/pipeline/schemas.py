@@ -116,6 +116,23 @@ class EnrichedSignalBase(_Out):
     new_entities: list[NewEntity] = Field(default_factory=list, max_length=5)
 
 
+class DiscoveryNewEntity(NewEntity):
+    """new_entities of a discovery item: may be an open-source project and carry its URL."""
+
+    kind: Literal["company", "product", "open_source_project"]
+    url: Annotated[str, Field(max_length=300)] | None = Field(
+        default=None,
+        description="Homepage or repository URL exactly as written in the text, else null.",
+    )
+
+
+class EnrichedDiscoveryBase(EnrichedSignalBase):
+    """Discovery items (HN, GitHub search, CNCF landscape, D57): the item's own subject is the
+    first new entity when it is untracked."""
+
+    new_entities: list[DiscoveryNewEntity] = Field(default_factory=list, max_length=5)
+
+
 class EnrichedPageDiffBase(EnrichedSignalBase):
     """Page diffs also get a specific headline and the price changes they show."""
 
@@ -126,9 +143,14 @@ class EnrichedPageDiffBase(EnrichedSignalBase):
 
 
 def enrich_schema(
-    entity_slugs: list[str], capability_slugs: list[str], *, page_diff: bool = False
+    entity_slugs: list[str],
+    capability_slugs: list[str],
+    *,
+    page_diff: bool = False,
+    discovery: bool = False,
 ) -> type[EnrichedSignalBase]:
-    """EnrichedSignal (or EnrichedPageDiff) with entity/capability slugs restricted to the lists."""
+    """EnrichedSignal (or EnrichedPageDiff / EnrichedDiscovery) with entity/capability slugs
+    restricted to the lists."""
     if not entity_slugs or not capability_slugs:
         raise ValueError("enrich_schema needs at least one entity and one capability slug")
     entity_slug = Literal[tuple(sorted(entity_slugs))]
@@ -139,9 +161,15 @@ def enrich_schema(
         slug=(entity_slug, ...),
         role=(Literal["primary", "mention"], Field(description="primary = the news is about it")),
     )
+    if page_diff:
+        name, base = "EnrichedPageDiff", EnrichedPageDiffBase
+    elif discovery:
+        name, base = "EnrichedDiscovery", EnrichedDiscoveryBase
+    else:
+        name, base = "EnrichedSignal", EnrichedSignalBase
     return create_model(
-        "EnrichedPageDiff" if page_diff else "EnrichedSignal",
-        __base__=EnrichedPageDiffBase if page_diff else EnrichedSignalBase,
+        name,
+        __base__=base,
         entities=(list[entity_ref], Field(default_factory=list, max_length=10)),
         capabilities=(list[capability_slug], Field(default_factory=list, max_length=6)),
     )
@@ -149,19 +177,25 @@ def enrich_schema(
 
 @dataclass(frozen=True)
 class EnrichSchemas:
-    """The run's two enrich schemas: articles and page diffs."""
+    """The run's enrich schemas: articles, page diffs and discovery items."""
 
     article: type[EnrichedSignalBase]
     page_diff: type[EnrichedSignalBase]
+    discovery: type[EnrichedSignalBase] | None = None
 
-    def pick(self, diff: bool) -> type[EnrichedSignalBase]:
-        return self.page_diff if diff else self.article
+    def pick(self, diff: bool, discovery: bool = False) -> type[EnrichedSignalBase]:
+        if diff:
+            return self.page_diff
+        if discovery and self.discovery is not None:
+            return self.discovery
+        return self.article
 
 
 def enrich_schemas(entity_slugs: list[str], capability_slugs: list[str]) -> EnrichSchemas:
     return EnrichSchemas(
         enrich_schema(entity_slugs, capability_slugs),
         enrich_schema(entity_slugs, capability_slugs, page_diff=True),
+        enrich_schema(entity_slugs, capability_slugs, discovery=True),
     )
 
 

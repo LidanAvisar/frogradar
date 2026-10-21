@@ -45,7 +45,7 @@ from app.pipeline.schemas import (
     EnrichSchemas,
     enrich_schemas,
 )
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import discovery, in_scope
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +74,9 @@ def enrich_one(
     """Enrich one signal incl. the quote check / repair / retry (no DB writes).
     Shared by the stage and the eval runner (app.eval)."""
     diff = is_page_diff(meta)
-    schema = schemas.pick(diff)
-    prompt_name = DIFF_PROMPT if diff else "enrich_signal"
+    disc = not diff and is_discovery(meta)
+    schema = schemas.pick(diff, disc)
+    prompt_name = DIFF_PROMPT if diff else DISCOVERY_PROMPT if disc else "enrich_signal"
     # Where the quote may come from: the whole text, or only the [after] lines of a diff.
     # Removal-only diffs have no [after] text: their quote comes from [before] (quote_side).
     side, quote_source = page_quote_source(sig.raw_text) if diff else (None, sig.raw_text)
@@ -115,11 +116,12 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     complete, factory = ctx.require_llm()
     version = load_prompt("enrich_signal").id
     diff_version = load_prompt(DIFF_PROMPT).id
+    disc_version = load_prompt(DISCOVERY_PROMPT).id
     cfg = ctx.config.enrich
     todo = [in_scope(), canonical_or_unclustered(), Signal.relevant.is_(True)]
     if "enrich" not in ctx.force:
         # Each kind of signal is compared with its own prompt's current version.
-        current = case((_page_diff_sql(), diff_version), else_=version)
+        current = case((_page_diff_sql(), diff_version), (discovery(), disc_version), else_=version)
         todo.append(
             or_(
                 Signal.enriched_at.is_(None), Signal.enrich_prompt_version.is_distinct_from(current)
@@ -162,7 +164,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
             info = {
                 "prompt_version": prompt_id,
                 "impact_rationale": result.impact_rationale,
-                "new_entities": untracked(result.new_entities, tracked),
+                "new_entities": untracked(result.new_entities, tracked, sig.raw_text),
                 "capabilities": list(result.capabilities),
                 "quote_attempts": attempts,
             }
@@ -218,6 +220,11 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
 
 
 DIFF_PROMPT = "enrich_page_diff"
+DISCOVERY_PROMPT = "enrich_discovery"
+
+
+def is_discovery(meta: dict[str, Any] | None) -> bool:
+    return bool(meta) and meta.get("kind") == "discovery"
 
 
 def _page_diff_sql() -> Any:
@@ -232,13 +239,22 @@ def tracked_terms(session: Session) -> set[str]:
     return terms
 
 
-def untracked(new_entities: list[Any], tracked: set[str]) -> list[dict[str, Any]]:
-    """Drop "new" entities we already track (the model sometimes lists them anyway)."""
+def untracked(
+    new_entities: list[Any], tracked: set[str], raw_text: str | None = None
+) -> list[dict[str, Any]]:
+    """Drop "new" entities we already track (the model sometimes lists them anyway). A url
+    (discovery items) is kept only if it appears in the source text; otherwise it is set to None
+    (meta url_dropped) – the radar must not follow a URL the model made up."""
     out = []
+    folded = (raw_text or "").casefold()
     for e in new_entities:
         data = e if isinstance(e, dict) else e.model_dump()
-        if data["name"].strip().casefold() not in tracked:
-            out.append(data)
+        if data["name"].strip().casefold() in tracked:
+            continue
+        url = data.get("url")
+        if url and raw_text is not None and url.strip().rstrip("/").casefold() not in folded:
+            data = {**data, "url": None, "url_dropped": url}
+        out.append(data)
     return out
 
 

@@ -1,7 +1,7 @@
 """Run pipeline steps from the command line, one pipeline_runs row per invocation.
 
     python -m app.pipeline.run embed   # or: dedup, link, triage, enrich, verify, score,
-                                       #     brief, battlecards
+                                       #     brief, battlecards, radar
     python -m app.pipeline.run enrich --force enrich   # redo despite the current prompt version
     python -m app.pipeline.run report           # dedup calibration report (no run row, no LLM)
 
@@ -30,6 +30,7 @@ from app.pipeline.dedup import dedup_signals
 from app.pipeline.embed import embed_signals
 from app.pipeline.enrich import enrich_signals
 from app.pipeline.link import link_signals
+from app.pipeline.radar.step import radar_step
 from app.pipeline.score import score_signals
 from app.pipeline.synthesis.battlecards import battlecards_step
 from app.pipeline.synthesis.brief import brief_step
@@ -47,6 +48,7 @@ STEPS: dict[str, Step] = {
     "score": score_signals,
     "brief": brief_step,
     "battlecards": battlecards_step,
+    "radar": radar_step,
 }
 
 logger = logging.getLogger(__name__)
@@ -100,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         "--entity", default="", help="battlecards: comma list of company slugs (default: all due)"
     )
     parser.add_argument(
-        "--force", default="", help="comma list: triage,enrich,verify,brief,battlecards"
+        "--force", default="", help="comma list: triage,enrich,verify,brief,battlecards,radar"
     )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")

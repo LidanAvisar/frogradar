@@ -186,9 +186,12 @@ def test_github_search_known_repo_still_gets_star_snapshot(web, make_client, clo
 def test_github_search_paces_requests(web, make_client, clock):
     web.add(GH_API, json.dumps({"total_count": 0, "items": []}))
     GitHubSearchCollector(
-        make_client(), gh_cfg(queries=["aa", "bb", "cc"], min_interval_s=6.5),
-        now=lambda: NOW, clock=clock, sleep=clock.sleep,
-    ).collect(src(FetchMethod.GITHUB_SEARCH, GH_API), since=SINCE, backfill=False, known={})  # fmt: skip
+        make_client(),
+        gh_cfg(queries=["aa", "bb", "cc"], min_interval_s=6.5),
+        now=lambda: NOW,
+        clock=clock,
+        sleep=clock.sleep,
+    ).collect(src(FetchMethod.GITHUB_SEARCH, GH_API), since=SINCE, backfill=False, known={})
     assert clock.sleeps.count(6.5) == 2
 
 

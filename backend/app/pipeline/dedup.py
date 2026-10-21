@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Signal, Source
 from app.pipeline.context import RunContext
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import in_scope, not_discovery
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,7 @@ def dedup_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
         .add_columns(Signal.embedding)
         .where(
             in_scope(),
+            not_discovery(),  # discovery items never join news clusters (D57)
             Signal.embedding.is_not(None),
             Signal.embedding_model == ctx.embedding_model,
             Signal.dedup_cluster_id.is_(None),
@@ -134,6 +135,7 @@ def _best_cluster(
         select(Signal.dedup_cluster_id)
         .where(
             in_scope(),
+            not_discovery(),
             Signal.id != sig.id,
             Signal.embedding_model == ctx.embedding_model,
             Signal.dedup_cluster_id.is_not(None),

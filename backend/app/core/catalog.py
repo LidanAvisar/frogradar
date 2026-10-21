@@ -529,6 +529,9 @@ class RadarScoreSettings(_Strict):
     sources_full_at: Annotated[int, Field(ge=1, le=50)] = 3
     velocity_recent_days: Annotated[int, Field(ge=1, le=90)] = 14
     velocity_window_days: Annotated[int, Field(ge=15, le=730)] = 90
+    # Full velocity credit needs at least this many recent mentions (one new mention is not a
+    # trend): factor = recent share x min(1, recent / velocity_recent_full_at).
+    velocity_recent_full_at: Annotated[int, Field(ge=1, le=100)] = 3
     stars_per_day_full_at: Annotated[float, Field(gt=0, le=10000)] = 50
     hn_points_full_at: Annotated[int, Field(ge=1, le=100000)] = 500
     recency_half_life_days: Annotated[float, Field(gt=0, le=365)] = 14
