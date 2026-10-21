@@ -10,11 +10,16 @@ Two other selections exist for evaluation only (app.eval), never for the daily p
 """
 
 from collections.abc import Iterable
+from datetime import datetime
 
-from sqlalchemy import ColumnElement, Select, exists, func, or_, select, true
+from sqlalchemy import ColumnElement, Select, and_, exists, func, or_, select, true
 from sqlalchemy.orm import Session
 
+from app.db.enums import Verification
 from app.db.models import Signal, Source
+
+# Verdicts whose signals may be shown and synthesized (unsupported ones never are).
+SHOWN_VERIFICATIONS = (Verification.SUPPORTED, Verification.PARTIAL)
 
 
 def in_scope() -> ColumnElement[bool]:
@@ -46,3 +51,43 @@ def full_catalog() -> ColumnElement[bool]:
 def eval_set(ids: Iterable[int]) -> ColumnElement[bool]:
     """WHERE clause for the labeled eval-set signals, in scope or not (evaluation only)."""
     return Signal.id.in_(sorted(set(ids)))
+
+
+# ---------- what screens and synthesis may use ----------
+
+
+def canonical() -> ColumnElement[bool]:
+    """The canonical member of its dedup cluster (or not clustered)."""
+    return or_(Signal.dedup_cluster_id.is_(None), Signal.dedup_cluster_id == Signal.id)
+
+
+def visible() -> ColumnElement[bool]:
+    """In scope, canonical and enriched: what any screen may show (D47). Rows whose text changed
+    after enrichment have enriched_at reset and stay hidden until re-enriched."""
+    return and_(in_scope(), canonical(), Signal.enriched_at.is_not(None))
+
+
+def usable() -> ColumnElement[bool]:
+    """Visible, relevant and not unsupported: what synthesized outputs may cite."""
+    return and_(visible(), Signal.relevant.is_(True), Signal.verification.in_(SHOWN_VERIFICATIONS))
+
+
+def event_time() -> ColumnElement[datetime]:
+    """When the event happened: publish date, else when we first saw it."""
+    return func.coalesce(Signal.published_at, Signal.fetched_at)
+
+
+def ranked(since: datetime, until: datetime) -> Select[tuple[Signal]]:
+    """Usable, scored signals of a window, best first: impact × confidence, then newest.
+    One ranking for the Brief's Top 5 (API) and the daily brief's input (pipeline)."""
+    return (
+        select(Signal)
+        .where(
+            usable(),
+            Signal.impact.is_not(None),
+            Signal.confidence.is_not(None),
+            event_time() >= since,
+            event_time() <= until,
+        )
+        .order_by((Signal.impact * Signal.confidence).desc(), event_time().desc(), Signal.id.desc())
+    )

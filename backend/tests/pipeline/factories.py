@@ -196,6 +196,7 @@ def default_enrich(call: Call) -> dict[str, Any]:
         "category": "feature_update",
         "summary": f"Summary of {call.title}: something happened in the registry market.",
         "why_jfrog_cares": "It affects JFrog Artifactory customers who compare registry features.",
+        "takeaway": "Registry feature parity pressure on JFrog Artifactory.",
         "impact": 3,
         "impact_rationale": "Level 3: relevant competitor feature update.",
         "evidence_quote": first_sentence(call.source_text),
@@ -214,6 +215,52 @@ def default_verify(call: Call) -> dict[str, Any]:
     }
 
 
+_SIGNAL_ID = re.compile(r"^\[#(\d+)\]", re.MULTILINE)
+_CLAIM_KEY = re.compile(r"^([a-z_]+(?:\.\d+)?): .* \[cites [^\]]*\]$", re.MULTILINE)
+
+
+def signal_ids_in(call: Call) -> list[int]:
+    """Ids of the signals listed in a synthesis prompt ("[#12] 2026-10-01 | ...")."""
+    return [int(i) for i in _SIGNAL_ID.findall(call.messages[-1]["content"])]
+
+
+def claim_keys_in(call: Call) -> list[str]:
+    """Claim keys listed in a verify_synthesis prompt ("overview.1: ... [cites #3]")."""
+    return _CLAIM_KEY.findall(call.messages[-1]["content"])
+
+
+def default_brief(call: Call) -> dict[str, Any]:
+    ids = signal_ids_in(call)
+    return {
+        "headline": {"text": "Sonatype moves on repository firewalls", "signal_ids": ids[:1]},
+        "overview": [
+            {"text": "Sonatype launched a new firewall release.", "signal_ids": ids[:1]},
+            {"text": "Registry pricing is shifting across vendors.", "signal_ids": ids[-1:]},
+        ],
+    }
+
+
+def default_battlecard(call: Call) -> dict[str, Any]:
+    ids = signal_ids_in(call)
+    return {
+        "positioning": {"text": "Positions itself as the safe registry.", "signal_ids": ids[:1]},
+        "strengths": [{"text": "Ships repository firewall features.", "signal_ids": ids[:1]}],
+        "weaknesses": [],
+        "opportunities_for_jfrog": [],
+        "blind_spots_for_jfrog": [],
+        "capabilities": [],
+    }
+
+
+def supported_all(call: Call) -> dict[str, Any]:
+    return {
+        "items": [
+            {"key": k, "verdict": "supported", "note": "Stated in the cited signal."}
+            for k in claim_keys_in(call)
+        ]
+    }
+
+
 class FakeLLM:
     """Scripted stand-in for app.core.llm.complete: one handler per operation, calls recorded.
 
@@ -226,6 +273,9 @@ class FakeLLM:
             "triage": default_triage,
             "enrich_signal": default_enrich,
             "verify_signal": default_verify,
+            "daily_brief": default_brief,
+            "battlecard": default_battlecard,
+            "verify_synthesis": supported_all,
             **handlers,
         }
         self.calls: list[Call] = []
@@ -242,6 +292,8 @@ class FakeLLM:
             self.calls.append(call)
         handler = self.handlers[operation]
         data = handler(call) if callable(handler) else handler
+        if operation == "enrich_page_diff":  # diff-only fields, unless the handler sets them
+            data = {"display_title": "Vendor changes its pricing page", **data}
         return response_model.model_validate(data)
 
     def count(self, operation: str) -> int:

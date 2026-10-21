@@ -1,5 +1,5 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
-	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
+	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
 	eval-select eval-embed eval-pairs eval-label eval eval-compare api-types screenshots
 
 up:
@@ -64,6 +64,14 @@ dedup-report: migrate
 # Paid (LLM calls). ARGS="--skip collect" / "--force enrich,verify".
 pipeline: migrate
 	cd backend && uv run --env-file ../.env python -m app.pipeline.graph $(ARGS)
+
+# Daily brief (1 synthesis + 1 verify call per day; ARGS="--force brief" to regenerate).
+brief: migrate
+	cd backend && uv run --env-file ../.env python -m app.pipeline.run brief $(ARGS)
+
+# Battlecards for due competitors (1 synthesis + 1 verify call each; ARGS="--force battlecards").
+battlecards: migrate
+	cd backend && uv run --env-file ../.env python -m app.pipeline.run battlecards $(ARGS)
 
 # Quality report for the latest pipeline run (RUN=<id> for another). No LLM calls.
 pipeline-report: migrate

@@ -79,3 +79,16 @@ page_diff:
     window_days: 31         # nearest capture must be within this many days of the target
     host_delay_s: 5.0       # >= 5 s between requests to web.archive.org
     min_length_ratio: 0.5   # archived text < 50% of today's length = rendered differently: skip
+
+# Synthesis over many signals (synthesis model + a verify-model check of every claim, D53/D54).
+synthesis:
+  brief:                    # one daily_brief report per UTC day
+    window_days: 7          # signals of the last N days...
+    max_signals: 12         # ...the top N by impact × confidence (same ranking as the Brief's Top 5)
+  battlecards:              # one battlecard per competitor / coopetition company
+    refresh_days: 7         # regenerate weekly...
+    trigger_impact: 4       # ...or when a new signal with impact >= this arrives
+    lookback_days: 180      # signals considered for a card
+    max_signals: 30         # at most this many (highest impact first)
+    min_primary_signals: 1  # a company needs this many signals ABOUT it (mentions don't count)
+    changed_recently_days: 14   # matrix "changed recently" flag

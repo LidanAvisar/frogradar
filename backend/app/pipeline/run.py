@@ -1,6 +1,7 @@
 """Run pipeline steps from the command line, one pipeline_runs row per invocation.
 
-    python -m app.pipeline.run embed            # or: dedup, link, triage, enrich, verify, score
+    python -m app.pipeline.run embed   # or: dedup, link, triage, enrich, verify, score,
+                                       #     brief, battlecards
     python -m app.pipeline.run enrich --force enrich   # redo despite the current prompt version
     python -m app.pipeline.run report           # dedup calibration report (no run row, no LLM)
 
@@ -30,6 +31,8 @@ from app.pipeline.embed import embed_signals
 from app.pipeline.enrich import enrich_signals
 from app.pipeline.link import link_signals
 from app.pipeline.score import score_signals
+from app.pipeline.synthesis.battlecards import battlecards_step
+from app.pipeline.synthesis.brief import brief_step
 from app.pipeline.triage import triage_signals
 from app.pipeline.verify import verify_signals
 
@@ -42,6 +45,8 @@ STEPS: dict[str, Step] = {
     "enrich": enrich_signals,
     "verify": verify_signals,
     "score": score_signals,
+    "brief": brief_step,
+    "battlecards": battlecards_step,
 }
 
 logger = logging.getLogger(__name__)
@@ -88,7 +93,9 @@ def run_steps(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.pipeline.run")
     parser.add_argument("steps", nargs="+", choices=[*STEPS, "report"])
-    parser.add_argument("--force", default="", help="comma list: triage,enrich,verify")
+    parser.add_argument(
+        "--force", default="", help="comma list: triage,enrich,verify,brief,battlecards"
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
