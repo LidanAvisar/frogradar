@@ -1,0 +1,2275 @@
+{
+ "date": "2026-10-21",
+ "prompt_versions": {
+  "triage": "triage.v1",
+  "enrich_signal": "enrich_signal.v1",
+  "enrich_page_diff": "enrich_page_diff.v2",
+  "verify_signal": "verify_signal.v1"
+ },
+ "label_source": [
+  "model:anthropic/claude-sonnet-5-5 silver_label.v1"
+ ],
+ "set": {
+  "items": 40,
+  "in_scope": 19,
+  "silver_relevant": 22,
+  "pairs": 40,
+  "same_story_pairs": 10
+ },
+ "run_ids": {
+  "pipeline": 28,
+  "verify_alt": 29
+ },
+ "failures": [],
+ "triage": {
+  "n": 40,
+  "tp": 22,
+  "fp": 13,
+  "fn": 0,
+  "tn": 5,
+  "agreement": 0.675,
+  "precision": 0.629,
+  "recall": 1.0,
+  "f1": 0.772,
+  "disagreements": [
+   {
+    "id": 3,
+    "title": "Lessons from the SolarWinds Breach: A Discussion With CISO Tim Brown",
+    "source": "JFrog Blog",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Interview on the SolarWinds Sunburst build supply chain attack and software supply chain security, squarely within JFrog's supply_chain_security and cicd (build provenance) market.",
+    "silver_reason": "This is a JFrog-authored interview recapping the SolarWinds breach and CISO lessons, with no tracked competitor product move, ecosystem change, or new market data for JFrog's competitive intelligence."
+   },
+   {
+    "id": 105,
+    "title": "Make every AI credit count: See, cap, and reduce agent spend",
+    "source": "GitLab Blog",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "GitLab, a tracked company, announces agent cost controls, Orbit context, and credit caps for its Duo Agent Platform, touching CI/CD and software supply-chain governance.",
+    "silver_reason": "This is about GitLab Duo Agent Platform AI-agent credit caps, open-weight model selection and spend analytics, which falls under AI coding and LLM cost management rather than artifact management, supply chain security, MLOps, CI/CD or distribution."
+   },
+   {
+    "id": 130,
+    "title": "Benchmarking Secure-and-Functional Remediation and How Snyk Agent Fix Lifts Frontier-Model Fix Rates by over 14%",
+    "source": "Snyk Blog",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Snyk, a tracked company, publishes a benchmark of AI-driven vulnerability remediation that touches supply-chain security (CVE fixes in open-source code), which falls squarely in JFrog's market.",
+    "silver_reason": "This is a Snyk Code Agent Fix benchmark for first-party SAST vulnerability remediation with LLMs, which falls outside JFrog's five segments (no package, registry, SCA, malicious-package or CI/CD angle)."
+   },
+   {
+    "id": 198,
+    "title": "docker/compose v5.6.0",
+    "source": "Docker GitHub",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Docker Compose v5.6.0 adds provider-service image distribution and related changes touching container image handling, which relates to artifact management and the Docker (tracked company) product line.",
+    "silver_reason": "This is a routine Docker Compose release (job support, provider relay, bug fixes, dependency bumps) for local multi-container orchestration with no meaningful artifact registry, supply-chain security, MLOps, CI/CD or distribution angle."
+   },
+   {
+    "id": 722,
+    "title": "SocketDev/socket-cli v1.0.2",
+    "source": "Socket GitHub",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Socket, a tracked company, released a new version of its socket CLI, a supply-chain security tool distributed via npm, which touches the package and supply-chain security segments.",
+    "silver_reason": "This is an automated backfilled GitHub release note for a minor socket-cli npm version (1.0.2) with no described feature or product change in JFrog's market."
+   },
+   {
+    "id": 789,
+    "title": "SocketDev/socket-cli v0.15.0",
+    "source": "Socket GitHub",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Socket (a tracked company) released a new version of its supply-chain security CLI, which touches npm package security, so it falls within the supply_chain_security segment and the npm artifact space.",
+    "silver_reason": "This is a backfilled GitHub release note for socket-cli v0.15.0 with no described product change, so it carries no actionable signal in JFrog's market."
+   },
+   {
+    "id": 913,
+    "title": "MPS in PyTorch 2.15",
+    "source": "Hugging Face Blog",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "PyTorch MPS backend improvements for running Hugging Face Hub models (LLMs, video, FP8 weights, faster decoding) touch the mlops segment's model-running and model supply chain on developer Macs.",
+    "silver_reason": "This is a PyTorch MPS backend performance release (Mac GPU kernels, FP8, LLM decode speed) with no artifact registry, supply-chain security, model registry/governance, CI/CD or distribution angle, despite Hugging Face authorship."
+   },
+   {
+    "id": 962,
+    "title": "Meta is back with Muse Glimmer: local, agentic, multimodal, and open source",
+    "source": "Hugging Face Blog",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Meta's open-source Muse Glimmer model is shipped on the Hugging Face Hub with day-0 support in transformers, llama.cpp and vLLM, touching the mlops model-hub and model-distribution segment.",
+    "silver_reason": "This is a release of an open-weight AI model (Meta's Muse Glimmer) with benchmarks and inference code, not a model-registry, model-supply-chain-security or artifact-management move, so it falls under the excluded AI model release category."
+   },
+   {
+    "id": 983,
+    "title": "How to review AI code without reading the code",
+    "source": "The New Stack",
+    "in_scope": "y",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "The article addresses AI-generated code review practices, unreviewed PR merges, and code review processes central to software supply chain and CI/CD workflows, which fall within JFrog's market.",
+    "silver_reason": "An opinion piece on AI code review workflows and decision capture (promoting the author's Aviator tooling) with no artifact, registry, supply-chain, or tracked-competitor product angle."
+   },
+   {
+    "id": 989,
+    "title": "Researchers removed one instruction from Claude Code. Out-of-scope actions jumped.",
+    "source": "The New Stack",
+    "in_scope": "y",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "The article covers coding agents (Claude Code, Codex, Gemini CLI) taking out-of-scope actions and supply-chain-adjacent risks in developer tooling, which touches JFrog's CI/CD and software supply-chain security market.",
+    "silver_reason": "The article covers AI coding agent behavior and scope-overreach research (Claude Code, Anthropic), which is general AI coding culture with no artifact, registry, supply-chain, CI/CD, or tracked-company product angle."
+   },
+   {
+    "id": 1001,
+    "title": "Employees are vibe-coding their own apps. Cloudflare open-sources Void to give IT a handle on them",
+    "source": "The New Stack",
+    "in_scope": "y",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "Cloudflare (a tracked company) open-sourced Void, a self-hosted platform for deploying and governing employee-built AI apps, touching artifact management and supply-chain control over what gets deployed.",
+    "silver_reason": "Cloudflare open-sourcing Void, a self-hosted app deployment platform for employee vibe-coded apps, is about app hosting and shadow IT governance rather than artifact management, supply-chain security, MLOps, CI/CD or software distribution, and involves no tracked company."
+   },
+   {
+    "id": 1024,
+    "title": "DHS bans DeepSeek products across US federal civilian agencies",
+    "source": "BleepingComputer",
+    "in_scope": "n",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "A federal order removing DeepSeek products from civilian agency systems touches supply chain security and vulnerability concerns over AI models and packages, which overlaps JFrog's mlops and supply_chain_security segments.",
+    "silver_reason": "A DHS ban on DeepSeek AI products in federal agencies is about AI model/LLM government policy, with no artifact, registry, model-hub, or supply-chain product angle involving tracked companies."
+   },
+   {
+    "id": 1043,
+    "title": "Bulk migrate branch protections to rulesets for a repository",
+    "source": "GitHub Changelog",
+    "in_scope": "y",
+    "pipeline": "relevant",
+    "silver": "irrelevant",
+    "pipeline_reason": "GitHub, a tracked company, shipped a bulk migration tool for branch protection rules to rulesets, which governs how repositories and their CI/publishing branches are protected, touching supply-chain and CI/CD controls.",
+    "silver_reason": "This is a GitHub repository-governance UX update for migrating branch protection rules to rulesets, with no artifact, registry, supply-chain security, CI/CD pipeline, or distribution angle."
+   }
+  ]
+ },
+ "category": {
+  "n": 22,
+  "agreement": 0.682,
+  "confusion": {
+   "feature_update → product_launch": 3,
+   "analyst_report → other": 1,
+   "customer_win → partnership": 1,
+   "open_source → other": 1,
+   "other → security_incident": 1
+  },
+  "mismatches": [
+   {
+    "id": 54,
+    "title": "Q3 2026 Open Source Malware Index: When Compromise Compounds",
+    "silver": "analyst_report",
+    "pipeline": "other"
+   },
+   {
+    "id": 59,
+    "title": "Sonatype Is Now Awardable on the Platform One Solutions MarketPlace",
+    "silver": "customer_win",
+    "pipeline": "partnership"
+   },
+   {
+    "id": 189,
+    "title": "GitHub-hosted agents with Pay-as-you-Go pricing are now generally available in Azure Pipelines",
+    "silver": "feature_update",
+    "pipeline": "product_launch"
+   },
+   {
+    "id": 227,
+    "title": "Announcing the Chainguard Compliance Dashboard",
+    "silver": "feature_update",
+    "pipeline": "product_launch"
+   },
+   {
+    "id": 244,
+    "title": "Announcing Chainguard container images for Go 1.27",
+    "silver": "feature_update",
+    "pipeline": "product_launch"
+   },
+   {
+    "id": 280,
+    "title": "chainguard-dev/apko v1.2.35 – Release v1.2.35",
+    "silver": "open_source",
+    "pipeline": "other"
+   },
+   {
+    "id": 312,
+    "title": "What We Can Learn About GitHub Actions Security from the Trivy Breach | Endor Labs",
+    "silver": "other",
+    "pipeline": "security_incident"
+   }
+  ]
+ },
+ "impact": {
+  "n": 22,
+  "exact": 0.591,
+  "within_1": 1.0,
+  "mean_signed_error": 0.227,
+  "mean_abs_error": 0.409,
+  "errors": {
+   "-1": 2,
+   "0": 13,
+   "1": 7
+  }
+ },
+ "entity": {
+  "n": 22,
+  "strict": 0.955,
+  "family": 1.0,
+  "misses": [
+   {
+    "id": 87,
+    "silver": "github-actions",
+    "pipeline": [
+     "github"
+    ],
+    "family_match": true,
+    "title": "GitHub availability report: September 2026"
+   }
+  ]
+ },
+ "quotes": {
+  "n": 35,
+  "verified": 1.0,
+  "repaired": 0.0,
+  "retried": 0.114,
+  "unverified_ids": []
+ },
+ "verifier": {
+  "n": 35,
+  "verdicts": {
+   "supported": 17,
+   "partial": 18
+  },
+  "partial_or_unsupported": 0.514,
+  "partials": 18,
+  "analysis_only_partials": 10,
+  "why_only_partials": 14,
+  "partial_details": [
+   {
+    "id": 10,
+    "title": "Live From the Show Floor: swampUP 2026",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "The event directly showcases JFrog Curation and JFrog Advanced Security capabilities, including AI-driven malicious package detection and scanning of AI assets such as models and MCP servers.",
+      "field": "why_jfrog_cares",
+      "analysis": false
+     },
+     {
+      "claim": "Competitively, it positions JFrog ahead of vendors like Chainguard and Sonatype on supply chain threat intelligence and gives battlecard material on attack trends and Curation's blocking-at-entry app…",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 50,
+    "title": "The New Release Metric: Less Cleanup Per Release",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This is a direct move by a competitor into malicious package blocking at the repository layer, overlapping with JFrog Curation's policy gate on remote repositories and JFrog Artifactory's repository…",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 52,
+    "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This directly competes with JFrog Curation, which blocks malicious or risky open-source packages at the remote repository policy gate, and touches JFrog Artifactory's remote proxy role.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "Sonatype is positioning its repository as the trust-decision point for AI agents and developers, so JFrog should expect this framing in competitive deals and update Curation battlecards accordingly.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 54,
+    "title": "Q3 2026 Open Source Malware Index: When Compromise Compounds",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This index covers malicious packages in npm and PyPI that JFrog Curation and JFrog Xray are designed to block at entry and detect in Artifactory.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "Its emphasis on follow-on credential theft and propagation supports battlecard messaging for JFrog Curation's package-gating and JFrog Advanced Security's contextual analysis against Sonatype Reposit…",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 77,
+    "title": "Some Git over HTTPS may temporarily require authentication",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "Automated CI and artifact pipelines that clone GitHub repositories over unauthenticated HTTPS could fail intermittently, affecting JFrog Pipelines and JFrog CLI-driven builds that pull source from Gi…",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "JFrog customers should be guided to use authenticated clones such as GITHUB_TOKEN or GitHub App tokens in build and remote-repository configurations.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 87,
+    "title": "GitHub availability report: September 2026",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "GitHub Actions is a CI/CD tool JFrog integrates with via the JFrog CLI.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "Outages affecting Actions workflows can disrupt JFrog customers' build and artifact pipelines.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "The report signals GitHub's ongoing reliability work, which JFrog can reference when positioning self-hosted or multi-site Artifactory against dependence on a single SaaS platform.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 98,
+    "title": "GitLab Secrets Manager: Govern secrets like your code",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "GitLab is adding a native secrets vault tied to CI/CD pipelines.",
+      "field": "why_jfrog_cares",
+      "analysis": false
+     },
+     {
+      "claim": "This overlaps with JFrog's pipeline and platform governance story around JFrog Pipelines and the JFrog CLI integrations with GitLab CI.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 134,
+    "title": "Stop The Sprawl Snyk Secrets Now Generally Available",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This is a direct competitive move against JFrog Advanced Security's secrets detection capability.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 189,
+    "title": "GitHub-hosted agents with Pay-as-you-Go pricing are now generally available in Azure Pipelines",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "General availability of Linux and Windows agent SKUs",
+      "field": "summary",
+      "analysis": false
+     }
+    ]
+   },
+   {
+    "id": 280,
+    "title": "chainguard-dev/apko v1.2.35 – Release v1.2.35",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "Chainguard released apko v1.2.35",
+      "field": "summary",
+      "analysis": false
+     },
+     {
+      "claim": "apko is a tool for building container images",
+      "field": "summary",
+      "analysis": false
+     }
+    ]
+   },
+   {
+    "id": 339,
+    "title": "Endor Labs and Bright Security Partner to Close the Gap Between Discovery and Remediation | Endor Labs",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "The partnership strengthens Endor Labs' AppSec positioning against JFrog Advanced Security (reachability analysis, SAST, secrets detection) and JFrog Xray for vulnerability prioritization.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "Battlecards should note that Endor Labs now claims runtime-validated exploitability on top of reachability, a claim JFrog should be prepared to address.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 722,
+    "title": "SocketDev/socket-cli v1.0.2",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "The release is for Socket's CLI.",
+      "field": "why_jfrog_cares",
+      "analysis": false
+     },
+     {
+      "claim": "Socket is a supply-chain security tool.",
+      "field": "why_jfrog_cares",
+      "analysis": false
+     },
+     {
+      "claim": "It overlaps with JFrog Curation and Xray on malicious package detection at package entry.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "A small CLI version bump carries little direct competitive weight.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "It is a routine signal of Socket's ongoing product activity in the package-security space JFrog Curation addresses.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 789,
+    "title": "SocketDev/socket-cli v0.15.0",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "\"of its socket-cli project\"",
+      "field": "summary",
+      "analysis": false
+     },
+     {
+      "claim": "\"The release note states only that the tag points at the published commit.\"",
+      "field": "summary",
+      "analysis": false
+     }
+    ]
+   },
+   {
+    "id": 962,
+    "title": "Meta is back with Muse Glimmer: local, agentic, multimodal, and open source",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "The model is positioned as local and open source.",
+      "field": "summary",
+      "analysis": false
+     }
+    ]
+   },
+   {
+    "id": 989,
+    "title": "Researchers removed one instruction from Claude Code. Out-of-scope actions jumped.",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This is an AI coding-agent safety trend rather than a direct JFrog product move, but it touches JFrog ML and the AI-BOM and model-scanning space as agents increasingly act on repositories and pipelin…",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "It also reinforces the case for policy gates and governance controls, which JFrog Xray and JFrog Curation provide at the artifact and package level for AI-generated or agent-driven changes.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 1005,
+    "title": "Hackers hijacked 1,900 GitHub accounts. Then they went after 30,000 repos.",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This is a supply-chain incident hitting GitHub Actions workflows, which overlap with JFrog Pipelines and the CLI integrations JFrog offers for GitHub Actions, and it exposes the registry and cloud to…",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     },
+     {
+      "claim": "It strengthens the case for JFrog Advanced Security secrets detection and Xray/Curation controls.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 1043,
+    "title": "Bulk migrate branch protections to rulesets for a repository",
+    "analysis_only": true,
+    "claims": [
+     {
+      "claim": "This affects how customers manage branch protection in GitHub Actions-based pipelines where JFrog integrates via the JFrog CLI.",
+      "field": "why_jfrog_cares",
+      "analysis": true
+     }
+    ]
+   },
+   {
+    "id": 1053,
+    "title": "Pricing page changed: Sonatype Pricing",
+    "analysis_only": false,
+    "claims": [
+     {
+      "claim": "Sonatype now sells its Firewall bundled into the top Nexus tier.",
+      "field": "why_jfrog_cares",
+      "analysis": false
+     }
+    ]
+   }
+  ]
+ },
+ "thinking": {
+  "configured": "low",
+  "alternative": "off",
+  "matrix": {
+   "n": 35,
+   "agreement": 0.514,
+   "pairs": {
+    "partial / supported": 16,
+    "supported / supported": 16,
+    "partial / partial": 2,
+    "supported / partial": 1
+   }
+  },
+  "disagreements": [
+   {
+    "id": 3,
+    "title": "Lessons from the SolarWinds Breach: A Discussion With CISO Tim Brown",
+    "configured": "supported",
+    "alternative": "partial"
+   },
+   {
+    "id": 10,
+    "title": "Live From the Show Floor: swampUP 2026",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 50,
+    "title": "The New Release Metric: Less Cleanup Per Release",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 52,
+    "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 54,
+    "title": "Q3 2026 Open Source Malware Index: When Compromise Compounds",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 77,
+    "title": "Some Git over HTTPS may temporarily require authentication",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 87,
+    "title": "GitHub availability report: September 2026",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 98,
+    "title": "GitLab Secrets Manager: Govern secrets like your code",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 134,
+    "title": "Stop The Sprawl Snyk Secrets Now Generally Available",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 189,
+    "title": "GitHub-hosted agents with Pay-as-you-Go pricing are now generally available in Azure Pipelines",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 339,
+    "title": "Endor Labs and Bright Security Partner to Close the Gap Between Discovery and Remediation | Endor Labs",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 722,
+    "title": "SocketDev/socket-cli v1.0.2",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 789,
+    "title": "SocketDev/socket-cli v0.15.0",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 989,
+    "title": "Researchers removed one instruction from Claude Code. Out-of-scope actions jumped.",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 1005,
+    "title": "Hackers hijacked 1,900 GitHub accounts. Then they went after 30,000 repos.",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 1043,
+    "title": "Bulk migrate branch protections to rulesets for a repository",
+    "configured": "partial",
+    "alternative": "supported"
+   },
+   {
+    "id": 1053,
+    "title": "Pricing page changed: Sonatype Pricing",
+    "configured": "partial",
+    "alternative": "supported"
+   }
+  ],
+  "alternative_failures": [],
+  "configured_verifier": {
+   "n": 35,
+   "verdicts": {
+    "supported": 17,
+    "partial": 18
+   },
+   "partial_or_unsupported": 0.514,
+   "partials": 18,
+   "analysis_only_partials": 10,
+   "why_only_partials": 14,
+   "partial_details": [
+    {
+     "id": 10,
+     "title": "Live From the Show Floor: swampUP 2026",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "The event directly showcases JFrog Curation and JFrog Advanced Security capabilities, including AI-driven malicious package detection and scanning of AI assets such as models and MCP servers.",
+       "field": "why_jfrog_cares",
+       "analysis": false
+      },
+      {
+       "claim": "Competitively, it positions JFrog ahead of vendors like Chainguard and Sonatype on supply chain threat intelligence and gives battlecard material on attack trends and Curation's blocking-at-entry app…",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 50,
+     "title": "The New Release Metric: Less Cleanup Per Release",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This is a direct move by a competitor into malicious package blocking at the repository layer, overlapping with JFrog Curation's policy gate on remote repositories and JFrog Artifactory's repository…",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 52,
+     "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This directly competes with JFrog Curation, which blocks malicious or risky open-source packages at the remote repository policy gate, and touches JFrog Artifactory's remote proxy role.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "Sonatype is positioning its repository as the trust-decision point for AI agents and developers, so JFrog should expect this framing in competitive deals and update Curation battlecards accordingly.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 54,
+     "title": "Q3 2026 Open Source Malware Index: When Compromise Compounds",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This index covers malicious packages in npm and PyPI that JFrog Curation and JFrog Xray are designed to block at entry and detect in Artifactory.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "Its emphasis on follow-on credential theft and propagation supports battlecard messaging for JFrog Curation's package-gating and JFrog Advanced Security's contextual analysis against Sonatype Reposit…",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 77,
+     "title": "Some Git over HTTPS may temporarily require authentication",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "Automated CI and artifact pipelines that clone GitHub repositories over unauthenticated HTTPS could fail intermittently, affecting JFrog Pipelines and JFrog CLI-driven builds that pull source from Gi…",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "JFrog customers should be guided to use authenticated clones such as GITHUB_TOKEN or GitHub App tokens in build and remote-repository configurations.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 87,
+     "title": "GitHub availability report: September 2026",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "GitHub Actions is a CI/CD tool JFrog integrates with via the JFrog CLI.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "Outages affecting Actions workflows can disrupt JFrog customers' build and artifact pipelines.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "The report signals GitHub's ongoing reliability work, which JFrog can reference when positioning self-hosted or multi-site Artifactory against dependence on a single SaaS platform.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 98,
+     "title": "GitLab Secrets Manager: Govern secrets like your code",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "GitLab is adding a native secrets vault tied to CI/CD pipelines.",
+       "field": "why_jfrog_cares",
+       "analysis": false
+      },
+      {
+       "claim": "This overlaps with JFrog's pipeline and platform governance story around JFrog Pipelines and the JFrog CLI integrations with GitLab CI.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 134,
+     "title": "Stop The Sprawl Snyk Secrets Now Generally Available",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This is a direct competitive move against JFrog Advanced Security's secrets detection capability.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 189,
+     "title": "GitHub-hosted agents with Pay-as-you-Go pricing are now generally available in Azure Pipelines",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "General availability of Linux and Windows agent SKUs",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    },
+    {
+     "id": 280,
+     "title": "chainguard-dev/apko v1.2.35 – Release v1.2.35",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "Chainguard released apko v1.2.35",
+       "field": "summary",
+       "analysis": false
+      },
+      {
+       "claim": "apko is a tool for building container images",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    },
+    {
+     "id": 339,
+     "title": "Endor Labs and Bright Security Partner to Close the Gap Between Discovery and Remediation | Endor Labs",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "The partnership strengthens Endor Labs' AppSec positioning against JFrog Advanced Security (reachability analysis, SAST, secrets detection) and JFrog Xray for vulnerability prioritization.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "Battlecards should note that Endor Labs now claims runtime-validated exploitability on top of reachability, a claim JFrog should be prepared to address.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 722,
+     "title": "SocketDev/socket-cli v1.0.2",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "The release is for Socket's CLI.",
+       "field": "why_jfrog_cares",
+       "analysis": false
+      },
+      {
+       "claim": "Socket is a supply-chain security tool.",
+       "field": "why_jfrog_cares",
+       "analysis": false
+      },
+      {
+       "claim": "It overlaps with JFrog Curation and Xray on malicious package detection at package entry.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "A small CLI version bump carries little direct competitive weight.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "It is a routine signal of Socket's ongoing product activity in the package-security space JFrog Curation addresses.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 789,
+     "title": "SocketDev/socket-cli v0.15.0",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "\"of its socket-cli project\"",
+       "field": "summary",
+       "analysis": false
+      },
+      {
+       "claim": "\"The release note states only that the tag points at the published commit.\"",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    },
+    {
+     "id": 962,
+     "title": "Meta is back with Muse Glimmer: local, agentic, multimodal, and open source",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "The model is positioned as local and open source.",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    },
+    {
+     "id": 989,
+     "title": "Researchers removed one instruction from Claude Code. Out-of-scope actions jumped.",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This is an AI coding-agent safety trend rather than a direct JFrog product move, but it touches JFrog ML and the AI-BOM and model-scanning space as agents increasingly act on repositories and pipelin…",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "It also reinforces the case for policy gates and governance controls, which JFrog Xray and JFrog Curation provide at the artifact and package level for AI-generated or agent-driven changes.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 1005,
+     "title": "Hackers hijacked 1,900 GitHub accounts. Then they went after 30,000 repos.",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This is a supply-chain incident hitting GitHub Actions workflows, which overlap with JFrog Pipelines and the CLI integrations JFrog offers for GitHub Actions, and it exposes the registry and cloud to…",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      },
+      {
+       "claim": "It strengthens the case for JFrog Advanced Security secrets detection and Xray/Curation controls.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 1043,
+     "title": "Bulk migrate branch protections to rulesets for a repository",
+     "analysis_only": true,
+     "claims": [
+      {
+       "claim": "This affects how customers manage branch protection in GitHub Actions-based pipelines where JFrog integrates via the JFrog CLI.",
+       "field": "why_jfrog_cares",
+       "analysis": true
+      }
+     ]
+    },
+    {
+     "id": 1053,
+     "title": "Pricing page changed: Sonatype Pricing",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "Sonatype now sells its Firewall bundled into the top Nexus tier.",
+       "field": "why_jfrog_cares",
+       "analysis": false
+      }
+     ]
+    }
+   ]
+  },
+  "alternative_verifier": {
+   "n": 35,
+   "verdicts": {
+    "partial": 3,
+    "supported": 32
+   },
+   "partial_or_unsupported": 0.086,
+   "partials": 3,
+   "analysis_only_partials": 0,
+   "why_only_partials": 0,
+   "partial_details": [
+    {
+     "id": 3,
+     "title": "Lessons from the SolarWinds Breach: A Discussion With CISO Tim Brown",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "\"tainted code entered SolarWinds products through the build process\"",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    },
+    {
+     "id": 280,
+     "title": "chainguard-dev/apko v1.2.35 – Release v1.2.35",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "Chainguard released apko v1.2.35, a tool for building container images.",
+       "field": "summary",
+       "analysis": false
+      },
+      {
+       "claim": "the APK package handling honours offline mode in InitDB key discovery when no cache is present.",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    },
+    {
+     "id": 962,
+     "title": "Meta is back with Muse Glimmer: local, agentic, multimodal, and open source",
+     "analysis_only": false,
+     "claims": [
+      {
+       "claim": "Meta released Muse Glimmer",
+       "field": "summary",
+       "analysis": false
+      },
+      {
+       "claim": "published on the Hugging Face Hub",
+       "field": "summary",
+       "analysis": false
+      },
+      {
+       "claim": "open source",
+       "field": "summary",
+       "analysis": false
+      },
+      {
+       "claim": "day-0 support in transformers, llama.cpp, vLLM and Inference Endpoints",
+       "field": "summary",
+       "analysis": false
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "dedup": {
+  "n": 40,
+  "positives": 10,
+  "rows": [
+   {
+    "threshold": 0.6,
+    "tp": 10,
+    "fp": 30,
+    "fn": 0,
+    "precision": 0.025,
+    "recall": 1.0,
+    "f1": 0.049
+   },
+   {
+    "threshold": 0.65,
+    "tp": 10,
+    "fp": 21,
+    "fn": 0,
+    "precision": 0.079,
+    "recall": 1.0,
+    "f1": 0.146
+   },
+   {
+    "threshold": 0.7,
+    "tp": 10,
+    "fp": 13,
+    "fn": 0,
+    "precision": 0.267,
+    "recall": 1.0,
+    "f1": 0.421
+   },
+   {
+    "threshold": 0.75,
+    "tp": 10,
+    "fp": 5,
+    "fn": 0,
+    "precision": 0.646,
+    "recall": 1.0,
+    "f1": 0.785
+   },
+   {
+    "threshold": 0.8,
+    "tp": 8,
+    "fp": 1,
+    "fn": 2,
+    "precision": 0.873,
+    "recall": 0.783,
+    "f1": 0.826
+   },
+   {
+    "threshold": 0.85,
+    "tp": 4,
+    "fp": 0,
+    "fn": 6,
+    "precision": 1.0,
+    "recall": 0.326,
+    "f1": 0.492
+   },
+   {
+    "threshold": 0.9,
+    "tp": 1,
+    "fp": 0,
+    "fn": 9,
+    "precision": 1.0,
+    "recall": 0.082,
+    "f1": 0.152
+   },
+   {
+    "threshold": 0.95,
+    "tp": 0,
+    "fp": 0,
+    "fn": 10,
+    "precision": null,
+    "recall": 0.0,
+    "f1": null
+   }
+  ],
+  "recommended": 0.85,
+  "rule": "lowest with precision ≥ 0.9",
+  "bands": [
+   {
+    "band": "0.60-0.65",
+    "population": 338,
+    "sampled": 9,
+    "same_story": 0
+   },
+   {
+    "band": "0.65-0.70",
+    "population": 109,
+    "sampled": 8,
+    "same_story": 0
+   },
+   {
+    "band": "0.70-0.75",
+    "population": 27,
+    "sampled": 8,
+    "same_story": 0
+   },
+   {
+    "band": "0.75-0.80",
+    "population": 8,
+    "sampled": 6,
+    "same_story": 2
+   },
+   {
+    "band": "0.80-0.85",
+    "population": 7,
+    "sampled": 5,
+    "same_story": 4
+   },
+   {
+    "band": "0.85-0.90",
+    "population": 3,
+    "sampled": 3,
+    "same_story": 3
+   },
+   {
+    "band": "0.90-0.95",
+    "population": 1,
+    "sampled": 1,
+    "same_story": 1
+   }
+  ],
+  "current": 0.85
+ },
+ "calls": {
+  "pipeline": [
+   {
+    "model": "anthropic/claude-haiku-5-5",
+    "operation": "enrich_page_diff",
+    "calls": 3,
+    "cache_hits": 3,
+    "paid_now_usd": 0.0,
+    "work_usd": 0.0030453,
+    "tokens_in": 21988,
+    "tokens_out": 1693,
+    "tokens_reasoning": 0,
+    "failed": 0,
+    "median_latency_ms": 3723
+   },
+   {
+    "model": "anthropic/claude-haiku-5-5",
+    "operation": "enrich_signal",
+    "calls": 36,
+    "cache_hits": 36,
+    "paid_now_usd": 0.0,
+    "work_usd": 0.0396179,
+    "tokens_in": 297434,
+    "tokens_out": 19749,
+    "tokens_reasoning": 0,
+    "failed": 0,
+    "median_latency_ms": 3423
+   },
+   {
+    "model": "anthropic/claude-haiku-5-5",
+    "operation": "triage",
+    "calls": 40,
+    "cache_hits": 40,
+    "paid_now_usd": 0.0,
+    "work_usd": 0.011908,
+    "tokens_in": 98600,
+    "tokens_out": 4096,
+    "tokens_reasoning": 0,
+    "failed": 0,
+    "median_latency_ms": 1520
+   },
+   {
+    "model": "openai/gpt-5.4-mini",
+    "operation": "verify_signal",
+    "calls": 35,
+    "cache_hits": 35,
+    "paid_now_usd": 0.0,
+    "work_usd": 0.10236525,
+    "tokens_in": 68597,
+    "tokens_out": 11315,
+    "tokens_reasoning": 7048,
+    "failed": 0,
+    "median_latency_ms": 2115
+   }
+  ],
+  "verify_alt": [
+   {
+    "model": "openai/gpt-5.4-mini",
+    "operation": "verify_signal",
+    "calls": 35,
+    "cache_hits": 35,
+    "paid_now_usd": 0.0,
+    "work_usd": 0.06562725,
+    "tokens_in": 68597,
+    "tokens_out": 3151,
+    "tokens_reasoning": 0,
+    "failed": 0,
+    "median_latency_ms": 1089
+   }
+  ]
+ },
+ "items": [
+  {
+   "id": 3,
+   "title": "Lessons from the SolarWinds Breach: A Discussion With CISO Tim Brown",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "event",
+    "impact": 2,
+    "primary_entities": [
+     "jfrog"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "partial"
+   }
+  },
+  {
+   "id": 10,
+   "title": "Live From the Show Floor: swampUP 2026",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "y",
+    "category": "event",
+    "impact": "2",
+    "primary_entity": "jfrog-curation"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "event",
+    "impact": 2,
+    "primary_entities": [
+     "jfrog",
+     "jfrog-curation"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "The event directly showcases JFrog Curation and JFrog Advanced Security capabilities, including AI-driven malicious package detection and scanning of AI assets such as models and MCP servers.",
+     "Competitively, it positions JFrog ahead of vendors like Chainguard and Sonatype on supply chain threat intelligence and gives battlecard material on attack trends and Curation's blocking-at-entry app…"
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 50,
+   "title": "The New Release Metric: Less Cleanup Per Release",
+   "in_scope": "y",
+   "stratum": "hard_case",
+   "silver": {
+    "relevant": "y",
+    "category": "product_launch",
+    "impact": "4",
+    "primary_entity": "sonatype-nexus-repository"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 4,
+    "primary_entities": [
+     "sonatype",
+     "sonatype-nexus-repository"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This is a direct move by a competitor into malicious package blocking at the repository layer, overlapping with JFrog Curation's policy gate on remote repositories and JFrog Artifactory's repository…"
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 52,
+   "title": "Trust What Ships: Your Repository Is Now Your First Defense",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:product_launch",
+   "silver": {
+    "relevant": "y",
+    "category": "product_launch",
+    "impact": "5",
+    "primary_entity": "sonatype-nexus-repository"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 4,
+    "primary_entities": [
+     "sonatype",
+     "sonatype-firewall",
+     "sonatype-nexus-repository"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This directly competes with JFrog Curation, which blocks malicious or risky open-source packages at the remote repository policy gate, and touches JFrog Artifactory's remote proxy role.",
+     "Sonatype is positioning its repository as the trust-decision point for AI agents and developers, so JFrog should expect this framing in competitive deals and update Curation battlecards accordingly."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 53,
+   "title": "Hijacked TensorLake npm Turned Install Into Credential Risk",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:security_incident",
+   "silver": {
+    "relevant": "y",
+    "category": "security_incident",
+    "impact": "3",
+    "primary_entity": "sonatype"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "security_incident",
+    "impact": 4,
+    "primary_entities": [
+     "sonatype"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 54,
+   "title": "Q3 2026 Open Source Malware Index: When Compromise Compounds",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:analyst_report",
+   "silver": {
+    "relevant": "y",
+    "category": "analyst_report",
+    "impact": "3",
+    "primary_entity": "sonatype"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 3,
+    "primary_entities": [
+     "sonatype"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This index covers malicious packages in npm and PyPI that JFrog Curation and JFrog Xray are designed to block at entry and detect in Artifactory.",
+     "Its emphasis on follow-on credential theft and propagation supports battlecard messaging for JFrog Curation's package-gating and JFrog Advanced Security's contextual analysis against Sonatype Reposit…"
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 59,
+   "title": "Sonatype Is Now Awardable on the Platform One Solutions MarketPlace",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:partnership",
+   "silver": {
+    "relevant": "y",
+    "category": "customer_win",
+    "impact": "2",
+    "primary_entity": "sonatype"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "partnership",
+    "impact": 3,
+    "primary_entities": [
+     "sonatype",
+     "sonatype-nexus-repository"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 77,
+   "title": "Some Git over HTTPS may temporarily require authentication",
+   "in_scope": "y",
+   "stratum": "hard_case",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "2",
+    "primary_entity": "github"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "feature_update",
+    "impact": 2,
+    "primary_entities": [
+     "github"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "Automated CI and artifact pipelines that clone GitHub repositories over unauthenticated HTTPS could fail intermittently, affecting JFrog Pipelines and JFrog CLI-driven builds that pull source from Gi…",
+     "JFrog customers should be guided to use authenticated clones such as GITHUB_TOKEN or GitHub App tokens in build and remote-repository configurations."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 79,
+   "title": "Open source license compliance generally available",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:feature_update",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "3",
+    "primary_entity": "github-advanced-security"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "feature_update",
+    "impact": 3,
+    "primary_entities": [
+     "github",
+     "github-advanced-security"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [
+     "This adds license policy enforcement at pull-request time inside GitHub, overlapping with JFrog Xray's license compliance and policy gates for artifacts in Artifactory.",
+     "JFrog should position Xray and Curation as covering the full artifact lifecycle beyond source-repo PR checks, and address this in battlecards for GitHub-centric buyers."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 87,
+   "title": "GitHub availability report: September 2026",
+   "in_scope": "n",
+   "stratum": "out_of_scope:hint:analyst_report",
+   "silver": {
+    "relevant": "y",
+    "category": "other",
+    "impact": "2",
+    "primary_entity": "github-actions"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 2,
+    "primary_entities": [
+     "github"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "GitHub Actions is a CI/CD tool JFrog integrates with via the JFrog CLI.",
+     "Outages affecting Actions workflows can disrupt JFrog customers' build and artifact pipelines.",
+     "The report signals GitHub's ongoing reliability work, which JFrog can reference when positioning self-hosted or multi-site Artifactory against dependence on a single SaaS platform."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 98,
+   "title": "GitLab Secrets Manager: Govern secrets like your code",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "y",
+    "category": "product_launch",
+    "impact": "3",
+    "primary_entity": "gitlab-ci"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 3,
+    "primary_entities": [
+     "gitlab",
+     "gitlab-ci"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "GitLab is adding a native secrets vault tied to CI/CD pipelines.",
+     "This overlaps with JFrog's pipeline and platform governance story around JFrog Pipelines and the JFrog CLI integrations with GitLab CI."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 105,
+   "title": "Make every AI credit count: See, cap, and reduce agent spend",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "feature_update",
+    "impact": 3,
+    "primary_entities": [
+     "gitlab",
+     "gitlab-ci"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 130,
+   "title": "Benchmarking Secure-and-Functional Remediation and How Snyk Agent Fix Lifts Frontier-Model Fix Rates by over 14%",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 3,
+    "primary_entities": [
+     "snyk",
+     "snyk-code"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 134,
+   "title": "Stop The Sprawl Snyk Secrets Now Generally Available",
+   "in_scope": "n",
+   "stratum": "out_of_scope:hint:product_launch",
+   "silver": {
+    "relevant": "y",
+    "category": "product_launch",
+    "impact": "3",
+    "primary_entity": "snyk"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 4,
+    "primary_entities": [
+     "snyk"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This is a direct competitive move against JFrog Advanced Security's secrets detection capability."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 189,
+   "title": "GitHub-hosted agents with Pay-as-you-Go pricing are now generally available in Azure Pipelines",
+   "in_scope": "n",
+   "stratum": "out_of_scope:hint:pricing_change",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "3",
+    "primary_entity": "microsoft"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 3,
+    "primary_entities": [
+     "azure-artifacts",
+     "microsoft"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "General availability of Linux and Windows agent SKUs"
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 198,
+   "title": "docker/compose v5.6.0",
+   "in_scope": "n",
+   "stratum": "out_of_scope:release",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 2,
+    "primary_entities": [
+     "docker"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 227,
+   "title": "Announcing the Chainguard Compliance Dashboard",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "3",
+    "primary_entity": "chainguard-containers"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 3,
+    "primary_entities": [
+     "chainguard",
+     "chainguard-containers"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 244,
+   "title": "Announcing Chainguard container images for Go 1.27",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "3",
+    "primary_entity": "chainguard-containers"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 3,
+    "primary_entities": [
+     "chainguard",
+     "chainguard-containers"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 280,
+   "title": "chainguard-dev/apko v1.2.35 – Release v1.2.35",
+   "in_scope": "n",
+   "stratum": "out_of_scope:patch_release",
+   "silver": {
+    "relevant": "y",
+    "category": "open_source",
+    "impact": "2",
+    "primary_entity": "chainguard"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 1,
+    "primary_entities": [
+     "chainguard"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "Chainguard released apko v1.2.35",
+     "apko is a tool for building container images"
+    ],
+    "verdict_alternative_thinking": "partial"
+   }
+  },
+  {
+   "id": 312,
+   "title": "What We Can Learn About GitHub Actions Security from the Trivy Breach | Endor Labs",
+   "in_scope": "n",
+   "stratum": "out_of_scope:hint:security_incident",
+   "silver": {
+    "relevant": "y",
+    "category": "other",
+    "impact": "3",
+    "primary_entity": "endor-labs"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "security_incident",
+    "impact": 4,
+    "primary_entities": [
+     "endor-labs",
+     "github-actions"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 339,
+   "title": "Endor Labs and Bright Security Partner to Close the Gap Between Discovery and Remediation | Endor Labs",
+   "in_scope": "n",
+   "stratum": "out_of_scope:hint:partnership",
+   "silver": {
+    "relevant": "y",
+    "category": "partnership",
+    "impact": "3",
+    "primary_entity": "endor-labs"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "partnership",
+    "impact": 3,
+    "primary_entities": [
+     "endor-labs"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "The partnership strengthens Endor Labs' AppSec positioning against JFrog Advanced Security (reachability analysis, SAST, secrets detection) and JFrog Xray for vulnerability prioritization.",
+     "Battlecards should note that Endor Labs now claims runtime-validated exploitability on top of reachability, a claim JFrog should be prepared to address."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 722,
+   "title": "SocketDev/socket-cli v1.0.2",
+   "in_scope": "n",
+   "stratum": "out_of_scope:patch_release",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 2,
+    "primary_entities": [
+     "socket"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "The release is for Socket's CLI.",
+     "Socket is a supply-chain security tool.",
+     "It overlaps with JFrog Curation and Xray on malicious package detection at package entry.",
+     "A small CLI version bump carries little direct competitive weight.",
+     "It is a routine signal of Socket's ongoing product activity in the package-security space JFrog Curation addresses."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 789,
+   "title": "SocketDev/socket-cli v0.15.0",
+   "in_scope": "n",
+   "stratum": "out_of_scope:release",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "open_source",
+    "impact": 1,
+    "primary_entities": [
+     "socket"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "\"of its socket-cli project\"",
+     "\"The release note states only that the tag points at the published commit.\""
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 913,
+   "title": "MPS in PyTorch 2.15",
+   "in_scope": "n",
+   "stratum": "out_of_scope:official",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 2,
+    "primary_entities": [
+     "hugging-face"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 962,
+   "title": "Meta is back with Muse Glimmer: local, agentic, multimodal, and open source",
+   "in_scope": "n",
+   "stratum": "out_of_scope:hint:open_source",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "product_launch",
+    "impact": 3,
+    "primary_entities": [
+     "hugging-face",
+     "hugging-face-hub"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "The model is positioned as local and open source."
+    ],
+    "verdict_alternative_thinking": "partial"
+   }
+  },
+  {
+   "id": 983,
+   "title": "How to review AI code without reading the code",
+   "in_scope": "y",
+   "stratum": "in_scope:irrelevant",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 2,
+    "primary_entities": [],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 989,
+   "title": "Researchers removed one instruction from Claude Code. Out-of-scope actions jumped.",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:other",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 3,
+    "primary_entities": [],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This is an AI coding-agent safety trend rather than a direct JFrog product move, but it touches JFrog ML and the AI-BOM and model-scanning space as agents increasingly act on repositories and pipelin…",
+     "It also reinforces the case for policy gates and governance controls, which JFrog Xray and JFrog Curation provide at the artifact and package level for AI-generated or agent-driven changes."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 992,
+   "title": "Gemini 4 Argon vs. Claude Opus 5.5: Half the price and about half as accurate",
+   "in_scope": "y",
+   "stratum": "in_scope:irrelevant",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": false
+   }
+  },
+  {
+   "id": 1001,
+   "title": "Employees are vibe-coding their own apps. Cloudflare open-sources Void to give IT a handle on them",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:open_source",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "open_source",
+    "impact": 2,
+    "primary_entities": [],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1003,
+   "title": "Muse Wonder vs. Claude Fable 5.1: Meta’s new model came closer than I expected",
+   "in_scope": "y",
+   "stratum": "in_scope:irrelevant",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": false
+   }
+  },
+  {
+   "id": 1005,
+   "title": "Hackers hijacked 1,900 GitHub accounts. Then they went after 30,000 repos.",
+   "in_scope": "y",
+   "stratum": "hard_case",
+   "silver": {
+    "relevant": "y",
+    "category": "security_incident",
+    "impact": "4",
+    "primary_entity": "github-actions"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "security_incident",
+    "impact": 5,
+    "primary_entities": [
+     "github",
+     "github-actions"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This is a supply-chain incident hitting GitHub Actions workflows, which overlap with JFrog Pipelines and the CLI integrations JFrog offers for GitHub Actions, and it exposes the registry and cloud to…",
+     "It strengthens the case for JFrog Advanced Security secrets detection and Xray/Curation controls."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1007,
+   "title": "OpenAI promised developers six months’ notice. GPT-4o users got three.",
+   "in_scope": "y",
+   "stratum": "in_scope:irrelevant",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": false
+   }
+  },
+  {
+   "id": 1010,
+   "title": "Presentation: Beyond the Prototype: Scaling Framework Agnostic AI Agent Infrastructure with Ray",
+   "in_scope": "n",
+   "stratum": "out_of_scope:press_no_hint",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": false
+   }
+  },
+  {
+   "id": 1017,
+   "title": "Buildkite Adds Scoped Secrets and New Agentic CI Tools",
+   "in_scope": "n",
+   "stratum": "out_of_scope:press_no_hint",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "2",
+    "primary_entity": "none"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "feature_update",
+    "impact": 3,
+    "primary_entities": [],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1024,
+   "title": "DHS bans DeepSeek products across US federal civilian agencies",
+   "in_scope": "n",
+   "stratum": "out_of_scope:press_no_hint",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "other",
+    "impact": 2,
+    "primary_entities": [],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1043,
+   "title": "Bulk migrate branch protections to rulesets for a repository",
+   "in_scope": "y",
+   "stratum": "in_scope:relevant:feature_update",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "feature_update",
+    "impact": 2,
+    "primary_entities": [
+     "github"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "This affects how customers manage branch protection in GitHub Actions-based pipelines where JFrog integrates via the JFrog CLI."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1051,
+   "title": "ElevenLabs wants to run your voice agent. Here’s what developers give up.",
+   "in_scope": "y",
+   "stratum": "in_scope:irrelevant",
+   "silver": {
+    "relevant": "n",
+    "category": "",
+    "impact": "",
+    "primary_entity": ""
+   },
+   "pipeline": {
+    "triage_relevant": false
+   }
+  },
+  {
+   "id": 1053,
+   "title": "Pricing page changed: Sonatype Pricing",
+   "in_scope": "y",
+   "stratum": "hard_case:page_diff",
+   "silver": {
+    "relevant": "y",
+    "category": "pricing_change",
+    "impact": "3",
+    "primary_entity": "sonatype-nexus-repository"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "pricing_change",
+    "impact": 3,
+    "primary_entities": [
+     "sonatype",
+     "sonatype-firewall",
+     "sonatype-nexus-repository"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "partial",
+    "unsupported_claims": [
+     "Sonatype now sells its Firewall bundled into the top Nexus tier."
+    ],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1055,
+   "title": "Pricing page changed: Sonatype Pricing",
+   "in_scope": "y",
+   "stratum": "hard_case:page_diff",
+   "silver": {
+    "relevant": "y",
+    "category": "pricing_change",
+    "impact": "4",
+    "primary_entity": "sonatype-nexus-repository"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "pricing_change",
+    "impact": 4,
+    "primary_entities": [
+     "sonatype",
+     "sonatype-nexus-repository"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  },
+  {
+   "id": 1058,
+   "title": "Pricing page changed: GitHub Pricing",
+   "in_scope": "y",
+   "stratum": "page_diff",
+   "silver": {
+    "relevant": "y",
+    "category": "feature_update",
+    "impact": "2",
+    "primary_entity": "github-advanced-security"
+   },
+   "pipeline": {
+    "triage_relevant": true,
+    "category": "feature_update",
+    "impact": 3,
+    "primary_entities": [
+     "github",
+     "github-advanced-security"
+    ],
+    "quote_ok": true,
+    "quote_repaired": false,
+    "verdict": "supported",
+    "unsupported_claims": [],
+    "verdict_alternative_thinking": "supported"
+   }
+  }
+ ]
+}
