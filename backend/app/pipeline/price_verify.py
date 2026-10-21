@@ -3,7 +3,9 @@
 The model proposes {label, before, after}; a change is accepted only if, in ONE "## Change" hunk:
 - `before` occurs in a [before] line and `after` in an [after] line (normalized: case, spaces,
   "$ 1" → "$1", typographic dashes/quotes), never only in [context] lines;
-- before ≠ after, and at least one side holds a digit or currency sign.
+- before ≠ after, and at least one side holds a digit or currency sign;
+- both sides use the same billing unit: period (per month vs per year) and per-seat vs flat, when
+  stated. "$135 per month" → "$1,620 / year" is the same price shown differently, not a change.
 The label comes from the page, not the model: the section path of the matching [after] line
 (or of the [before] line if the after line has none). Matches in lines with two or more
 different section paths → ambiguous → dropped. Diffs without section paths (GitHub, v1 format)
@@ -21,6 +23,19 @@ from app.pipeline.schemas import ProposedPriceChange
 _DASHES = str.maketrans({"–": "-", "—": "-", "‘": "'", "’": "'", "“": '"', "”": '"', " ": " "})
 _CURRENCY_SPACE = re.compile(r"([$€£])\s+(?=[\d.])")
 _HAS_AMOUNT = re.compile(r"[\d$€£]")
+_PERIOD = re.compile(
+    r"(?P<month>\bper month\b|/\s?mo(?:nth)?\b|\bmonthly\b|\ba month\b)"
+    r"|(?P<year>\bper year\b|/\s?y(?:ea)?r\b|\byearly\b|\ba year\b|\bannual(?:ly)?\b)"
+)
+_SEAT = re.compile(r"\b(?:per |/\s?)(?:user|seat|developer|committer|contributor)s?\b")
+
+
+def billing_unit(text: str) -> tuple[str | None, bool]:
+    """(period of the FIRST period phrase – "per month/billed annually" is a monthly price –,
+    per-seat?) of a normalized price string."""
+    m = _PERIOD.search(text)
+    period = m.lastgroup if m else None
+    return period, bool(_SEAT.search(text))
 
 
 def normalize(text: str) -> str:
@@ -43,6 +58,9 @@ def _check(
         return None, "no_change"
     if not (_HAS_AMOUNT.search(before) or _HAS_AMOUNT.search(after)):
         return None, "not_a_price"
+    (b_period, b_seat), (a_period, a_seat) = billing_unit(before), billing_unit(after)
+    if (b_period and a_period and b_period != a_period) or b_seat != a_seat:
+        return None, "unit_mismatch"
     reason = "before_not_in_before"
     for hunk in hunks:
         b_lines = _containing(hunk, "before", before)

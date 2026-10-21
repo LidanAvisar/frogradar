@@ -60,7 +60,7 @@ def test_rejects_before_not_in_before_and_after_only_in_context():
 
 def test_rejects_pairs_across_hunks_and_ignores_the_moved_list():
     ok, dropped = verify_price_changes(
-        [_pc("$19 per user/month", "3,000"), _pc("$4", "$21")], UNLABELED
+        [_pc("2,000", "$21"), _pc("$4", "$21")], UNLABELED
     )
     assert ok == []
     assert [d["reason"] for d in dropped] == ["after_not_in_same_hunk", "before_not_in_before"]
@@ -119,3 +119,24 @@ def test_takeaway_and_display_title_hard_limits():
         diff.model_validate({**_ENRICHED, "display_title": "d" * 91})
     with pytest.raises(ValidationError, match="display_title"):
         diff.model_validate(_ENRICHED)  # required for page diffs
+
+
+def test_different_billing_units_are_not_a_price_change():
+    diff = HEADER + (
+        "## Change 1 of 1\n[before]\nPro Starting at $135 + consumption per month/billed annually\n"
+        "Guide $18.67 per user/month billed annually\nTeam $4 per user/month\n"
+        "[after]\nPro Starting at $1,620 / year + consumption\nGuide Starting at $1,200 / year\n"
+        "Team $5 per user/month\n"
+    )
+    ok, dropped = verify_price_changes(
+        [
+            _pc("Starting at $135 + consumption per month/billed annually",
+                "Starting at $1,620 / year + consumption"),  # monthly vs yearly display
+            # per seat vs flat
+            _pc("$18.67 per user/month billed annually", "Starting at $1,200 / year"),
+            _pc("$4 per user/month", "$5 per user/month"),  # same unit: a real change
+        ],
+        diff,
+    )  # fmt: skip
+    assert [d["reason"] for d in dropped] == ["unit_mismatch", "unit_mismatch"]
+    assert [(c["before"], c["after"]) for c in ok] == [("$4 per user/month", "$5 per user/month")]
