@@ -4,6 +4,74 @@
  */
 
 export interface paths {
+    "/api/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Ask */
+        post: operations["post_ask_api_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ask/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conversations */
+        get: operations["list_conversations_api_ask_conversations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ask/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Conversation */
+        get: operations["get_conversation_api_ask_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ask/turns/{turn_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Feedback */
+        post: operations["feedback_api_ask_turns__turn_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/battlecards": {
         parameters: {
             query?: never;
@@ -250,6 +318,225 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AskAnswerOut */
+        AskAnswerOut: {
+            /**
+             * Cached
+             * @description Every LLM call of this turn came from the cache
+             * @default false
+             */
+            cached: boolean;
+            /**
+             * Cost Usd
+             * @description LLM cost of this turn (0 = cache hits)
+             */
+            cost_usd?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            filters: components["schemas"]["AskFilters"];
+            /** Gap */
+            gap?: string | null;
+            /** Intro */
+            intro?: string | null;
+            meaning_for_jfrog?: components["schemas"]["AskMeaning"] | null;
+            /** Not Enough Evidence */
+            not_enough_evidence: boolean;
+            /** Points */
+            points: components["schemas"]["AskPoint"][];
+            /** Position */
+            position: number;
+            /** Question */
+            question: string;
+            /**
+             * Retrieved
+             * @description Documents given to the answer model
+             */
+            retrieved: number;
+            /**
+             * Sources
+             * @description The cited documents, in citation order
+             */
+            sources: components["schemas"]["AskSource"][];
+            /** Standalone Question */
+            standalone_question: string;
+            /** Suggested Followups */
+            suggested_followups: string[];
+            /** Suggestions */
+            suggestions: string[];
+            /** Turn Id */
+            turn_id: number;
+        };
+        /** AskConversationDetail */
+        AskConversationDetail: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Turns */
+            turns: components["schemas"]["AskAnswerOut"][];
+        };
+        /** AskConversationOut */
+        AskConversationOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Turns */
+            turns: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AskFeedbackIn */
+        AskFeedbackIn: {
+            /** Comment */
+            comment?: string | null;
+            /** Helpful */
+            helpful: boolean;
+            /** Reason */
+            reason?: ("inaccurate_summary" | "unsupported_claim" | "outdated" | "not_relevant" | "missing_information" | "other") | null;
+        };
+        /** AskFeedbackOut */
+        AskFeedbackOut: {
+            /** Helpful */
+            helpful: boolean;
+            /** Turn Id */
+            turn_id: number;
+        };
+        /** AskFilters */
+        AskFilters: {
+            /** Company */
+            company?: string | null;
+            /** Company Slug */
+            company_slug?: string | null;
+            /**
+             * Window
+             * @description e.g. 'last 7 days', 'October 2026'
+             */
+            window?: string | null;
+        };
+        /** AskIn */
+        AskIn: {
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** Question */
+            question: string;
+        };
+        /** AskMeaning */
+        AskMeaning: {
+            /** Citations */
+            citations: number[];
+            /** Text */
+            text: string;
+        };
+        /** AskOut */
+        AskOut: {
+            /**
+             * Cached
+             * @description Every LLM call of this turn came from the cache
+             * @default false
+             */
+            cached: boolean;
+            /** Conversation Id */
+            conversation_id: number;
+            /**
+             * Cost Usd
+             * @description LLM cost of this turn (0 = cache hits)
+             */
+            cost_usd?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            filters: components["schemas"]["AskFilters"];
+            /** Gap */
+            gap?: string | null;
+            /** Intro */
+            intro?: string | null;
+            meaning_for_jfrog?: components["schemas"]["AskMeaning"] | null;
+            /** Not Enough Evidence */
+            not_enough_evidence: boolean;
+            /** Points */
+            points: components["schemas"]["AskPoint"][];
+            /** Position */
+            position: number;
+            /** Question */
+            question: string;
+            /**
+             * Retrieved
+             * @description Documents given to the answer model
+             */
+            retrieved: number;
+            /**
+             * Sources
+             * @description The cited documents, in citation order
+             */
+            sources: components["schemas"]["AskSource"][];
+            /** Standalone Question */
+            standalone_question: string;
+            /** Suggested Followups */
+            suggested_followups: string[];
+            /** Suggestions */
+            suggestions: string[];
+            /** Turn Id */
+            turn_id: number;
+        };
+        /** AskPoint */
+        AskPoint: {
+            /**
+             * Citations
+             * @description Numbers into `sources`
+             */
+            citations: number[];
+            /** Lead */
+            lead: string;
+            /** Text */
+            text: string;
+        };
+        /** AskSource */
+        AskSource: {
+            /** Confidence */
+            confidence: number | null;
+            /** Confidence Band */
+            confidence_band: string | null;
+            /** Date */
+            date: string | null;
+            /**
+             * Id
+             * @description Document id: sig:<signal id>, bc:<slug>:<section>:<n>, radar:<id>
+             */
+            id: string;
+            /**
+             * N
+             * @description Citation number shown in the answer
+             */
+            n: number;
+            /** Source */
+            source: string | null;
+            /**
+             * Source Kind
+             * @description official / press / community / github
+             */
+            source_kind?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "article" | "pricing_page" | "battlecard" | "radar";
+            /**
+             * Url
+             * @description Original article, or the battlecard / radar page
+             */
+            url: string;
+        };
         /** BattlecardEntity */
         BattlecardEntity: {
             /** Name */
@@ -1276,6 +1563,176 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    post_ask_api_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_conversations_api_ask_conversations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskConversationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_conversation_api_ask_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskConversationDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feedback_api_ask_turns__turn_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turn_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskFeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskFeedbackOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_battlecards_api_battlecards_get: {
         parameters: {
             query?: never;

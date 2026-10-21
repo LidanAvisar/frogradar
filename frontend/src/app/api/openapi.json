@@ -1,6 +1,609 @@
 {
   "components": {
     "schemas": {
+      "AskAnswerOut": {
+        "properties": {
+          "cached": {
+            "default": false,
+            "description": "Every LLM call of this turn came from the cache",
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "LLM cost of this turn (0 = cache hits)",
+            "title": "Cost Usd"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AskFilters"
+          },
+          "gap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
+          "intro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intro"
+          },
+          "meaning_for_jfrog": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskMeaning"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "not_enough_evidence": {
+            "title": "Not Enough Evidence",
+            "type": "boolean"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AskPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "retrieved": {
+            "description": "Documents given to the answer model",
+            "title": "Retrieved",
+            "type": "integer"
+          },
+          "sources": {
+            "description": "The cited documents, in citation order",
+            "items": {
+              "$ref": "#/components/schemas/AskSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "standalone_question": {
+            "title": "Standalone Question",
+            "type": "string"
+          },
+          "suggested_followups": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Followups",
+            "type": "array"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "position",
+          "question",
+          "standalone_question",
+          "filters",
+          "not_enough_evidence",
+          "points",
+          "suggestions",
+          "suggested_followups",
+          "sources",
+          "retrieved",
+          "created_at"
+        ],
+        "title": "AskAnswerOut",
+        "type": "object"
+      },
+      "AskConversationDetail": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/AskAnswerOut"
+            },
+            "title": "Turns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "turns"
+        ],
+        "title": "AskConversationDetail",
+        "type": "object"
+      },
+      "AskConversationOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "turns": {
+            "title": "Turns",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "turns",
+          "updated_at"
+        ],
+        "title": "AskConversationOut",
+        "type": "object"
+      },
+      "AskFeedbackIn": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "helpful": {
+            "title": "Helpful",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inaccurate_summary",
+                  "unsupported_claim",
+                  "outdated",
+                  "not_relevant",
+                  "missing_information",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "helpful"
+        ],
+        "title": "AskFeedbackIn",
+        "type": "object"
+      },
+      "AskFeedbackOut": {
+        "properties": {
+          "helpful": {
+            "title": "Helpful",
+            "type": "boolean"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "helpful"
+        ],
+        "title": "AskFeedbackOut",
+        "type": "object"
+      },
+      "AskFilters": {
+        "properties": {
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "company_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Slug"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "e.g. 'last 7 days', 'October 2026'",
+            "title": "Window"
+          }
+        },
+        "title": "AskFilters",
+        "type": "object"
+      },
+      "AskIn": {
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "question": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "AskIn",
+        "type": "object"
+      },
+      "AskMeaning": {
+        "properties": {
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "citations"
+        ],
+        "title": "AskMeaning",
+        "type": "object"
+      },
+      "AskOut": {
+        "properties": {
+          "cached": {
+            "default": false,
+            "description": "Every LLM call of this turn came from the cache",
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "LLM cost of this turn (0 = cache hits)",
+            "title": "Cost Usd"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AskFilters"
+          },
+          "gap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
+          "intro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intro"
+          },
+          "meaning_for_jfrog": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskMeaning"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "not_enough_evidence": {
+            "title": "Not Enough Evidence",
+            "type": "boolean"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AskPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "retrieved": {
+            "description": "Documents given to the answer model",
+            "title": "Retrieved",
+            "type": "integer"
+          },
+          "sources": {
+            "description": "The cited documents, in citation order",
+            "items": {
+              "$ref": "#/components/schemas/AskSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "standalone_question": {
+            "title": "Standalone Question",
+            "type": "string"
+          },
+          "suggested_followups": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Followups",
+            "type": "array"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "position",
+          "question",
+          "standalone_question",
+          "filters",
+          "not_enough_evidence",
+          "points",
+          "suggestions",
+          "suggested_followups",
+          "sources",
+          "retrieved",
+          "created_at",
+          "conversation_id"
+        ],
+        "title": "AskOut",
+        "type": "object"
+      },
+      "AskPoint": {
+        "properties": {
+          "citations": {
+            "description": "Numbers into `sources`",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "lead": {
+            "title": "Lead",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lead",
+          "text",
+          "citations"
+        ],
+        "title": "AskPoint",
+        "type": "object"
+      },
+      "AskSource": {
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "confidence_band": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Band"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "id": {
+            "description": "Document id: sig:<signal id>, bc:<slug>:<section>:<n>, radar:<id>",
+            "title": "Id",
+            "type": "string"
+          },
+          "n": {
+            "description": "Citation number shown in the answer",
+            "title": "N",
+            "type": "integer"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "official / press / community / github",
+            "title": "Source Kind"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "article",
+              "pricing_page",
+              "battlecard",
+              "radar"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "description": "Original article, or the battlecard / radar page",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "id",
+          "type",
+          "title",
+          "source",
+          "date",
+          "url",
+          "confidence",
+          "confidence_band"
+        ],
+        "title": "AskSource",
+        "type": "object"
+      },
       "BattlecardEntity": {
         "properties": {
           "name": {
@@ -2960,6 +3563,201 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/ask": {
+      "post": {
+        "operationId": "post_ask_api_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Post Ask",
+        "tags": [
+          "ask"
+        ]
+      }
+    },
+    "/api/ask/conversations": {
+      "get": {
+        "operationId": "list_conversations_api_ask_conversations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AskConversationOut"
+                  },
+                  "title": "Response List Conversations Api Ask Conversations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Conversations",
+        "tags": [
+          "ask"
+        ]
+      }
+    },
+    "/api/ask/conversations/{conversation_id}": {
+      "get": {
+        "operationId": "get_conversation_api_ask_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskConversationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conversation",
+        "tags": [
+          "ask"
+        ]
+      }
+    },
+    "/api/ask/turns/{turn_id}/feedback": {
+      "post": {
+        "operationId": "feedback_api_ask_turns__turn_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "turn_id",
+            "required": true,
+            "schema": {
+              "title": "Turn Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskFeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskFeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feedback",
+        "tags": [
+          "ask"
+        ]
+      }
+    },
     "/api/battlecards": {
       "get": {
         "description": "Tracked competitors for the switcher: those with a card first (by signal count), then the\nrest (\"no card yet\").",

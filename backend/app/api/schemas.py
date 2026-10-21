@@ -493,4 +493,96 @@ class RadarTeaser(BaseModel):
     line: str | None
 
 
+# ---------- ask your intelligence ----------
+
+AskDocType = Literal["article", "pricing_page", "battlecard", "radar"]
+AskFeedbackReason = Literal[
+    "inaccurate_summary", "unsupported_claim", "outdated", "not_relevant",
+    "missing_information", "other",
+]  # fmt: skip
+
+
+class AskIn(BaseModel):
+    question: Annotated[str, Field(min_length=3, max_length=500)]
+    conversation_id: int | None = None
+
+
+class AskSource(BaseModel):
+    n: int = Field(description="Citation number shown in the answer")
+    id: str = Field(description="Document id: sig:<signal id>, bc:<slug>:<section>:<n>, radar:<id>")
+    type: AskDocType
+    title: str
+    source: str | None
+    source_kind: str | None = Field(None, description="official / press / community / github")
+    date: datetime | None
+    url: str = Field(description="Original article, or the battlecard / radar page")
+    confidence: float | None
+    confidence_band: str | None
+
+
+class AskPoint(BaseModel):
+    lead: str
+    text: str
+    citations: list[int] = Field(description="Numbers into `sources`")
+
+
+class AskMeaning(BaseModel):
+    text: str
+    citations: list[int]
+
+
+class AskFilters(BaseModel):
+    company: str | None = None
+    company_slug: str | None = None
+    window: str | None = Field(None, description="e.g. 'last 7 days', 'October 2026'")
+
+
+class AskAnswerOut(BaseModel):
+    turn_id: int
+    position: int
+    question: str
+    standalone_question: str
+    filters: AskFilters
+    not_enough_evidence: bool
+    intro: str | None = None
+    points: list[AskPoint]
+    meaning_for_jfrog: AskMeaning | None = None
+    gap: str | None = None
+    suggestions: list[str]
+    suggested_followups: list[str]
+    sources: list[AskSource] = Field(description="The cited documents, in citation order")
+    retrieved: int = Field(description="Documents given to the answer model")
+    cost_usd: float | None = Field(None, description="LLM cost of this turn (0 = cache hits)")
+    cached: bool = Field(False, description="Every LLM call of this turn came from the cache")
+    created_at: datetime
+
+
+class AskOut(AskAnswerOut):
+    conversation_id: int
+
+
+class AskConversationOut(BaseModel):
+    id: int
+    title: str
+    turns: int
+    updated_at: datetime
+
+
+class AskConversationDetail(BaseModel):
+    id: int
+    title: str
+    turns: list[AskAnswerOut]
+
+
+class AskFeedbackIn(BaseModel):
+    helpful: bool
+    reason: AskFeedbackReason | None = None
+    comment: Annotated[str, Field(max_length=500)] | None = None
+
+
+class AskFeedbackOut(BaseModel):
+    turn_id: int
+    helpful: bool
+
+
 BriefOut.model_rebuild()
