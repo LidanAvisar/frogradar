@@ -25,9 +25,17 @@
   <div class="layout">
     <section class="main" aria-labelledby="top-heading">
       <div class="section-head">
-        <h2 id="top-heading">Top 5 developments</h2>
-        @if (brief(); as b) {
-          <span class="small muted">Last {{ b.window.days }} days, ranked by impact × confidence</span>
+        <div class="section-title">
+          <h2 id="top-heading">Top 5 developments</h2>
+          @if (brief(); as b) {
+            <span class="small muted">Last {{ b.window.days }} days, ranked by impact × confidence</span>
+          }
+        </div>
+        @if (!executive() && topIds().length) {
+          <button type="button" class="fr-button expand-all" (click)="toggleAll()">
+            <fr-icon name="chevron" [size]="16" [class.flip]="allExpanded()" />
+            {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
+          </button>
         }
       </div>
 
@@ -51,7 +59,10 @@
           } @else {
             <ol class="cards" [class.exec]="executive()">
               @for (s of brief()!.top; track s.id) {
-                <li><fr-signal-card [signal]="s" [rank]="s.rank" [variant]="executive() ? 'executive' : 'analyst'" /></li>
+                <li>
+                  <fr-signal-card [signal]="s" [rank]="s.rank" [variant]="executive() ? 'executive' : 'analyst'"
+                                  [expanded]="view.isExpanded(s.id)" (expandedChange)="view.set(s.id, $event)" />
+                </li>
               }
             </ol>
           }

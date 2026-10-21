@@ -1,58 +1,72 @@
+<!-- Segments must not get extra spaces around them, so the markup stays on one line. -->
+<ng-template #highlighted let-text>@for (seg of text | highlight: terms(); track $index) {@if (seg.hit) {<strong class="jf">{{ seg.text }}</strong>} @else {<ng-container>{{ seg.text }}</ng-container>}}</ng-template>
+
 @if (variant() === 'executive') {
-  <article class="exec" [attr.aria-labelledby]="titleId()">
+  <article class="exec" [attr.aria-labelledby]="ids().title">
     @if (rank() !== null) { <span class="rank mono" aria-hidden="true">{{ rankLabel() }}</span> }
-    <fr-impact-badge [impact]="signal().impact" />
-    @if (companies()[0]; as c) { <fr-company-chip [name]="c.name" /> }
-    <h3 class="exec-title" [id]="titleId()">
-      @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
-      <a [href]="signal().url" target="_blank" rel="noopener noreferrer">{{ signal().title }}<span class="visually-hidden"> (opens in a new tab)</span></a>
-    </h3>
-    <fr-confidence-badge class="exec-conf" [confidence]="signal().confidence" />
+    <div class="exec-body">
+      <h3 class="exec-title" [id]="ids().title">
+        @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
+        <a [href]="signal().url" target="_blank" rel="noopener noreferrer">{{ signal().title }}<span class="visually-hidden"> (opens in a new tab)</span></a>
+      </h3>
+      @if (takeaway()) {
+        <p class="exec-takeaway"><ng-container *ngTemplateOutlet="highlighted; context: { $implicit: takeaway() }" /></p>
+      }
+    </div>
   </article>
 } @else {
-  <article class="card" [attr.aria-labelledby]="titleId()">
-    <div class="meta">
+  <article class="card" [class.open]="expanded()" [attr.aria-labelledby]="ids().title">
+    <div class="head" (click)="onHeaderClick()">
       @if (rank() !== null) { <span class="rank mono" aria-hidden="true">{{ rankLabel() }}</span> }
       <fr-impact-badge [impact]="signal().impact" />
-      @for (c of companies(); track c.slug) { <fr-company-chip [name]="c.name" /> }
-      @if (category()) { <span class="category small">{{ category() }}</span> }
+      @if (company(); as c) { <fr-company-chip [name]="c.name" /> }
       @if (signal().is_claim) { <fr-vendor-claim-tag /> }
+      <h3 class="title" [id]="ids().title">
+        @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
+        {{ signal().title }}
+      </h3>
       <fr-confidence-badge class="conf" [confidence]="signal().confidence" />
+      <button type="button" class="chevron" [attr.aria-expanded]="expanded()" [attr.aria-controls]="ids().details"
+              [attr.aria-label]="toggleLabel()">
+        <fr-icon name="chevron" [size]="20" />
+      </button>
     </div>
 
-    <h3 class="title" [id]="titleId()">
-      @if (rank() !== null) { <span class="visually-hidden">Rank {{ rank() }}: </span> }
-      {{ signal().title }}
-    </h3>
-
-    @if (signal().summary) { <p class="summary">{{ signal().summary }}</p> }
-
-    @if (signal().why_jfrog_cares) {
-      <div class="why">
-        <p class="eyebrow why-label">Why JFrog cares</p>
-        <p>{{ signal().why_jfrog_cares }}</p>
-      </div>
+    @if (takeaway()) {
+      <p class="takeaway"><ng-container *ngTemplateOutlet="highlighted; context: { $implicit: takeaway() }" /></p>
     }
 
-    <fr-evidence-quote [evidence]="signal().evidence" [sourceName]="signal().source?.name" />
+    <div class="details" [id]="ids().details" [hidden]="!expanded()">
+      @if (category()) { <p class="category small">{{ category() }}</p> }
+      @if (signal().summary) { <p class="summary">{{ signal().summary }}</p> }
 
-    <footer class="footer">
-      <div class="facts small">
-        <fr-source-link [url]="signal().url" [label]="sourceLabel()" />
-        @if (date()) { <span class="mono muted">{{ date() }}</span> }
-        <span class="muted">{{ verification() }}</span>
-        @if (signal().sources_count > 1) { <span class="muted">{{ signal().sources_count }} sources</span> }
-      </div>
-      <div class="actions">
-        <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                [attr.aria-describedby]="'soon-' + signal().id">Approve</button>
-        <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                [attr.aria-describedby]="'soon-' + signal().id">Correct</button>
-        <span class="visually-hidden" [id]="'soon-' + signal().id">Coming soon</span>
-        <a class="fr-button" routerLink="/missions" [queryParams]="{ signal: signal().id }">
-          Investigate <fr-icon name="arrow" [size]="14" />
-        </a>
-      </div>
-    </footer>
+      @if (signal().why_jfrog_cares) {
+        <div class="why">
+          <p class="eyebrow why-label">Why JFrog cares</p>
+          <p><ng-container *ngTemplateOutlet="highlighted; context: { $implicit: signal().why_jfrog_cares }" /></p>
+        </div>
+      }
+
+      <fr-evidence-quote [evidence]="signal().evidence" [sourceName]="signal().source?.name" />
+
+      <footer class="footer">
+        <div class="facts small">
+          <fr-source-link [url]="signal().url" [label]="sourceLabel()" />
+          @if (date()) { <span class="mono muted">{{ date() }}</span> }
+          <span class="muted">{{ verification() }}</span>
+          @if (signal().sources_count > 1) { <span class="muted">{{ signal().sources_count }} sources</span> }
+        </div>
+        <div class="actions">
+          <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
+                  [attr.aria-describedby]="ids().soon">Approve</button>
+          <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
+                  [attr.aria-describedby]="ids().soon">Correct</button>
+          <span class="visually-hidden" [id]="ids().soon">Coming soon</span>
+          <a class="fr-button" routerLink="/missions" [queryParams]="{ signal: signal().id }">
+            Investigate <fr-icon name="arrow" [size]="14" />
+          </a>
+        </div>
+      </footer>
+    </div>
   </article>
 }

@@ -34,6 +34,8 @@ export function briefFixture(overrides: Partial<Brief> = {}): Brief {
     since_yesterday: [
       { id: 1, title: 'GitHub package firewall', url: 'https://x.test/1', impact: 4, category: 'product_launch', entities: [], published_at: '2026-10-21T01:00:00Z' },
     ],
+    since_yesterday_total: 3,
+    since_yesterday_high_impact: 2,
     filtered_not_relevant: 30,
     pricing_watch: [],
     pipeline: {

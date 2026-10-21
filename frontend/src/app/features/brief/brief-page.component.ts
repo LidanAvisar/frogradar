@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 
 import type { Brief } from '../../api/models';
 import { ApiService } from '../../core/api.service';
+import { BriefViewService } from '../../core/brief-view.service';
 import { eyebrowDate } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
 import { IconComponent } from '../../shared/icon.component';
@@ -44,6 +45,7 @@ export class BriefPageComponent implements OnInit {
   private readonly prefs = inject(PreferencesService);
 
   protected readonly state = signal<State>({ status: 'loading' });
+  protected readonly view = inject(BriefViewService);
   protected readonly executive = this.prefs.executiveView;
   protected readonly brief = computed(() => {
     const s = this.state();
@@ -51,10 +53,10 @@ export class BriefPageComponent implements OnInit {
   });
   protected readonly dateLine = computed(() => eyebrowDate(this.brief()?.generated_at ?? new Date().toISOString()));
   protected readonly headline = computed(() => this.brief()?.headline ?? DEFAULT_HEADLINE);
-  protected readonly newCount = computed(() => this.brief()?.since_yesterday.length ?? 0);
-  protected readonly highImpactNew = computed(
-    () => this.brief()?.since_yesterday.filter((i) => (i.impact ?? 0) >= 4).length ?? 0,
-  );
+  protected readonly newCount = computed(() => this.brief()?.since_yesterday_total ?? 0);
+  protected readonly highImpactNew = computed(() => this.brief()?.since_yesterday_high_impact ?? 0);
+  protected readonly topIds = computed(() => this.brief()?.top.map((s) => s.id) ?? []);
+  protected readonly allExpanded = computed(() => this.view.allExpanded(this.topIds()));
   protected readonly skeletons = [1, 2, 3];
 
   ngOnInit(): void {
@@ -70,6 +72,12 @@ export class BriefPageComponent implements OnInit {
         next: (brief) => this.state.set({ status: 'ready', brief }),
         error: () => this.state.set({ status: 'error' }),
       });
+  }
+
+  toggleAll(): void {
+    const open = !this.allExpanded();
+    this.view.setAll(this.topIds(), open);
+    this.announcer.announce(open ? 'All developments expanded' : 'All developments collapsed');
   }
 
   toggleExecutive(): void {

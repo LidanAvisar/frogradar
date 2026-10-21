@@ -14,6 +14,9 @@ const PATHS: Record<string, string> = {
   radar: 'M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l7-7',
   alert: 'M12 4l9 16H3zM12 10v4M12 17v.5',
   inbox: 'M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5',
+  chevron: 'M6 9l6 6 6-6',
+  menu: 'M4 6h16M4 12h16M4 18h16',
+  close: 'M6 6l12 12M18 6L6 18',
 };
 
 @Component({

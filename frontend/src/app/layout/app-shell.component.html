@@ -2,11 +2,18 @@
 <div class="shell">
   <aside class="sidebar">
     <div class="sidebar-inner">
-    <a class="brand" routerLink="/" aria-label="FrogRadar, Morning Brief">
-      <span class="logo" aria-hidden="true"><fr-icon name="radar" [size]="18" /></span>
-      <span class="brand-name">FrogRadar</span>
-    </a>
-    <nav aria-label="Main">
+    <div class="bar">
+      <a class="brand" routerLink="/" aria-label="FrogRadar, Morning Brief">
+        <span class="logo" aria-hidden="true"><fr-icon name="radar" [size]="18" /></span>
+        <span class="brand-name">FrogRadar</span>
+      </a>
+      <button #menuButton type="button" class="menu-button" aria-controls="main-nav"
+              [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
+        <fr-icon [name]="menuOpen() ? 'close' : 'menu'" [size]="20" />
+        <span>Menu</span>
+      </button>
+    </div>
+    <nav id="main-nav" aria-label="Main" [class.open]="menuOpen()" (keydown.escape)="closeMenu(true)">
       <ul class="nav">
         @for (item of items(); track item.path) {
           <li>

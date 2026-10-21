@@ -38,6 +38,40 @@ describe('BriefPageComponent', () => {
     expect(el.textContent).toContain('WEDNESDAY · 21 OCTOBER 2026');
     expect(el.textContent).toContain('Vendor claim');
     expect(el.textContent).toContain('30 items filtered as not relevant');
+    expect(el.textContent).toContain('3 new since yesterday · 2 high impact');
+  });
+
+  it('cards start collapsed; Expand all / Collapse all toggles every card', () => {
+    respond();
+    const details = () => Array.from(el.querySelectorAll<HTMLElement>('.details'));
+    expect(details().every((d) => d.hidden)).toBeTrue();
+
+    const all = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Expand all'))!;
+    all.click();
+    fixture.detectChanges();
+    expect(details().every((d) => !d.hidden)).toBeTrue();
+    expect(all.textContent).toContain('Collapse all');
+
+    all.click();
+    fixture.detectChanges();
+    expect(details().every((d) => d.hidden)).toBeTrue();
+  });
+
+  it('remembers expanded cards in memory for the session', () => {
+    respond();
+    (el.querySelector('.chevron') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    // Leave and come back (new component, same app session).
+    fixture.destroy();
+    fixture = TestBed.createComponent(BriefPageComponent);
+    el = fixture.nativeElement;
+    fixture.detectChanges();
+    respond();
+    const details = el.querySelectorAll<HTMLElement>('.details');
+    expect(details[0].hidden).toBeFalse();
+    expect(details[1].hidden).toBeTrue();
+    expect(Object.keys(localStorage).some((k) => k.includes('expand'))).toBeFalse();
   });
 
   it('uses the daily brief headline when there is one', () => {
@@ -55,6 +89,8 @@ describe('BriefPageComponent', () => {
     expect(toggle.getAttribute('aria-pressed')).toBe('true');
     expect(el.querySelectorAll('article.exec').length).toBe(2);
     expect(el.querySelector('.why')).toBeNull();
+    expect(el.querySelector('.main')!.querySelector('fr-impact-badge, fr-confidence-badge, blockquote')).toBeNull();
+    expect(el.textContent).not.toContain('Expand all');
     expect(localStorage.getItem('frogradar.executiveView')).toBe('true');
   });
 

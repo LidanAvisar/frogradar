@@ -105,13 +105,28 @@ h1 {
 .section-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 4px var(--fr-gap-sm);
+  gap: var(--fr-gap-xs) var(--fr-gap-sm);
 
   h2 {
     font-size: var(--fr-text-h2);
     font-weight: 600;
+  }
+}
+
+.section-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--fr-gap-sm);
+}
+
+.expand-all fr-icon {
+  transition: transform 160ms ease;
+
+  &.flip {
+    transform: rotate(180deg);
   }
 }
 
@@ -122,6 +137,10 @@ h1 {
 
   &.exec {
     gap: var(--fr-gap-xs);
+  }
+
+  & > li {
+    min-width: 0;
   }
 }
 

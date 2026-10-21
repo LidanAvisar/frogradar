@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { catchError, of } from 'rxjs';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { catchError, filter, of } from 'rxjs';
 
 import type { NavCounts } from '../api/models';
 import { ApiService } from '../core/api.service';
@@ -23,7 +23,10 @@ const NAV: NavItem[] = [
   { path: '/review', label: 'Review queue', icon: 'review', count: 'review_queue' },
 ];
 
-/** Sidebar navigation + main content area. Stacks vertically at phone width. */
+/**
+ * Sidebar navigation + main content area. At phone width the sidebar becomes a top bar and the
+ * nav opens from a Menu button (closes on navigation and on Escape).
+ */
 @Component({
   selector: 'fr-app-shell',
   standalone: true,
@@ -37,6 +40,28 @@ export class AppShellComponent {
     inject(ApiService).nav().pipe(catchError(() => of(null))),
     { initialValue: null },
   );
+
+  protected readonly menuOpen = signal(false);
+  private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
+
+  constructor() {
+    inject(Router)
+      .events.pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.menuOpen.set(false));
+  }
+
+  toggleMenu(): void {
+    this.menuOpen.update((open) => !open);
+  }
+
+  closeMenu(returnFocus = false): void {
+    if (!this.menuOpen()) return;
+    this.menuOpen.set(false);
+    if (returnFocus) this.menuButton()?.nativeElement.focus();
+  }
 
   protected readonly items = computed(() =>
     NAV.map((item) => ({

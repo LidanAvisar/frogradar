@@ -364,12 +364,15 @@ side by side.
 
 ![Morning Brief at 1440 px](docs/screenshots/brief-1440.png)
 
-The first screen (`/`): the top 5 developments of the last 7 days, ranked by impact × confidence, each with the
-summary, a "Why JFrog cares" panel, the verbatim evidence quote and a link to the original. The right rail shows
-the pricing watch (latest change per watched pricing page, compared with a Wayback Machine capture), what was
-published since yesterday, how many items were filtered as not relevant, and the last pipeline run. "Executive
-view" switches every card to one line and is remembered per browser. At phone width the sidebar stacks above the
-content and the rail drops below the cards ([390 px screenshot](docs/screenshots/brief-390.png)).
+The first screen (`/`): the top 5 developments of the last 7 days, ranked by impact × confidence. Each card starts
+collapsed: impact, company, title, confidence and the takeaway (first sentence of "Why JFrog cares", with JFrog
+product names highlighted). Expanding a card (chevron, header row, or "Expand all") shows the summary, the full
+"Why JFrog cares", the verbatim evidence quote, the source link and actions; expanded cards are remembered for the
+session only. The right rail shows the pricing watch (latest change per watched pricing page, highest impact
+first, compared with a Wayback Machine capture), what else was published since yesterday (without repeating the
+Top 5), how many items were filtered as not relevant, and the last pipeline run. "Executive view" turns the list
+into rank, title and takeaway only, remembered per browser. At phone width the sidebar becomes a top bar with a
+Menu button and the rail drops below the cards ([390 px screenshot](docs/screenshots/brief-390.png)).
 
 Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 
@@ -380,6 +383,7 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `GET /api/signals/{id}` | one signal |
 | `GET /api/entities` | tracked companies with signal counts |
 | `GET /api/nav` | sidebar counts |
+| `GET /api/self` | JFrog and its product names (from `competitors.yaml`) for highlighting |
 
 Rules: only in-scope, canonical, enriched signals are returned; `raw_text` is never returned; a quote that was not
 found verbatim in the source comes back with `verified: false` and the UI does not show it as a quote.
@@ -496,6 +500,7 @@ Each line: what we chose – why – what we rejected.
 - **D47 Read API: one "visible" filter** – a signal is shown only if in scope, canonical and enriched; one `SignalOut` DTO without raw_text/meta/embedding (tested on every endpoint and in the OpenAPI schema); unverified quotes flagged and hidden in the UI; brief ranks verified signals by impact × confidence; "since yesterday" goes by publish date – rejected per-endpoint field filtering and fetched_at for "new".
 - **D48 Deterministic price pairs** – the pricing watch pairs `[before]`/`[after]` price lines from the stored diff only when unambiguous (same or uniquely matching section label, one price per line); otherwise it shows the summary and verified quote – rejected an LLM extraction step and fuzzy matching.
 - **D49 Design tokens + CDK** – every color/type/spacing value is a CSS custom property in `tokens.css` (lint fails on stray colors); small standalone components; Angular Material only where it saves work, themed with the tokens – rejected restyling Material defaults and Tailwind.
+- **D51 Takeaway-first Brief cards** – cards collapsed by default (header + first sentence of "why"), expanded state in memory for the session; JFrog product names highlighted from config through a text-segment pipe (no innerHTML), bare names like "Advanced Security" skipped after another vendor's name; since yesterday doesn't repeat the Top 5 – rejected a hard-coded product list and highlighting every bare name.
 - **D50 Generated API types** – `make api-types` turns FastAPI's OpenAPI into TypeScript types (committed; a test fails when they are stale) – rejected hand-written interfaces.
 
 ## Repository layout
