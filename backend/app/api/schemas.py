@@ -375,7 +375,7 @@ class RadarStatementOut(BaseModel):
     text: str
     citations: list[CitationRef]
     segments: list[str] | None = None
-    relation: Literal["threatens", "complements", "both"] | None = None
+    relation: Literal["threatens", "complements", "both", "none"] | None = None
     products: list[str] | None = Field(None, description="JFrog product names")
     stage: (
         Literal["open_source_project", "startup", "feature_of_large_company", "unknown"] | None

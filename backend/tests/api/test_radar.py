@@ -249,6 +249,14 @@ def test_dismiss_records_reason(client, radar, db_session):
     ]
 
 
+def test_rejected_profile_gives_no_line(client, radar, db_session):
+    top = radar["top"]
+    top.profile_status = ProfileStatus.REJECTED
+    db_session.flush()
+    item = client.get("/api/radar").json()["items"][0]
+    assert (item["line"], item["line_source"]) == ("A registry firewall.", "context")
+
+
 def test_brief_teaser_and_nav(client, radar):
     brief = client.get("/api/brief").json()
     assert [t["name"] for t in brief["radar"]] == ["Regshield", "Pkgguard", "Tinytool"]

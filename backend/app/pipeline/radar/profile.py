@@ -22,9 +22,9 @@ Dropped statements are kept in profile.dropped.
 import hashlib
 import logging
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -66,7 +66,16 @@ class StageStatement(Statement):
 
 
 class RelationStatementBase(Statement):
-    relation: Literal["threatens", "complements", "both"]
+    relation: Literal["threatens", "complements", "both", "none"]
+
+    @model_validator(mode="after")
+    def _products_match_relation(self) -> Self:
+        products = getattr(self, "products", [])
+        if self.relation == "none" and products:
+            raise ValueError('relation "none" means no JFrog products: leave products empty')
+        if self.relation != "none" and not products:
+            raise ValueError("name the JFrog products it threatens or complements")
+        return self
 
 
 class RadarProfileBase(_Out):
@@ -81,9 +90,7 @@ def profile_schema(jfrog_products: list[str]) -> type[RadarProfileBase]:
         "RelationStatement",
         __base__=RelationStatementBase,
         products=(
-            Annotated[
-                list[Literal[tuple(sorted(jfrog_products))]], Field(min_length=1, max_length=4)
-            ],
+            Annotated[list[Literal[tuple(sorted(jfrog_products))]], Field(max_length=4)],
             ...,
         ),  # type: ignore[valid-type]
     )
@@ -165,7 +172,11 @@ def claims_of(profile: RadarProfileBase) -> list[Claim]:
         elif key == "jfrog_relation":
             extra["relation"] = st.relation
             extra["products"] = list(st.products)
-            text = f"{st.relation} JFrog {', '.join(st.products)}: {st.text}"
+            text = (
+                f"No overlap with JFrog products: {st.text}"
+                if st.relation == "none"
+                else f"{st.relation} JFrog {', '.join(st.products)}: {st.text}"
+            )
         out.append(Claim(key, text, tuple(st.signal_ids), {"statement": st.text, **extra}))
     return out
 

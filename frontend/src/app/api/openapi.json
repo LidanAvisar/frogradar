@@ -1811,7 +1811,8 @@
                 "enum": [
                   "threatens",
                   "complements",
-                  "both"
+                  "both",
+                  "none"
                 ],
                 "type": "string"
               },

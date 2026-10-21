@@ -877,7 +877,7 @@ export interface components {
              */
             products?: string[] | null;
             /** Relation */
-            relation?: ("threatens" | "complements" | "both") | null;
+            relation?: ("threatens" | "complements" | "both" | "none") | null;
             /** Segments */
             segments?: string[] | null;
             /** Stage */

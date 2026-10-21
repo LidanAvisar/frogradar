@@ -45,6 +45,7 @@ from app.db.enums import (
     FeedbackAction,
     FeedbackTarget,
     FetchMethod,
+    ProfileStatus,
     RadarKind,
     RadarStatus,
     ReasonCode,
@@ -71,7 +72,9 @@ def _live() -> Any:
 
 
 def _line(c: RadarCandidate) -> tuple[str | None, str | None]:
-    items = (c.profile or {}).get("items") or {}
+    """A rejected profile (what_it_is failed the checks) supplies no line: fall back to context."""
+    ok = c.profile_status == ProfileStatus.OK
+    items = ((c.profile or {}).get("items") or {}) if ok else {}
     for key in ("why_notable_now", "what_it_is"):
         text = (items.get(key) or {}).get("statement")
         if text:

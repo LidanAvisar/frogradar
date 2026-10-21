@@ -621,3 +621,34 @@ def test_collect_source_stores_star_snapshots_and_skips(collect_db):
     with collect_db() as s:
         [row] = s.scalars(select(RepoStarSnapshot)).all()
         assert (row.repo, row.stars, row.run_id) == ("a/b", 12, run_id)  # last capture of the day
+
+
+def test_relation_none_needs_empty_products():
+    from pydantic import ValidationError
+
+    from app.pipeline.radar.profile import profile_schema
+
+    schema = profile_schema(["jfrog-curation"])
+    base = {
+        "what_it_is": {"text": "A consumer email app.", "signal_ids": [1]},
+        "segments": {
+            "text": "Outside JFrog's market.",
+            "segments": ["distribution"],
+            "signal_ids": [1],
+        },
+        "stage": {"text": "A solo project.", "stage": "unknown", "signal_ids": [1]},
+        "why_notable_now": {"text": "Shown on Hacker News.", "signal_ids": [1]},
+    }
+    rel = {"text": "It does not touch JFrog's products.", "signal_ids": [1]}
+    ok = schema.model_validate(
+        {**base, "jfrog_relation": {**rel, "relation": "none", "products": []}}
+    )
+    assert ok.jfrog_relation.relation == "none"
+    with pytest.raises(ValidationError, match="leave products empty"):
+        schema.model_validate(
+            {**base, "jfrog_relation": {**rel, "relation": "none", "products": ["jfrog-curation"]}}
+        )
+    with pytest.raises(ValidationError, match="name the JFrog products"):
+        schema.model_validate(
+            {**base, "jfrog_relation": {**rel, "relation": "threatens", "products": []}}
+        )

@@ -15,14 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.catalog import RadarSettings, load_discovery, load_llm_routing
-from app.core.llm import BudgetExceeded
+from app.core.llm import BudgetExceeded, load_prompt
 from app.db.enums import ProfileStatus, RadarStatus
 from app.db.models import RadarCandidate, Signal
 from app.pipeline.context import RunContext
 from app.pipeline.radar import stars
 from app.pipeline.radar.extract import observations
 from app.pipeline.radar.normalize import repo_slug
-from app.pipeline.radar.profile import build_profile, signal_hash
+from app.pipeline.radar.profile import PROMPT, build_profile, signal_hash
 from app.pipeline.radar.resolve import Resolver
 from app.pipeline.radar.score import ScoreInput, compute
 from app.pipeline.scope import event_time
@@ -104,8 +104,12 @@ def profiles(
         return dict(counts)
     model = load_llm_routing().tasks.bulk.model
     force = "radar" in ctx.force
+    current = load_prompt(PROMPT).id
     for cand in eligible:
-        unchanged = cand.profile_signal_hash == signal_hash(cand.mention_signal_ids)
+        # Same mentions and the same prompt version → keep the profile.
+        unchanged = cand.profile_signal_hash == signal_hash(cand.mention_signal_ids) and (
+            (cand.profile or {}).get("prompt_version") == current
+        )
         if unchanged and cand.profile_status != ProfileStatus.NONE and not force:
             counts["unchanged"] += 1
             continue
