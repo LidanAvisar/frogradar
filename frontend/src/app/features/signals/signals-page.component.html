@@ -1,0 +1,140 @@
+<div class="fr-page">
+  <header class="header">
+    <div class="intro">
+      <h1 class="fr-page-title">Signals</h1>
+      <p class="muted">Every collected and enriched signal, newest first. Each one links to its source.</p>
+    </div>
+  </header>
+
+  <section class="fr-panel filters" aria-labelledby="filters-heading">
+    <div class="filters-head">
+      <h2 id="filters-heading" class="eyebrow">Filters</h2>
+      <button type="button" class="fr-button toggle" aria-controls="filter-fields"
+              [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+        <fr-icon name="chevron" [size]="16" [class.flip]="filtersOpen()" />
+        Filters @if (active()) { <span class="mono">({{ active() }})</span> }
+      </button>
+      @if (active()) {
+        <button type="button" class="fr-button clear" (click)="clear()">Clear filters</button>
+      }
+    </div>
+
+    <div id="filter-fields" class="fields" [class.open]="filtersOpen()">
+      <form class="fr-field search" role="search" (submit)="search($event, q.value)">
+        <label for="signals-q">Search</label>
+        <div class="search-row">
+          <input #q id="signals-q" class="fr-input" type="search" [value]="filters().q"
+                 placeholder="Words in title or summary" autocomplete="off" />
+          <button type="submit" class="fr-button">Search</button>
+        </div>
+      </form>
+
+      <div class="fr-field">
+        <label for="signals-company">Company</label>
+        <select id="signals-company" class="fr-select" (change)="onSelect('entity', $any($event.target).value)">
+          <option value="" [selected]="!filters().entity">All companies</option>
+          @for (c of companies(); track c.slug) {
+            <option [value]="c.slug" [selected]="filters().entity === c.slug">{{ c.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fr-field">
+        <label for="signals-category">Category</label>
+        <select id="signals-category" class="fr-select" (change)="onSelect('category', $any($event.target).value)">
+          <option value="" [selected]="!filters().category">All categories</option>
+          @for (c of categories; track c.value) {
+            <option [value]="c.value" [selected]="filters().category === c.value">{{ c.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fr-field">
+        <label for="signals-impact">Minimum impact</label>
+        <select id="signals-impact" class="fr-select" (change)="onImpact($any($event.target).value)">
+          <option value="" [selected]="filters().minImpact === null">Any impact</option>
+          @for (i of impacts; track i) {
+            <option [value]="i" [selected]="filters().minImpact === i">{{ i === 5 ? '5 only' : i + ' or higher' }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fr-field">
+        <label for="signals-window">Date</label>
+        <select id="signals-window" class="fr-select" (change)="onWindow($any($event.target).value)">
+          <option value="" [selected]="!filters().since">Any date</option>
+          @for (w of windows; track w.value) {
+            <option [value]="w.value" [selected]="filters().since === w.value">{{ w.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fr-field">
+        <label for="signals-kind">Kind</label>
+        <select id="signals-kind" class="fr-select" (change)="onKind($any($event.target).value)">
+          <option value="" [selected]="!filters().kind">All kinds</option>
+          <option value="article" [selected]="filters().kind === 'article'">Articles</option>
+          <option value="page_diff" [selected]="filters().kind === 'page_diff'">Pricing pages</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="results" aria-labelledby="results-heading">
+    <div class="results-head">
+      <h2 id="results-heading" #resultsHeading tabindex="-1" class="results-title">
+        <span aria-live="polite">{{ summary() }}</span>
+      </h2>
+      @if (ids().length) {
+        <button type="button" class="fr-button" (click)="toggleAll()">
+          <fr-icon name="chevron" [size]="16" [class.flip]="allExpanded()" />
+          {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
+        </button>
+      }
+    </div>
+
+    @switch (state().status) {
+      @case ('loading') {
+        <div class="cards" aria-busy="true" aria-label="Loading signals">
+          @for (s of skeletons; track s) {
+            <div class="fr-panel"><fr-skeleton [lines]="['30%', '85%', '70%']" /></div>
+          }
+        </div>
+      }
+      @case ('error') {
+        <div class="fr-panel"><fr-error-state (retry)="retry()" /></div>
+      }
+      @default {
+        @if (items().length === 0) {
+          <div class="fr-panel">
+            <fr-empty-state title="No signals match these filters"
+                            [message]="active() ? 'Try a longer date range or clear a filter.' : 'Signals appear here once the daily pipeline has enriched them.'" />
+            @if (active()) {
+              <div class="empty-action"><button type="button" class="fr-button" (click)="clear()">Clear filters</button></div>
+            }
+          </div>
+        } @else {
+          <ol class="cards">
+            @for (s of items(); track s.id) {
+              <li>
+                <fr-signal-card [signal]="s" variant="analyst"
+                                [expanded]="view.isExpanded(s.id)" (expandedChange)="view.set(s.id, $event)" />
+              </li>
+            }
+          </ol>
+          @if (pages() > 1) {
+            <nav class="pager" aria-label="Pages">
+              <button type="button" class="fr-button" [disabled]="filters().page <= 1" (click)="goTo(filters().page - 1)">
+                Previous
+              </button>
+              <span class="small mono">Page {{ filters().page }} of {{ pages() }}</span>
+              <button type="button" class="fr-button" [disabled]="filters().page >= pages()" (click)="goTo(filters().page + 1)">
+                Next
+              </button>
+            </nav>
+          }
+        }
+      }
+    }
+  </section>
+</div>
