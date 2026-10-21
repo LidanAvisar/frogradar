@@ -52,6 +52,15 @@ class FetchMethod(StrEnum):
     GITHUB = "github"
     PAGE_DIFF = "page_diff"
     WEB = "web"
+    # Discovery sources (config/discovery.yaml, Competitor Radar):
+    HN_SEARCH = "hn_search"
+    GITHUB_SEARCH = "github_search"
+    CNCF_LANDSCAPE = "cncf_landscape"
+
+
+DISCOVERY_METHODS = frozenset(
+    {FetchMethod.HN_SEARCH, FetchMethod.GITHUB_SEARCH, FetchMethod.CNCF_LANDSCAPE}
+)
 
 
 class SignalCategory(StrEnum):
@@ -95,6 +104,7 @@ class FeedbackTarget(StrEnum):
     INSIGHT = "insight"
     CAPABILITY_MATRIX = "capability_matrix"
     MISSION = "mission"
+    RADAR_CANDIDATE = "radar_candidate"
 
 
 class FeedbackAction(StrEnum):
@@ -102,6 +112,7 @@ class FeedbackAction(StrEnum):
     REJECT = "reject"
     EDIT = "edit"
     RATE = "rate"
+    WATCH = "watch"
 
 
 class ReasonCode(StrEnum):
@@ -114,7 +125,30 @@ class ReasonCode(StrEnum):
     UNSUPPORTED_CLAIM = "unsupported_claim"
     DUPLICATE = "duplicate"
     OUTDATED = "outdated"
+    # Radar dismissals (with not_relevant, duplicate, other):
+    NOT_A_COMPETITOR = "not_a_competitor"
+    TOO_SMALL = "too_small"
+    ALREADY_TRACKED = "already_tracked"
     OTHER = "other"
+
+
+class RadarKind(StrEnum):
+    COMPANY = "company"
+    PRODUCT = "product"
+    OPEN_SOURCE_PROJECT = "open_source_project"
+
+
+class RadarStatus(StrEnum):
+    NEW = "new"
+    WATCHING = "watching"
+    APPROVED = "approved"
+    DISMISSED = "dismissed"
+
+
+class ProfileStatus(StrEnum):
+    NONE = "none"
+    OK = "ok"
+    REJECTED = "rejected"
 
 
 class MissionStatus(StrEnum):

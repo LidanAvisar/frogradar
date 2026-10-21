@@ -1,0 +1,193 @@
+# Competitor Radar discovery (S11, D57). Validated by app/core/catalog.py (DiscoveryFile).
+# Discovery sources surface players nobody configured. Their items become ordinary signals
+# (triage filters the irrelevant ones cheaply); relevant ones feed radar candidates only (not the
+# Brief or battlecards). A candidate becomes a tracked entity only when an analyst approves it.
+# Adding a query = one line. Volumes checked 2026-10-21 (HN: title search, GitHub: last 90 days).
+
+sources:
+  - {name: Hacker News (discovery), url: "https://hn.algolia.com/api/v1/search_by_date", kind: community, fetch_method: hn_search, trust_score: 0.4}
+  - {name: GitHub new repos (discovery), url: "https://api.github.com/search/repositories", kind: github, fetch_method: github_search, trust_score: 0.5}
+  - {name: CNCF Landscape (discovery), url: "https://raw.githubusercontent.com/cncf/landscape/master/landscape.yml", kind: community, fetch_method: cncf_landscape, trust_score: 0.7}
+
+# Hacker News via the Algolia HN Search API (no key). Title-only search, typo tolerance off:
+# with typos on, "SBOM" matched 286 stories in 90 days (mostly "boom"), with it off 0.
+hn:
+  window_days: 90
+  hits_per_page: 100
+  max_pages: 5
+  # Show HN posts matching any query below in title or text, with at least min_points.
+  show_hn:
+    min_points: 10
+  # Stories whose TITLE matches a query, with at least min_points.
+  keywords:
+    min_points: 15
+    queries:
+      - '"supply chain"'
+      - malicious
+      - typosquat
+      - backdoor
+      - npm
+      - PyPI
+      - crates.io
+      - RubyGems
+      - Maven
+      - NuGet
+      - '"package manager"'
+      - registry
+      - SBOM
+      - CVE
+      - vulnerability
+      - '"GitHub Actions"'
+      - '"CI/CD"'
+      - Docker
+      - container
+      - MCP
+      - '"prompt injection"'
+      - '"AI agent"'
+      - '"Hugging Face"'
+      - '"model registry"'
+      - artifact
+      - provenance
+      - Sigstore
+      - SLSA
+      - '"open source security"'
+      - dependency
+  fetch_linked_page: true    # article text (robots.txt respected); GitHub links → README (raw)
+  linked_page_chars: 8000
+
+# GitHub search API: repositories created in the last N days. Unauthenticated: 10 searches/min
+# (min_interval_s keeps us below); GITHUB_TOKEN (optional) raises it. READMEs come from
+# raw.githubusercontent.com (no API quota). Stars are stored per run (repo_star_snapshots).
+github:
+  created_within_days: 90
+  min_stars: 30
+  per_page: 100
+  max_pages: 2
+  min_interval_s: 6.5
+  readme_chars: 6000
+  queries:
+    - topic:sbom
+    - topic:supply-chain-security
+    - topic:software-supply-chain
+    - topic:package-registry
+    - topic:artifact-repository
+    - topic:package-manager
+    - topic:mcp-security
+    - topic:model-registry
+    - topic:sca
+    - topic:vulnerability-scanner
+    - topic:devsecops
+    - topic:container-registry
+    - topic:ai-security
+    - topic:llm-security
+    - topic:agent-security
+    - topic:sigstore
+    - topic:slsa
+    - topic:secrets-detection
+    - topic:malware-detection
+    - topic:dependency-management
+    - '"supply chain" in:description'
+    - '"package registry" in:description'
+    - '"MCP" "security" in:description'
+  # Noise filter in code, before triage (counted per reason in the run).
+  skip_forks: true
+  skip_archived: true
+  skip_name_patterns:
+    awesome_list: '(^|[-_.])awesome([-_.]|$)'
+    list: '(^|[-_.])(list|lists|resources|collection)$'
+    tutorial: '(tutorial|guide|cheatsheet|cheat-sheet|handbook|roadmap|interview)'
+    demo: '(^|[-_.])(demo|demos|example|examples|sample|samples|playground|poc|starter|template|boilerplate)([-_.]|$)'
+    course: '(course|bootcamp|workshop|lab|labs|training|learn|lessons?)([-_.]|$)'
+    ctf: '(^|[-_.])ctf([-_.]|$)|writeups?'
+    homework: '(homework|assignment|exercise|exercises|capstone|thesis|university|final[-_]project)'
+  skip_description_patterns:
+    awesome_list: '^\W*(an? )?(curated|awesome) (list|collection)'
+    tutorial: '\b(tutorial|step[- ]by[- ]step guide|learning path|cheat ?sheet)\b'
+    demo: '\b(demo|example|sample|proof of concept) (app|project|repo|repository|code)\b'
+    course: '\b(course|bootcamp|workshop) (material|materials|labs?|exercises)\b'
+    ctf: '\bCTF\b|\bcapture the flag\b'
+    homework: '\b(homework|assignment|coursework|university project|class project)\b'
+
+# CNCF landscape (landscape.yml in github.com/cncf/landscape). Each run stores a copy of the
+# relevant categories (page_snapshots) and diffs it against the previous one: newly added
+# projects become signals. Backfill: copies from the commits at -90/-60/-30 days.
+cncf:
+  categories:
+    - Provisioning > Security & Compliance
+    - Provisioning > Container Registry
+    - Provisioning > Key Management
+    - App Definition and Development > Continuous Integration & Delivery
+    - App Definition and Development > Application Definition & Image Build
+    - Wasm > Packaging, Registries & Application Delivery
+    - AI Agent > Agent Tool
+    - AI Agent > Guardrail
+    - AI Agent > Protocol
+    - Inference > Framework
+  history_days: [90, 60, 30]
+
+radar:
+  # Never candidates: registries, foundations, AI labs, clouds and generic tools (lower case).
+  ignore:
+    - npm
+    - pypi
+    - maven central
+    - rubygems
+    - crates.io
+    - nuget
+    - docker hub
+    - github
+    - gitlab
+    - openai
+    - anthropic
+    - claude
+    - chatgpt
+    - google
+    - microsoft
+    - amazon
+    - aws
+    - meta
+    - apple
+    - linux
+    - kubernetes
+    - cncf
+    - openssf
+    - linux foundation
+    - apache software foundation
+    - mitre
+    - cisa
+    - nist
+    - nvd
+    - hacker news
+    - y combinator
+  merge:
+    name_ratio: 0.92
+    embedding_cosine: 0.90
+  # Emergence score (0-100) = 100 x sum(weight x factor), each factor in [0, 1]. README
+  # "Competitor Radar" documents the formula; the breakdown is stored per candidate.
+  score:
+    weights:
+      mentions: 0.20
+      source_diversity: 0.15
+      mention_velocity: 0.10
+      traction: 0.20
+      segment_overlap: 0.25
+      recency: 0.10
+    mentions_full_at: 10
+    sources_full_at: 3
+    velocity_recent_days: 14
+    velocity_window_days: 90
+    stars_per_day_full_at: 50
+    hn_points_full_at: 500
+    recency_half_life_days: 14
+    segment_weights:
+      artifact_management: 1.0
+      supply_chain_security: 1.0
+      mlops: 0.8
+      cicd: 0.6
+      distribution: 0.6
+  profile:
+    min_score: 35
+    top_n: 10
+    max_signals: 8
+    excerpt_chars: 1500
+  teaser_count: 3

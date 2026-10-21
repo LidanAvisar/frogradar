@@ -1,4 +1,5 @@
-"""Load and validate the YAML files in config/ (competitors, sources, capabilities, LLM routing).
+"""Load and validate the YAML files in config/ (competitors, sources, capabilities, LLM routing,
+pipeline, discovery).
 
 Each file maps to a Pydantic model with extra="forbid", so typos fail loudly at load time.
 """
@@ -444,6 +445,148 @@ class PipelineFile(_Strict):
     synthesis: SynthesisSettings = Field(default_factory=SynthesisSettings)
 
 
+# ---------- discovery.yaml (Competitor Radar) ----------
+
+DISCOVERY_FETCH = frozenset(
+    {FetchMethod.HN_SEARCH, FetchMethod.GITHUB_SEARCH, FetchMethod.CNCF_LANDSCAPE}
+)
+
+
+class HNQuerySet(_Strict):
+    min_points: Annotated[int, Field(ge=0, le=10000)]
+    queries: list[Annotated[str, Field(min_length=2, max_length=100)]] = Field(default_factory=list)
+
+
+class HNSettings(_Strict):
+    window_days: Annotated[int, Field(ge=1, le=365)] = 90
+    # Show HN posts: all of them that match one of the queries (or all, if match_queries is false).
+    show_hn: HNQuerySet = Field(default_factory=lambda: HNQuerySet(min_points=10))
+    show_hn_match_queries: bool = True
+    keywords: HNQuerySet = Field(default_factory=lambda: HNQuerySet(min_points=30))
+    hits_per_page: Annotated[int, Field(ge=10, le=1000)] = 100
+    max_pages: Annotated[int, Field(ge=1, le=50)] = 5
+    fetch_linked_page: bool = True
+    linked_page_chars: Annotated[int, Field(ge=500, le=50000)] = 8000
+
+
+class GitHubSearchSettings(_Strict):
+    created_within_days: Annotated[int, Field(ge=1, le=365)] = 90
+    min_stars: Annotated[int, Field(ge=0, le=100000)] = 50
+    queries: list[Annotated[str, Field(min_length=2, max_length=200)]]
+    per_page: Annotated[int, Field(ge=10, le=100)] = 100
+    max_pages: Annotated[int, Field(ge=1, le=10)] = 2
+    # Seconds between search requests (unauthenticated limit: 10/min; with a token: 30/min).
+    min_interval_s: Annotated[float, Field(ge=0, le=60)] = 6.5
+    readme_chars: Annotated[int, Field(ge=0, le=50000)] = 6000
+    # Noise filter (code, before triage): case-insensitive regexes on the repo name / description.
+    skip_forks: bool = True
+    skip_archived: bool = True
+    skip_name_patterns: dict[str, str] = Field(default_factory=dict)  # reason -> regex
+    skip_description_patterns: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        for pattern in (
+            *self.skip_name_patterns.values(),
+            *self.skip_description_patterns.values(),
+        ):
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise ValueError(f"bad regex {pattern!r}: {e}") from None
+        return self
+
+
+class CNCFSettings(_Strict):
+    # "Category > Subcategory" exactly as in landscape.yml.
+    categories: list[str]
+    history_days: list[Annotated[int, Field(ge=1, le=730)]] = Field(
+        default_factory=lambda: [90, 60, 30]
+    )
+    commits_api: str = "https://api.github.com/repos/cncf/landscape/commits"
+    raw_at_commit: str = "https://raw.githubusercontent.com/cncf/landscape/{sha}/landscape.yml"
+
+
+class RadarScoreWeights(_Strict):
+    mentions: Unit = 0.20
+    source_diversity: Unit = 0.15
+    mention_velocity: Unit = 0.10
+    traction: Unit = 0.20
+    segment_overlap: Unit = 0.25
+    recency: Unit = 0.10
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        total = sum(self.model_dump().values())
+        if abs(total - 1) > 1e-6:
+            raise ValueError(f"radar score weights must sum to 1, got {total:g}")
+        return self
+
+
+class RadarScoreSettings(_Strict):
+    weights: RadarScoreWeights = Field(default_factory=RadarScoreWeights)
+    mentions_full_at: Annotated[int, Field(ge=2, le=1000)] = 10
+    sources_full_at: Annotated[int, Field(ge=1, le=50)] = 3
+    velocity_recent_days: Annotated[int, Field(ge=1, le=90)] = 14
+    velocity_window_days: Annotated[int, Field(ge=15, le=730)] = 90
+    stars_per_day_full_at: Annotated[float, Field(gt=0, le=10000)] = 50
+    hn_points_full_at: Annotated[int, Field(ge=1, le=100000)] = 500
+    recency_half_life_days: Annotated[float, Field(gt=0, le=365)] = 14
+    segment_weights: dict[Segment, Unit] = Field(
+        default_factory=lambda: {
+            Segment.ARTIFACT_MANAGEMENT: 1.0,
+            Segment.SUPPLY_CHAIN_SECURITY: 1.0,
+            Segment.MLOPS: 0.8,
+            Segment.CICD: 0.6,
+            Segment.DISTRIBUTION: 0.6,
+        }
+    )
+
+
+class RadarMergeSettings(_Strict):
+    # A fuzzy merge needs BOTH: name similarity (difflib ratio of normalized keys) and the cosine
+    # similarity of the name embeddings (name + kind + context).
+    name_ratio: Similarity = 0.92
+    embedding_cosine: Similarity = 0.90
+
+
+class RadarProfileSettings(_Strict):
+    min_score: Annotated[float, Field(ge=0, le=100)] = 35
+    top_n: Annotated[int, Field(ge=0, le=100)] = 10
+    max_signals: Annotated[int, Field(ge=1, le=20)] = 8
+    excerpt_chars: Annotated[int, Field(ge=200, le=10000)] = 1500
+
+
+class RadarSettings(_Strict):
+    # Names that never become candidates (registries, foundations, AI labs, generic tools).
+    ignore: list[str] = Field(default_factory=list)
+    merge: RadarMergeSettings = Field(default_factory=RadarMergeSettings)
+    score: RadarScoreSettings = Field(default_factory=RadarScoreSettings)
+    profile: RadarProfileSettings = Field(default_factory=RadarProfileSettings)
+    teaser_count: Annotated[int, Field(ge=1, le=10)] = 3
+
+
+class DiscoveryFile(_Strict):
+    sources: list[SourceConfig]
+    hn: HNSettings = Field(default_factory=HNSettings)
+    github: GitHubSearchSettings
+    cncf: CNCFSettings
+    radar: RadarSettings = Field(default_factory=RadarSettings)
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        _assert_unique("source url", [s.url for s in self.sources])
+        methods = [s.fetch_method for s in self.sources]
+        bad = [m.value for m in methods if m not in DISCOVERY_FETCH]
+        if bad:
+            raise ValueError(f"discovery sources must use a discovery fetch method, got {bad}")
+        _assert_unique("discovery fetch_method", [m.value for m in methods])
+        return self
+
+    def source_for(self, method: FetchMethod) -> SourceConfig | None:
+        return next((s for s in self.sources if s.fetch_method is method), None)
+
+
 # ---------- loading ----------
 
 
@@ -525,6 +668,12 @@ def _self_capabilities(config_dir: Path) -> SelfCapabilitiesFile:
 
 
 @lru_cache
+def _discovery(config_dir: Path) -> DiscoveryFile:
+    name = "discovery.yaml"
+    return _validate(DiscoveryFile, config_dir, name, _read_yaml(config_dir, name))
+
+
+@lru_cache
 def _pipeline(config_dir: Path) -> PipelineFile:
     name = "pipeline.yaml"
     return _validate(PipelineFile, config_dir, name, _read_yaml(config_dir, name))
@@ -532,6 +681,10 @@ def _pipeline(config_dir: Path) -> PipelineFile:
 
 def load_pipeline(config_dir: Path | None = None) -> PipelineFile:
     return _pipeline(_dir(config_dir))
+
+
+def load_discovery(config_dir: Path | None = None) -> DiscoveryFile:
+    return _discovery(_dir(config_dir))
 
 
 def load_competitors(config_dir: Path | None = None) -> CompetitorsFile:
@@ -555,5 +708,13 @@ def load_llm_routing(config_dir: Path | None = None) -> LLMRoutingFile:
 
 
 def clear_cache() -> None:
-    for fn in (_competitors, _sources, _capabilities, _self_capabilities, _llm_routing, _pipeline):
+    for fn in (
+        _competitors,
+        _sources,
+        _capabilities,
+        _self_capabilities,
+        _llm_routing,
+        _pipeline,
+        _discovery,
+    ):
         fn.cache_clear()

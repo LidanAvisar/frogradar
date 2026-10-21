@@ -7,6 +7,9 @@ Usage: python -m app.db.seed   (or `make seed`)
 - The DB owns (set on insert, never overwritten): review_status, is_tracked, discovered_by,
   last_fetched_at.
 - Config sources that disappear from config are deactivated, never deleted (signals reference them).
+  Sources come from competitors.yaml, sources.yaml and discovery.yaml (Competitor Radar).
+- Entities and sources created by the radar (discovered_by radar, analyst approval) are never
+  touched: seed only upserts config slugs / urls and only deactivates discovered_by config sources.
 """
 
 import sys
@@ -26,6 +29,7 @@ from app.core.catalog import (
     SourceConfig,
     load_capabilities,
     load_competitors,
+    load_discovery,
     load_self_capabilities,
     load_sources,
 )
@@ -151,14 +155,19 @@ def seed(session: Session, config_dir: Path | None = None) -> SeedReport:
     """Upsert everything from config in the caller's transaction (caller commits)."""
     competitors = load_competitors(config_dir)
     industry = load_sources(config_dir)
+    discovery = load_discovery(config_dir)
     capabilities = load_capabilities(config_dir)
 
-    competitor_urls = {s.url for s in competitors.all_sources()}
-    overlap = competitor_urls & {s.url for s in industry.sources}
-    if overlap:
-        raise ConfigError(
-            f"source urls in both competitors.yaml and sources.yaml: {sorted(overlap)}"
-        )
+    files = {
+        "competitors.yaml": {s.url for s in competitors.all_sources()},
+        "sources.yaml": {s.url for s in industry.sources},
+        "discovery.yaml": {s.url for s in discovery.sources},
+    }
+    names = sorted(files)
+    for i, a in enumerate(names):
+        for b in names[i + 1 :]:
+            if overlap := files[a] & files[b]:
+                raise ConfigError(f"source urls in both {a} and {b}: {sorted(overlap)}")
 
     report = SeedReport({t: TableCounts() for t in ("entities", "sources", "capabilities")})
     entities_t, sources_t = Entity.__table__, Source.__table__
@@ -188,7 +197,7 @@ def seed(session: Session, config_dir: Path | None = None) -> SeedReport:
         for c in competitors.companies
         for owner in (c, *c.products)
         for s in owner.sources
-    ] + [_source_row(s, None) for s in industry.sources]
+    ] + [_source_row(s, None) for s in (*industry.sources, *discovery.sources)]
     _upsert(session, sources_t, source_rows, "url", SOURCE_UPDATE_COLS, report.tables["sources"])
 
     config_urls = [r["url"] for r in source_rows]

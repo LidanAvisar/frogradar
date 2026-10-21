@@ -4,7 +4,7 @@ from sqlalchemy import func, select, text, update
 
 from app.core import catalog
 from app.db.checks import EmbeddingDimMismatch, assert_embedding_dim_matches_db
-from app.db.enums import EntityReviewStatus
+from app.db.enums import DiscoveredBy, EntityReviewStatus, EntityType, FetchMethod, SourceKind
 from app.db.models import Capability, Entity, Source
 from app.db.seed import seed
 
@@ -33,7 +33,11 @@ def test_seed_is_idempotent(db_session):
     competitors = catalog.load_competitors()
     n_entities = sum(1 + len(c.products) for c in competitors.companies)
     assert counts["entities"] == n_entities == first.tables["entities"].inserted
-    assert counts["sources"] == len(competitors.all_sources()) + len(catalog.load_sources().sources)
+    assert counts["sources"] == (
+        len(competitors.all_sources())
+        + len(catalog.load_sources().sources)
+        + len(catalog.load_discovery().sources)
+    )
     for c in second.tables.values():
         assert (c.inserted, c.updated, c.deactivated) == (0, 0, 0)
 
@@ -186,3 +190,50 @@ def test_discontinued_products_are_listed_apart_in_prompts(db_session):
     active, _, ended = portfolio.partition("Discontinued JFrog products")
     assert "JFrog Pipelines" not in active and "JFrog Artifactory" in active
     assert "never recommend" in ended and "JFrog Pipelines (end of life 2026-05-01)" in ended
+
+
+def test_discovery_sources_seeded(db_session):
+    seed(db_session)
+    methods = set(
+        db_session.scalars(
+            select(Source.fetch_method).where(
+                Source.fetch_method.in_(["hn_search", "github_search", "cncf_landscape"])
+            )
+        )
+    )
+    assert methods == {"hn_search", "github_search", "cncf_landscape"}
+
+
+def test_seed_never_touches_radar_rows(db_session):
+    """Entities / sources an analyst approved from the radar survive a re-seed unchanged."""
+    seed(db_session)
+    entity = Entity(
+        type=EntityType.COMPANY,
+        name="NewCo",
+        slug="newco",
+        segments=["supply_chain_security"],
+        review_status=EntityReviewStatus.APPROVED,
+        discovered_by=DiscoveredBy.RADAR,
+    )
+    db_session.add(entity)
+    db_session.flush()
+    src = Source(
+        entity_id=entity.id,
+        name="NewCo releases",
+        url="https://github.com/newco",
+        kind=SourceKind.GITHUB,
+        fetch_method=FetchMethod.GITHUB,
+        trust_score=0.85,
+        options={"repos": ["newco/tool"]},
+        is_active=True,
+        discovered_by=DiscoveredBy.RADAR,
+    )
+    db_session.add(src)
+    db_session.flush()
+
+    report = seed(db_session)
+    db_session.expire_all()
+    assert report.tables["sources"].deactivated == 0
+    assert db_session.get(Source, src.id).is_active is True
+    kept = db_session.get(Entity, entity.id)
+    assert (kept.name, kept.discovered_by) == ("NewCo", DiscoveredBy.RADAR)

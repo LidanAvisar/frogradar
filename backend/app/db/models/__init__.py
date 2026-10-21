@@ -14,6 +14,7 @@ from app.db.models.intel import (
     signal_entities,
 )
 from app.db.models.ops import LLMCache, LLMCall, Mission, MissionStep, PipelineRun, WatchTopic
+from app.db.models.radar import RadarCandidate, RepoStarSnapshot
 
 __all__ = [
     "EMBEDDING_DIM",
@@ -29,6 +30,8 @@ __all__ = [
     "MissionStep",
     "PageSnapshot",
     "PipelineRun",
+    "RadarCandidate",
+    "RepoStarSnapshot",
     "Report",
     "Signal",
     "Source",
