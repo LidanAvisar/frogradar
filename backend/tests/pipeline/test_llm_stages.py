@@ -360,3 +360,49 @@ def test_workers_see_the_run_context(world):
     with llm_context(run_id=4242):
         _run(factory, FakeLLM(triage=triage), triage_signals)
     assert seen and set(seen) == {4242}
+
+
+# ---------- soft limits on explanation fields ----------
+
+
+def test_long_explanations_are_truncated_not_rejected():
+    from app.pipeline.schemas import ELLIPSIS, VerifyResult
+
+    v = VerifyResult(verdict="partial", notes="n" * 1000, unsupported_claims=["c" * 500, "short"])
+    assert len(v.notes) == 400 and v.notes.endswith(ELLIPSIS)
+    assert len(v.unsupported_claims[0]) == 200 and v.unsupported_claims[1] == "short"
+    t = TriageResult(relevant=False, reason="r" * 999)
+    assert len(t.reason) == 300 and t.reason.endswith(ELLIPSIS)
+    schema = enrich_schema(["sonatype"], ["oci-registry"])
+    e = schema.model_validate({**_minimal_enrich(), "impact_rationale": "i" * 999})
+    assert len(e.impact_rationale) == 300
+    # Within the limit: untouched. Content fields keep hard limits.
+    assert VerifyResult(verdict="supported", notes="ok").notes == "ok"
+    with pytest.raises(ValidationError):
+        schema.model_validate({**_minimal_enrich(), "summary": "s" * 601})
+
+
+def test_schema_still_advertises_the_limits():
+    from app.pipeline.schemas import VerifyResult
+
+    props = VerifyResult.model_json_schema()["properties"]
+    assert props["notes"]["maxLength"] == 400
+    assert props["unsupported_claims"]["items"]["maxLength"] == 200
+
+
+def test_long_verifier_notes_keep_the_verdict(world):
+    factory, ids = world
+    verdict = {"verdict": "supported", "notes": "Fine. " * 200, "unsupported_claims": []}
+    llm = FakeLLM(triage=_irrelevant_llm, verify_signal=verdict)
+    *_, counts = _run(factory, llm, triage_signals, enrich_signals, verify_signals)
+    sig = _get(factory, ids["firewall"])
+    assert counts["supported"] == 1 and counts["failed"] == 0
+    assert sig.verification == Verification.SUPPORTED and len(sig.verification_notes) <= 400
+
+
+def _minimal_enrich() -> dict:
+    return {
+        "category": "other", "summary": "x" * 50, "why_jfrog_cares": "y" * 50, "impact": 2,
+        "impact_rationale": "r", "evidence_quote": "a quote here", "is_claim": False,
+        "entities": [], "capabilities": [],
+    }  # fmt: skip

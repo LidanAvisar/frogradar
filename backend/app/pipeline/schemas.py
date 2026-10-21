@@ -3,15 +3,39 @@
 Every LLM call returns one of these, validated by the gateway (with retries on validation errors).
 The enrich schema is built per run from the DB, so entity and capability slugs are enforced by
 validation: a slug the model invents fails validation instead of reaching the DB.
+
+Non-critical explanation fields (triage reason, impact rationale, verify notes, unsupported-claim
+items) are soft-limited: an over-long value is cut to the limit with "…" instead of failing
+validation, so a wordy note never costs a retry or loses an otherwise valid answer. The limit
+stays in the JSON schema as a hint to the model. Analyst-facing content (summary, why JFrog cares,
+evidence quote) keeps hard limits.
 """
 
+from collections.abc import Callable
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, create_model, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, create_model, model_validator
 
 from app.db.enums import Segment, SignalCategory
 
-Short = Annotated[str, Field(max_length=300)]
+ELLIPSIS = "…"
+
+
+def _truncate(limit: int) -> Callable[[object], object]:
+    def cut(value: object) -> object:
+        if isinstance(value, str) and len(value) > limit:
+            return value[: limit - 1].rstrip() + ELLIPSIS
+        return value
+
+    return cut
+
+
+def soft_text(limit: int) -> object:
+    """str with max_length=limit in the schema, truncated (with …) instead of rejected."""
+    return Annotated[str, BeforeValidator(_truncate(limit)), Field(max_length=limit)]
+
+
+Short = soft_text(300)
 
 
 class _Out(BaseModel):
@@ -94,7 +118,5 @@ def enrich_schema(entity_slugs: list[str], capability_slugs: list[str]) -> type[
 
 class VerifyResult(_Out):
     verdict: Literal["supported", "partial", "unsupported"]
-    notes: Annotated[str, Field(max_length=400)] = Field(description="1-2 sentences.")
-    unsupported_claims: list[Annotated[str, Field(max_length=200)]] = Field(
-        default_factory=list, max_length=5
-    )
+    notes: soft_text(400) = Field(description="1-2 sentences.")
+    unsupported_claims: list[soft_text(200)] = Field(default_factory=list, max_length=5)
