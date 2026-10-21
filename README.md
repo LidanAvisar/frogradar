@@ -495,21 +495,26 @@ measure how often analysts and the AI agree.
   reviewed count, approved as is / corrected / rejected %, correction rate per field (impact with the mean
   delta), top reason codes, and the same per ISO week.
 
-**Demo (S14, paid $0.0020, dev DB).**
-- Correction through the API: #80 "Xcode 27 runner image generally available", impact 2 → 1, reason
-  impact_too_high, comment "routine runner image updates don't affect JFrog products".
-- Re-enrich of its nearest neighbour #78 "CodeQL changes for macOS 27, Xcode 27, and Swift 6.4" (similarity
-  0.63) with few-shot on, not stored. The examples section held exactly that correction.
+**Learning from analysts – one example (S14, dev DB, $0.0040 in total).**
+- An analyst corrected #80 "Xcode 27 runner image generally available" from impact 2 to 1. Reason:
+  impact_too_high. Comment: "routine runner image updates don't affect JFrog products".
+- Its nearest neighbour is #78 "CodeQL changes for macOS 27, Xcode 27, and Swift 6.4" (similarity 0.63). It was
+  re-enriched twice with fresh calls (no cache, nothing stored): once without examples (control) and once with
+  few-shot, whose examples section held exactly that correction.
 
-| #78 | before (stored, no examples) | after (few-shot on) |
-|---|---|---|
-| impact | 2 | **1** |
-| impact rationale | "A tangential toolchain compatibility change in a partner's SAST tool with limited direct effect on JFrog's products." | "Routine toolchain compatibility change in a competitor-coopetition tool with no effect on JFrog products." |
-| category | feature_update | feature_update |
-| primary entity | github | github-advanced-security |
+| #78 | stored (original run) | few-shot off (control) | few-shot on |
+|---|---|---|---|
+| impact | 2 | 2 | **1** |
+| impact rationale | "A tangential toolchain compatibility change in a partner's SAST tool with limited direct effect on JFrog's products." | "A tangential platform-specific limitation in a partner's scanner with limited effect on JFrog's core Artifactory, Xray or Curation business." | "Routine toolchain compatibility change in a competitor-coopetition tool with no effect on JFrog products." |
+| primary entity | github | github-advanced-security | github-advanced-security |
 
-The bulk model is not deterministic (temperature is dropped for haiku-5-5), so one run shows the effect but does
-not prove it.
+What it shows:
+- Without the example, the model rated #78 impact 2 twice. With it, the model rated 1, and its rationale
+  repeats the analyst's rule ("routine … no effect on JFrog products").
+- The entity change appears in the control too, so it is ordinary model variation, not learning.
+- This is one item and one sample per condition. The bulk model is not deterministic (temperature is dropped
+  for haiku-5-5), so it is an illustration, not a measurement. The scorecard and gold labels are where the effect
+  can be measured over time.
 
 ![Review queue, 1440 px](docs/screenshots/review-1440.png)
 
