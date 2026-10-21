@@ -10,13 +10,16 @@ const soon = (path: string, heading: string, icon: string, description: string) 
   data: { heading, icon, description },
 });
 
+// The Brief loads eagerly (first screen); the other pages are lazy chunks.
 export const routes: Routes = [
   { path: '', component: BriefPageComponent, title: 'Morning Brief · FrogRadar' },
-  soon('signals', 'Signals', 'signals', 'Browse, filter and search every collected signal, with sources and evidence.'),
-  soon('battlecards', 'Battlecards', 'battlecards', 'Compare JFrog with each competitor: capability matrix, strengths, gaps and talking points.'),
+  { path: 'signals', loadComponent: () => import('./features/signals/signals-page.component').then((m) => m.SignalsPageComponent), title: 'Signals · FrogRadar' },
+  { path: 'battlecards', loadComponent: () => import('./features/battlecards/battlecards-redirect.component').then((m) => m.BattlecardsRedirectComponent), title: 'Battlecards · FrogRadar' },
+  { path: 'battlecards/:slug', loadComponent: () => import('./features/battlecards/battlecard-page.component').then((m) => m.BattlecardPageComponent), title: 'Battlecard · FrogRadar' },
+  { path: 'radar', loadComponent: () => import('./features/radar/radar-page.component').then((m) => m.RadarPageComponent), title: 'Competitor Radar · FrogRadar' },
+  { path: 'radar/:id', loadComponent: () => import('./features/radar/radar-detail-page.component').then((m) => m.RadarDetailPageComponent), title: 'Radar candidate · FrogRadar' },
   soon('ask', 'Ask', 'ask', 'Ask questions about the market and get answers that cite their sources.'),
   soon('missions', 'Missions', 'missions', 'Give a research agent a task and follow its steps until the report is ready.'),
-  soon('radar', 'Competitor Radar', 'radar', 'New players nobody configured yet: emergence score, a verified profile, and approve or dismiss.'),
   soon('review', 'Review queue', 'review', 'Approve, reject or correct new insights; corrections teach the pipeline.'),
   { path: '**', redirectTo: '' },
 ];

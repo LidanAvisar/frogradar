@@ -30,7 +30,7 @@ describe('RadarTeaserComponent', () => {
   it('links to the radar page', () => {
     const el = render();
     expect(el.querySelector('a.view')?.getAttribute('href')).toBe('/radar');
-    expect(el.querySelector('li a.name')?.getAttribute('href')).toBe('/radar?id=11');
+    expect(el.querySelector('li a.name')?.getAttribute('href')).toBe('/radar/11');
   });
 
   it('shows an empty state', () => {

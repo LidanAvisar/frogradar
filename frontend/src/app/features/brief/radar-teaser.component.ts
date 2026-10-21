@@ -25,7 +25,7 @@ import { SectionCardComponent } from '../../shared/section-card.component';
           @for (item of items(); track item.id) {
             <li>
               <div class="row">
-                <a class="name" routerLink="/radar" [queryParams]="{ id: item.id }">{{ item.name }}</a>
+                <a class="name" [routerLink]="['/radar', item.id]">{{ item.name }}</a>
                 @if (item.status === 'watching') {
                   <span class="badge">Watching</span>
                 }

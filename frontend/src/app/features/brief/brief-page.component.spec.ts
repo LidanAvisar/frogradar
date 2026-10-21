@@ -47,7 +47,7 @@ describe('BriefPageComponent', () => {
     ]);
     expect(tiles[0].getAttribute('href')).toBe('/signals?since=24h');
     expect(tiles[1].getAttribute('href')).toBe('/signals?since=24h&min_impact=4');
-    expect(tiles[2].getAttribute('href')).toBe('/signals?kind=page_diff&days=7');
+    expect(tiles[2].getAttribute('href')).toBe('/signals?kind=page_diff&since=7d');
     expect(el.querySelector('fr-top-story')).toBeNull(); // none in this fixture
   });
 
