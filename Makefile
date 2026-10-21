@@ -1,6 +1,6 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
-	eval-select eval-embed eval-pairs eval-label eval eval-compare eval-ask api-types screenshots \
+	eval-select eval-embed eval-pairs eval-label eval eval-compare eval-ask eval-gold api-types screenshots \
 	radar radar-backfill
 
 up:
@@ -132,6 +132,11 @@ eval: migrate
 # Paid (answer + verify per question); ARGS="--retrieval-only" = embeddings only; --cap 0.60 default.
 eval-ask: migrate
 	cd backend && uv run --env-file ../.env python -m app.eval ask $(ARGS)
+
+# Analyst reviews (approve / correct / reject as not relevant) → eval/gold_labels.csv. No LLM calls.
+# Score the pipeline against them: make eval ARGS="--labels eval/gold_labels.csv".
+eval-gold: migrate
+	cd backend && uv run python -m app.eval gold $(ARGS)
 
 # Compare two runs: make eval-compare A=eval/results/x.json B=eval/results/y.json
 eval-compare:

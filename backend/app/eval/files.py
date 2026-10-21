@@ -25,6 +25,10 @@ def eval_dir() -> Path:
 
 
 def labels_path() -> Path:
+    """The labels the eval runs against: silver by default, EVAL_LABELS (e.g. the analysts'
+    eval/gold_labels.csv from `make eval-gold`) overrides it."""
+    if env := os.environ.get("EVAL_LABELS"):
+        return Path(env)
     return eval_dir() / "silver_labels.csv"
 
 

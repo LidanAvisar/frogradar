@@ -5,6 +5,8 @@ python -m app.eval embed [--estimate]      embed the full catalog (paid: embeddi
 python -m app.eval pairs [--force]         dedup pairs → eval/dedup_pairs.csv (no LLM)
 python -m app.eval label [--estimate]      silver labels for items + pairs (paid: synthesis)
 python -m app.eval run [--estimate]        eval pass + report (paid: bulk + verify, cached)
+python -m app.eval run --labels eval/gold_labels.csv   the same pass against other labels
+python -m app.eval gold                    analyst reviews → eval/gold_labels.csv (no LLM)
 python -m app.eval compare A.json B.json   headline metrics of two runs side by side
 python -m app.eval ask [--retrieval-only] [--cap 0.60] [--only q01,q02]
                                            Ask eval: recall@k, cited expected, cost (paid)
@@ -13,6 +15,7 @@ python -m app.eval ask [--retrieval-only] [--cap 0.60] [--only q01,q02]
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -128,8 +131,25 @@ def cmd_label(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gold(args: argparse.Namespace) -> int:
+    from collections import Counter
+
+    from app.eval.gold import export
+
+    with _factory()() as s:
+        path, rows = export(s)
+    kinds = Counter(r.stratum for r in rows)
+    print(f"{len(rows)} analyst-reviewed signals → {path}")
+    for k, v in sorted(kinds.items()):
+        print(f"  {k}: {v}")
+    return 0
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     from app.eval import report, runner
+
+    if args.labels:
+        os.environ["EVAL_LABELS"] = str(Path(args.labels).resolve())
 
     factory = _factory()
     main_est, off_est = runner.estimate(factory)
@@ -185,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_parser(name).add_argument(
             "--estimate", action="store_true", help="print calls and cost, make no calls"
         )
+    sub.choices["run"].add_argument("--labels", help="labels CSV (default eval/silver_labels.csv)")
+    sub.add_parser("gold")
     a = sub.add_parser("ask")
     a.add_argument("--retrieval-only", action="store_true", help="embeddings only, no answers")
     a.add_argument("--cap", type=float, default=0.60, help="stop before crossing this spend (USD)")
@@ -201,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
         "label": cmd_label,
         "run": cmd_run,
         "compare": cmd_compare,
+        "gold": cmd_gold,
         "ask": cmd_ask,
     }
     return handlers[args.cmd](args)
