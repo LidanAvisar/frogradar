@@ -20,16 +20,18 @@ from app.api.schemas import (
     EvidenceOut,
     PageDiffOut,
     SignalOut,
+    SignalReviewOut,
     SourceOut,
 )
 from app.core.catalog import load_pipeline
-from app.db.enums import FetchMethod
+from app.db.enums import FetchMethod, ReviewStatus
 from app.db.models import Entity, Signal, Source, signal_entities
 from app.pipeline.scope import (  # noqa: F401 - re-exported for the routers
     SHOWN_VERIFICATIONS,
     canonical,
     event_time,
     ranked,
+    reviewable,
     usable,
     visible,
 )
@@ -143,6 +145,19 @@ def to_out(sig: Signal, entities: list[EntityRef]) -> SignalOut:
         entities=entities,
         sources_count=int((meta.get("dedup") or {}).get("source_count") or 1),
         page_diff=page_diff,
+        review=review_out(sig),
+    )
+
+
+def review_out(sig: Signal) -> SignalReviewOut | None:
+    analyst = (sig.meta or {}).get("analyst") or {}
+    if sig.status == ReviewStatus.NEW and not analyst:
+        return None
+    return SignalReviewOut(
+        status=sig.status,
+        by=analyst.get("by"),
+        at=_parse_dt(analyst.get("at")),
+        edited_fields=sorted((analyst.get("fields") or {}).keys()),
     )
 
 

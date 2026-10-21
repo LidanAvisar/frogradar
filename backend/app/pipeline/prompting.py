@@ -32,6 +32,8 @@ class SignalInput:
     source: str
     source_kind: str
     published: str
+    # Dynamic few-shot (D69): filled by the triage / enrich stages, empty in the eval runner.
+    examples: tuple[fewshot.FewShot, ...] = ()
 
 
 def delimit(raw_text: str, max_chars: int) -> tuple[str, str]:
@@ -108,7 +110,7 @@ def triage_messages(
     sig: SignalInput, catalog: Catalog, max_chars: int, prompt_name: str = "triage"
 ) -> tuple[Prompt, list[dict[str, str]]]:
     prompt = load_prompt(prompt_name)
-    examples = fewshot.render(fewshot.few_shot_examples("triage", sig))
+    examples = fewshot.render(sig.examples)
     return prompt, prompt.messages(
         **_common(sig, max_chars), companies=catalog.companies_text, examples=examples
     )
@@ -118,7 +120,7 @@ def enrich_messages(
     sig: SignalInput, catalog: Catalog, max_chars: int, prompt_name: str = "enrich_signal"
 ) -> tuple[Prompt, list[dict[str, str]]]:
     prompt = load_prompt(prompt_name)
-    examples = fewshot.render(fewshot.few_shot_examples("enrich", sig))
+    examples = fewshot.render(sig.examples)
     return prompt, prompt.messages(
         **_common(sig, max_chars),
         jfrog_portfolio=catalog.jfrog_portfolio,

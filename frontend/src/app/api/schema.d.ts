@@ -144,6 +144,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/feedback/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scorecard */
+        get: operations["scorecard_api_feedback_scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nav": {
         parameters: {
             query?: never;
@@ -246,6 +263,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review Queue
+         * @description Signals waiting for review (status new), most important first: impact × confidence.
+         */
+        get: operations["review_queue_api_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/self": {
         parameters: {
             query?: never;
@@ -291,6 +328,57 @@ export interface paths {
         get: operations["get_signal_api_signals__signal_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/{signal_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_api_signals__signal_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/{signal_id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct */
+        post: operations["correct_api_signals__signal_id__correct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/{signal_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: operations["reject_api_signals__signal_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -788,6 +876,24 @@ export interface components {
              */
             verified: boolean;
         };
+        /** FieldRate */
+        FieldRate: {
+            /** Corrected */
+            corrected: number;
+            /**
+             * Rate
+             * @description corrected / reviewed (0 if none reviewed)
+             */
+            rate: number;
+        };
+        /** FieldRates */
+        FieldRates: {
+            category: components["schemas"]["FieldRate"];
+            entity: components["schemas"]["FieldRate"];
+            impact: components["schemas"]["ImpactRate"];
+            /** @description relevant corrected to no, or rejected as not relevant */
+            relevance: components["schemas"]["FieldRate"];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -807,6 +913,21 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** ImpactRate */
+        ImpactRate: {
+            /** Corrected */
+            corrected: number;
+            /**
+             * Mean Delta
+             * @description Mean of analyst − model impact over impact corrections
+             */
+            mean_delta?: number | null;
+            /**
+             * Rate
+             * @description corrected / reviewed (0 if none reviewed)
+             */
+            rate: number;
         };
         /** JFrogLevel */
         JFrogLevel: {
@@ -1326,6 +1447,8 @@ export interface components {
             published_at: string | null;
             /** Rank */
             rank: number;
+            /** @description Analyst review (null = not reviewed yet) */
+            review?: components["schemas"]["SignalReviewOut"] | null;
             source: components["schemas"]["SourceOut"] | null;
             /**
              * Sources Count
@@ -1351,15 +1474,119 @@ export interface components {
             why_jfrog_cares: string | null;
         };
         /**
+         * ReasonCode
+         * @enum {string}
+         */
+        ReasonCode: "not_relevant" | "wrong_entity" | "wrong_category" | "impact_too_high" | "impact_too_low" | "inaccurate_summary" | "unsupported_claim" | "duplicate" | "outdated" | "not_a_competitor" | "too_small" | "already_tracked" | "missing_information" | "other";
+        /** ReasonCount */
+        ReasonCount: {
+            code: components["schemas"]["ReasonCode"];
+            /** Count */
+            count: number;
+        };
+        /**
          * Relationship
          * @enum {string}
          */
         Relationship: "self" | "competitor" | "partner" | "coopetition";
+        /** ReviewProgress */
+        ReviewProgress: {
+            /** Reviewed */
+            reviewed: number;
+            /** Total */
+            total: number;
+        };
+        /** ReviewQueueOut */
+        ReviewQueueOut: {
+            /**
+             * Items
+             * @description Signals waiting for review, impact × confidence
+             */
+            items: components["schemas"]["SignalOut"][];
+            progress: components["schemas"]["ReviewProgress"];
+        };
+        /**
+         * ReviewStatus
+         * @enum {string}
+         */
+        ReviewStatus: "new" | "approved" | "rejected";
         /**
          * RunStatus
          * @enum {string}
          */
         RunStatus: "running" | "succeeded" | "partial" | "failed";
+        /** ScorecardOut */
+        ScorecardOut: {
+            overall: components["schemas"]["ScorecardStats"];
+            /**
+             * Weeks
+             * @description Newest week first
+             */
+            weeks: components["schemas"]["ScorecardWeek"][];
+        };
+        /** ScorecardStats */
+        ScorecardStats: {
+            /**
+             * Approved
+             * @description Approved as-is
+             */
+            approved: number;
+            /** Approved Pct */
+            approved_pct: number;
+            /**
+             * Corrected
+             * @description At least one field corrected (not rejected)
+             */
+            corrected: number;
+            /** Corrected Pct */
+            corrected_pct: number;
+            fields: components["schemas"]["FieldRates"];
+            /**
+             * Reasons
+             * @description Most common reason codes, most frequent first
+             */
+            reasons: components["schemas"]["ReasonCount"][];
+            /** Rejected */
+            rejected: number;
+            /** Rejected Pct */
+            rejected_pct: number;
+            /** Reviewed */
+            reviewed: number;
+        };
+        /** ScorecardWeek */
+        ScorecardWeek: {
+            /**
+             * Approved
+             * @description Approved as-is
+             */
+            approved: number;
+            /** Approved Pct */
+            approved_pct: number;
+            /**
+             * Corrected
+             * @description At least one field corrected (not rejected)
+             */
+            corrected: number;
+            /** Corrected Pct */
+            corrected_pct: number;
+            fields: components["schemas"]["FieldRates"];
+            /**
+             * Reasons
+             * @description Most common reason codes, most frequent first
+             */
+            reasons: components["schemas"]["ReasonCount"][];
+            /** Rejected */
+            rejected: number;
+            /** Rejected Pct */
+            rejected_pct: number;
+            /** Reviewed */
+            reviewed: number;
+            /**
+             * Week Start
+             * @description Monday of the ISO week (YYYY-MM-DD, UTC)
+             */
+            week_start: string;
+        };
         /**
          * SelfOut
          * @description Our own company (JFrog) and the terms the UI highlights as its products.
@@ -1380,11 +1607,49 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /** SignalApproveIn */
+        SignalApproveIn: {
+            /**
+             * Analyst
+             * @default analyst
+             */
+            analyst: string;
+            /** Comment */
+            comment?: string | null;
+        };
         /**
          * SignalCategory
          * @enum {string}
          */
         SignalCategory: "product_launch" | "feature_update" | "pricing_change" | "partnership" | "acquisition" | "funding" | "security_incident" | "leadership_change" | "customer_win" | "open_source" | "event" | "analyst_report" | "other";
+        /**
+         * SignalCorrectIn
+         * @description Only the fields the analyst changed. relevant=false also rejects the signal.
+         */
+        SignalCorrectIn: {
+            /**
+             * Analyst
+             * @default analyst
+             */
+            analyst: string;
+            category?: components["schemas"]["SignalCategory"] | null;
+            /** Comment */
+            comment?: string | null;
+            /** Impact */
+            impact?: number | null;
+            /**
+             * Primary Entity
+             * @description Entity slug, or 'none' = about no tracked company
+             */
+            primary_entity?: string | null;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "not_relevant" | "wrong_entity" | "wrong_category" | "impact_too_high" | "impact_too_low" | "inaccurate_summary" | "unsupported_claim" | "duplicate" | "outdated" | "other";
+            /** Relevant */
+            relevant?: boolean | null;
+        };
         /** SignalOut */
         SignalOut: {
             category: components["schemas"]["SignalCategory"] | null;
@@ -1411,6 +1676,8 @@ export interface components {
             page_diff?: components["schemas"]["PageDiffOut"] | null;
             /** Published At */
             published_at: string | null;
+            /** @description Analyst review (null = not reviewed yet) */
+            review?: components["schemas"]["SignalReviewOut"] | null;
             source: components["schemas"]["SourceOut"] | null;
             /**
              * Sources Count
@@ -1445,6 +1712,38 @@ export interface components {
             page_size: number;
             /** Total */
             total: number;
+        };
+        /** SignalRejectIn */
+        SignalRejectIn: {
+            /**
+             * Analyst
+             * @default analyst
+             */
+            analyst: string;
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Reason Code
+             * @default not_relevant
+             * @enum {string}
+             */
+            reason_code: "not_relevant" | "wrong_entity" | "wrong_category" | "impact_too_high" | "impact_too_low" | "inaccurate_summary" | "unsupported_claim" | "duplicate" | "outdated" | "other";
+        };
+        /** SignalReviewOut */
+        SignalReviewOut: {
+            /** At */
+            at?: string | null;
+            /**
+             * By
+             * @description Analyst name of the last action
+             */
+            by?: string | null;
+            /**
+             * Edited Fields
+             * @description Fields an analyst corrected (category, impact, relevant, primary_entity)
+             */
+            edited_fields?: string[];
+            status: components["schemas"]["ReviewStatus"];
         };
         /** SinceYesterdayItem */
         SinceYesterdayItem: {
@@ -1838,6 +2137,26 @@ export interface operations {
             };
         };
     };
+    scorecard_api_feedback_scorecard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardOut"];
+                };
+            };
+        };
+    };
     nav_counts_api_nav_get: {
         parameters: {
             query?: never;
@@ -2077,6 +2396,37 @@ export interface operations {
             };
         };
     };
+    review_queue_api_review_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_self_api_self_get: {
         parameters: {
             query?: never;
@@ -2173,6 +2523,151 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_signals__signal_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SignalApproveIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_api_signals__signal_id__correct_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalCorrectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reject_api_signals__signal_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalRejectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -32,7 +32,9 @@ from app.core.llm import load_prompt
 from app.core.llm.structured import retry_messages
 from app.db.enums import Verification
 from app.db.models import Capability, Entity, Signal, Source, signal_capabilities, signal_entities
+from app.pipeline.analyst import apply_overrides
 from app.pipeline.context import CompleteFn, RunContext
+from app.pipeline.fewshot import with_examples
 from app.pipeline.llm_steps import canonical_or_unclustered, load_input, merge_meta, run_parallel
 from app.pipeline.page_diff import is_page_diff, split_section
 from app.pipeline.page_diff import quote_source as page_quote_source
@@ -136,7 +138,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
 
     def worker(signal_id: int) -> str:
         with factory() as s:
-            sig = load_input(s, signal_id)
+            sig = with_examples(s, "enrich", load_input(s, signal_id), ctx.config.fewshot)
             source_entity_id, meta = s.execute(
                 select(Source.entity_id, Signal.meta)
                 .select_from(Signal)
@@ -209,6 +211,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     .op("-")("inherited_from"),
                 )
             )
+            apply_overrides(s, signal_id, "enrich", prompt_id)
         return "enriched" if quote_ok else "enriched_quote_unverified"
 
     counts = run_parallel(

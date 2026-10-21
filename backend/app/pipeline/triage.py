@@ -16,7 +16,9 @@ from sqlalchemy.orm import Session, aliased
 
 from app.core.llm import load_prompt
 from app.db.models import Signal
+from app.pipeline.analyst import apply_overrides
 from app.pipeline.context import CompleteFn, RunContext
+from app.pipeline.fewshot import with_examples
 from app.pipeline.llm_steps import (
     canonical_or_unclustered,
     load_input,
@@ -66,7 +68,7 @@ def triage_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
 
     def worker(signal_id: int) -> str:
         with factory() as s:
-            sig = load_input(s, signal_id)
+            sig = with_examples(s, "triage", load_input(s, signal_id), ctx.config.fewshot)
             disc = s.scalar(select(discovery()).where(Signal.id == signal_id))
         name = DISCOVERY_PROMPT if disc else "triage"
         result = triage_one(sig, catalog, cfg.max_chars, complete, prompt_name=name)
@@ -84,6 +86,7 @@ def triage_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     meta=merge_meta({"triage": info}).op("-")("triage_error"),
                 )
             )
+            apply_overrides(s, signal_id, "triage", info["prompt_version"])
         return "relevant" if result.relevant else "irrelevant"
 
     counts = run_parallel(

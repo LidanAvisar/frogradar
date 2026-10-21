@@ -327,6 +327,17 @@ class EnrichSettings(_Strict):
     quote_repair_threshold: Similarity = 0.9
 
 
+class FewShotSettings(_Strict):
+    """Dynamic few-shot from analyst corrections (D69)."""
+
+    enabled: bool = True
+    k: Annotated[int, Field(ge=0, le=10)] = 3
+    # Cosine similarity a corrected signal needs to the current one to be shown as an example.
+    min_similarity: Annotated[float, Field(ge=0, le=1)] = 0.4
+    max_example_chars: Annotated[int, Field(ge=100, le=2000)] = 600
+    max_total_chars: Annotated[int, Field(ge=100, le=10000)] = 1800
+
+
 class VerifySettings(_Strict):
     max_chars: Annotated[int, Field(ge=1000, le=100000)] = 12000
 
@@ -465,6 +476,7 @@ class PipelineFile(_Strict):
     triage: TriageSettings = Field(default_factory=TriageSettings)
     enrich: EnrichSettings = Field(default_factory=EnrichSettings)
     verify: VerifySettings = Field(default_factory=VerifySettings)
+    fewshot: FewShotSettings = Field(default_factory=FewShotSettings)
     score: ScoreSettings = Field(default_factory=ScoreSettings)
     page_diff: PageDiffSettings = Field(default_factory=PageDiffSettings)
     synthesis: SynthesisSettings = Field(default_factory=SynthesisSettings)

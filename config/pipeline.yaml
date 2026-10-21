@@ -32,6 +32,16 @@ enrich:
 verify:
   max_chars: 12000
 
+# Dynamic few-shot (D69): triage and enrich prompts show the k most similar signals an analyst
+# corrected (pgvector cosine on the embeddings) as "model said X, analyst corrected to Y, because Z".
+# Rejections teach triage; category / impact / entity corrections teach enrich.
+fewshot:
+  enabled: true
+  k: 3
+  min_similarity: 0.4       # weaker neighbours are not shown (an unrelated correction misleads)
+  max_example_chars: 600    # per example (title + excerpt + correction), excerpt cut first
+  max_total_chars: 1800     # all examples together
+
 # Confidence = how faithfully the signal reflects what its source says (not whether the source's
 # claim is true; vendor claims are flagged by is_claim instead). Computed in code, no LLM:
 #   confidence = w.verification*V + w.trust*T + w.corroboration*C + w.evidence*E, then caps

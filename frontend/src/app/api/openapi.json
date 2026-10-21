@@ -1313,6 +1313,50 @@
         "title": "EvidenceOut",
         "type": "object"
       },
+      "FieldRate": {
+        "properties": {
+          "corrected": {
+            "title": "Corrected",
+            "type": "integer"
+          },
+          "rate": {
+            "description": "corrected / reviewed (0 if none reviewed)",
+            "title": "Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "corrected",
+          "rate"
+        ],
+        "title": "FieldRate",
+        "type": "object"
+      },
+      "FieldRates": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FieldRate"
+          },
+          "entity": {
+            "$ref": "#/components/schemas/FieldRate"
+          },
+          "impact": {
+            "$ref": "#/components/schemas/ImpactRate"
+          },
+          "relevance": {
+            "$ref": "#/components/schemas/FieldRate",
+            "description": "relevant corrected to no, or rejected as not relevant"
+          }
+        },
+        "required": [
+          "category",
+          "impact",
+          "relevance",
+          "entity"
+        ],
+        "title": "FieldRates",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1355,6 +1399,37 @@
           "db"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "ImpactRate": {
+        "properties": {
+          "corrected": {
+            "title": "Corrected",
+            "type": "integer"
+          },
+          "mean_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mean of analyst \u2212 model impact over impact corrections",
+            "title": "Mean Delta"
+          },
+          "rate": {
+            "description": "corrected / reviewed (0 if none reviewed)",
+            "title": "Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "corrected",
+          "rate"
+        ],
+        "title": "ImpactRate",
         "type": "object"
       },
       "JFrogLevel": {
@@ -2858,6 +2933,17 @@
             "title": "Rank",
             "type": "integer"
           },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Analyst review (null = not reviewed yet)"
+          },
           "source": {
             "anyOf": [
               {
@@ -2943,6 +3029,43 @@
         "title": "RankedSignalOut",
         "type": "object"
       },
+      "ReasonCode": {
+        "enum": [
+          "not_relevant",
+          "wrong_entity",
+          "wrong_category",
+          "impact_too_high",
+          "impact_too_low",
+          "inaccurate_summary",
+          "unsupported_claim",
+          "duplicate",
+          "outdated",
+          "not_a_competitor",
+          "too_small",
+          "already_tracked",
+          "missing_information",
+          "other"
+        ],
+        "title": "ReasonCode",
+        "type": "string"
+      },
+      "ReasonCount": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ReasonCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "ReasonCount",
+        "type": "object"
+      },
       "Relationship": {
         "enum": [
           "self",
@@ -2951,6 +3074,54 @@
           "coopetition"
         ],
         "title": "Relationship",
+        "type": "string"
+      },
+      "ReviewProgress": {
+        "properties": {
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reviewed",
+          "total"
+        ],
+        "title": "ReviewProgress",
+        "type": "object"
+      },
+      "ReviewQueueOut": {
+        "properties": {
+          "items": {
+            "description": "Signals waiting for review, impact \u00d7 confidence",
+            "items": {
+              "$ref": "#/components/schemas/SignalOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ReviewProgress"
+          }
+        },
+        "required": [
+          "items",
+          "progress"
+        ],
+        "title": "ReviewQueueOut",
+        "type": "object"
+      },
+      "ReviewStatus": {
+        "enum": [
+          "new",
+          "approved",
+          "rejected"
+        ],
+        "title": "ReviewStatus",
         "type": "string"
       },
       "RunStatus": {
@@ -2962,6 +3133,149 @@
         ],
         "title": "RunStatus",
         "type": "string"
+      },
+      "ScorecardOut": {
+        "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/ScorecardStats"
+          },
+          "weeks": {
+            "description": "Newest week first",
+            "items": {
+              "$ref": "#/components/schemas/ScorecardWeek"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "overall",
+          "weeks"
+        ],
+        "title": "ScorecardOut",
+        "type": "object"
+      },
+      "ScorecardStats": {
+        "properties": {
+          "approved": {
+            "description": "Approved as-is",
+            "title": "Approved",
+            "type": "integer"
+          },
+          "approved_pct": {
+            "title": "Approved Pct",
+            "type": "number"
+          },
+          "corrected": {
+            "description": "At least one field corrected (not rejected)",
+            "title": "Corrected",
+            "type": "integer"
+          },
+          "corrected_pct": {
+            "title": "Corrected Pct",
+            "type": "number"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/FieldRates"
+          },
+          "reasons": {
+            "description": "Most common reason codes, most frequent first",
+            "items": {
+              "$ref": "#/components/schemas/ReasonCount"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "rejected_pct": {
+            "title": "Rejected Pct",
+            "type": "number"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reviewed",
+          "approved",
+          "corrected",
+          "rejected",
+          "approved_pct",
+          "corrected_pct",
+          "rejected_pct",
+          "fields",
+          "reasons"
+        ],
+        "title": "ScorecardStats",
+        "type": "object"
+      },
+      "ScorecardWeek": {
+        "properties": {
+          "approved": {
+            "description": "Approved as-is",
+            "title": "Approved",
+            "type": "integer"
+          },
+          "approved_pct": {
+            "title": "Approved Pct",
+            "type": "number"
+          },
+          "corrected": {
+            "description": "At least one field corrected (not rejected)",
+            "title": "Corrected",
+            "type": "integer"
+          },
+          "corrected_pct": {
+            "title": "Corrected Pct",
+            "type": "number"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/FieldRates"
+          },
+          "reasons": {
+            "description": "Most common reason codes, most frequent first",
+            "items": {
+              "$ref": "#/components/schemas/ReasonCount"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "rejected_pct": {
+            "title": "Rejected Pct",
+            "type": "number"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "week_start": {
+            "description": "Monday of the ISO week (YYYY-MM-DD, UTC)",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewed",
+          "approved",
+          "corrected",
+          "rejected",
+          "approved_pct",
+          "corrected_pct",
+          "rejected_pct",
+          "fields",
+          "reasons",
+          "week_start"
+        ],
+        "title": "ScorecardWeek",
+        "type": "object"
       },
       "SelfOut": {
         "description": "Our own company (JFrog) and the terms the UI highlights as its products.",
@@ -3000,6 +3314,31 @@
         "title": "SelfOut",
         "type": "object"
       },
+      "SignalApproveIn": {
+        "properties": {
+          "analyst": {
+            "default": "analyst",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Analyst",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "title": "SignalApproveIn",
+        "type": "object"
+      },
       "SignalCategory": {
         "enum": [
           "product_launch",
@@ -3018,6 +3357,98 @@
         ],
         "title": "SignalCategory",
         "type": "string"
+      },
+      "SignalCorrectIn": {
+        "description": "Only the fields the analyst changed. relevant=false also rejects the signal.",
+        "properties": {
+          "analyst": {
+            "default": "analyst",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Analyst",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "primary_entity": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Entity slug, or 'none' = about no tracked company",
+            "title": "Primary Entity"
+          },
+          "reason_code": {
+            "enum": [
+              "not_relevant",
+              "wrong_entity",
+              "wrong_category",
+              "impact_too_high",
+              "impact_too_low",
+              "inaccurate_summary",
+              "unsupported_claim",
+              "duplicate",
+              "outdated",
+              "other"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "relevant": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevant"
+          }
+        },
+        "required": [
+          "reason_code"
+        ],
+        "title": "SignalCorrectIn",
+        "type": "object"
       },
       "SignalOut": {
         "properties": {
@@ -3111,6 +3542,17 @@
               }
             ],
             "title": "Published At"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Analyst review (null = not reviewed yet)"
           },
           "source": {
             "anyOf": [
@@ -3225,6 +3667,92 @@
           "page_size"
         ],
         "title": "SignalPage",
+        "type": "object"
+      },
+      "SignalRejectIn": {
+        "properties": {
+          "analyst": {
+            "default": "analyst",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Analyst",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "reason_code": {
+            "default": "not_relevant",
+            "enum": [
+              "not_relevant",
+              "wrong_entity",
+              "wrong_category",
+              "impact_too_high",
+              "impact_too_low",
+              "inaccurate_summary",
+              "unsupported_claim",
+              "duplicate",
+              "outdated",
+              "other"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "title": "SignalRejectIn",
+        "type": "object"
+      },
+      "SignalReviewOut": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Analyst name of the last action",
+            "title": "By"
+          },
+          "edited_fields": {
+            "description": "Fields an analyst corrected (category, impact, relevant, primary_entity)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Edited Fields",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReviewStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SignalReviewOut",
         "type": "object"
       },
       "SinceYesterdayItem": {
@@ -3925,6 +4453,27 @@
         ]
       }
     },
+    "/api/feedback/scorecard": {
+      "get": {
+        "operationId": "scorecard_api_feedback_scorecard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Scorecard",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/nav": {
       "get": {
         "operationId": "nav_counts_api_nav_get",
@@ -4263,6 +4812,52 @@
         ]
       }
     },
+    "/api/review": {
+      "get": {
+        "description": "Signals waiting for review (status new), most important first: impact \u00d7 confidence.",
+        "operationId": "review_queue_api_review_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewQueueOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Queue",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/self": {
       "get": {
         "operationId": "get_self_api_self_get",
@@ -4565,6 +5160,180 @@
         "summary": "Get Signal",
         "tags": [
           "signals"
+        ]
+      }
+    },
+    "/api/signals/{signal_id}/approve": {
+      "post": {
+        "operationId": "approve_api_signals__signal_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SignalApproveIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/signals/{signal_id}/correct": {
+      "post": {
+        "operationId": "correct_api_signals__signal_id__correct_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalCorrectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Correct",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/signals/{signal_id}/reject": {
+      "post": {
+        "operationId": "reject_api_signals__signal_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalRejectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject",
+        "tags": [
+          "review"
         ]
       }
     },

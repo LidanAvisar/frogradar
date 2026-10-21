@@ -15,7 +15,7 @@ from datetime import datetime
 from sqlalchemy import ColumnElement, Select, and_, exists, func, or_, select, true
 from sqlalchemy.orm import Session
 
-from app.db.enums import Verification
+from app.db.enums import ReviewStatus, Verification
 from app.db.models import Signal, Source
 
 # Verdicts whose signals may be shown and synthesized (unsupported ones never are).
@@ -76,11 +76,18 @@ def canonical() -> ColumnElement[bool]:
     return or_(Signal.dedup_cluster_id.is_(None), Signal.dedup_cluster_id == Signal.id)
 
 
+def reviewable() -> ColumnElement[bool]:
+    """In scope, canonical, enriched, not discovery: what screens may show and analysts review,
+    rejected signals included (the review actions need them for a 409)."""
+    return and_(in_scope(), canonical(), Signal.enriched_at.is_not(None), not_discovery())
+
+
 def visible() -> ColumnElement[bool]:
     """In scope, canonical and enriched: what any screen may show (D47). Rows whose text changed
     after enrichment have enriched_at reset and stay hidden until re-enriched. Discovery signals
-    are never visible here: the Radar shows them as candidate evidence instead (D57)."""
-    return and_(in_scope(), canonical(), Signal.enriched_at.is_not(None), not_discovery())
+    are never visible here: the Radar shows them as candidate evidence instead (D57). Signals an
+    analyst rejected stay in the DB but leave every screen, synthesis and RAG (D68)."""
+    return and_(reviewable(), Signal.status != ReviewStatus.REJECTED)
 
 
 def usable() -> ColumnElement[bool]:

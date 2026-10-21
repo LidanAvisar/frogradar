@@ -11,7 +11,9 @@ from pydantic import BaseModel, Field
 
 from app.db.enums import (
     EntityType,
+    ReasonCode,
     Relationship,
+    ReviewStatus,
     RunStatus,
     SignalCategory,
     SourceKind,
@@ -56,6 +58,16 @@ class PageDiffOut(BaseModel):
     after_captured_at: datetime | None
 
 
+class SignalReviewOut(BaseModel):
+    status: ReviewStatus
+    by: str | None = Field(None, description="Analyst name of the last action")
+    at: datetime | None = None
+    edited_fields: list[str] = Field(
+        default_factory=list,
+        description="Fields an analyst corrected (category, impact, relevant, primary_entity)",
+    )
+
+
 class SignalOut(BaseModel):
     id: int
     title: str = Field(description="Display title: the generated headline of a page diff, if any")
@@ -78,6 +90,9 @@ class SignalOut(BaseModel):
     entities: list[EntityRef]
     sources_count: int = Field(description="Sources reporting this story (dedup cluster size)")
     page_diff: PageDiffOut | None = None
+    review: SignalReviewOut | None = Field(
+        None, description="Analyst review (null = not reviewed yet)"
+    )
 
 
 class RankedSignalOut(SignalOut):
@@ -586,3 +601,103 @@ class AskFeedbackOut(BaseModel):
 
 
 BriefOut.model_rebuild()
+
+
+# ---------- analyst review of signals (S14, D68) ----------
+
+SignalReason = Literal[
+    "not_relevant",
+    "wrong_entity",
+    "wrong_category",
+    "impact_too_high",
+    "impact_too_low",
+    "inaccurate_summary",
+    "unsupported_claim",
+    "duplicate",
+    "outdated",
+    "other",
+]
+
+AnalystName = Annotated[str, Field(min_length=1, max_length=100)]
+Comment = Annotated[str, Field(max_length=500)]
+
+
+class SignalApproveIn(BaseModel):
+    analyst: AnalystName = "analyst"
+    comment: Comment | None = None
+
+
+class SignalRejectIn(BaseModel):
+    analyst: AnalystName = "analyst"
+    reason_code: SignalReason = "not_relevant"
+    comment: Comment | None = None
+
+
+class SignalCorrectIn(BaseModel):
+    """Only the fields the analyst changed. relevant=false also rejects the signal."""
+
+    analyst: AnalystName = "analyst"
+    reason_code: SignalReason
+    comment: Comment | None = None
+    category: SignalCategory | None = None
+    impact: Annotated[int, Field(ge=1, le=5)] | None = None
+    relevant: bool | None = None
+    primary_entity: Annotated[str, Field(max_length=100)] | None = Field(
+        None, description="Entity slug, or 'none' = about no tracked company"
+    )
+
+
+class ReviewProgress(BaseModel):
+    reviewed: int
+    total: int
+
+
+class ReviewQueueOut(BaseModel):
+    items: list[SignalOut] = Field(description="Signals waiting for review, impact × confidence")
+    progress: ReviewProgress
+
+
+class FieldRate(BaseModel):
+    corrected: int
+    rate: float = Field(description="corrected / reviewed (0 if none reviewed)")
+
+
+class ImpactRate(FieldRate):
+    mean_delta: float | None = Field(
+        None, description="Mean of analyst − model impact over impact corrections"
+    )
+
+
+class FieldRates(BaseModel):
+    category: FieldRate
+    impact: ImpactRate
+    relevance: FieldRate = Field(
+        description="relevant corrected to no, or rejected as not relevant"
+    )
+    entity: FieldRate
+
+
+class ReasonCount(BaseModel):
+    code: ReasonCode
+    count: int
+
+
+class ScorecardStats(BaseModel):
+    reviewed: int
+    approved: int = Field(description="Approved as-is")
+    corrected: int = Field(description="At least one field corrected (not rejected)")
+    rejected: int
+    approved_pct: float
+    corrected_pct: float
+    rejected_pct: float
+    fields: FieldRates
+    reasons: list[ReasonCount] = Field(description="Most common reason codes, most frequent first")
+
+
+class ScorecardWeek(ScorecardStats):
+    week_start: str = Field(description="Monday of the ISO week (YYYY-MM-DD, UTC)")
+
+
+class ScorecardOut(BaseModel):
+    overall: ScorecardStats
+    weeks: list[ScorecardWeek] = Field(description="Newest week first")
