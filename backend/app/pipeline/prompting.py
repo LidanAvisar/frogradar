@@ -105,9 +105,9 @@ def _common(sig: SignalInput, max_chars: int) -> dict[str, Any]:
 
 
 def triage_messages(
-    sig: SignalInput, catalog: Catalog, max_chars: int
+    sig: SignalInput, catalog: Catalog, max_chars: int, prompt_name: str = "triage"
 ) -> tuple[Prompt, list[dict[str, str]]]:
-    prompt = load_prompt("triage")
+    prompt = load_prompt(prompt_name)
     examples = fewshot.render(fewshot.few_shot_examples("triage", sig))
     return prompt, prompt.messages(
         **_common(sig, max_chars), companies=catalog.companies_text, examples=examples
