@@ -53,6 +53,22 @@ confidence, evidence quote, verification, embedding) · `signal_entities` · `in
 `llm_cache` (validated LLM outputs and embeddings by content hash; also feeds demo mode) · `reports`
 (stored briefs, battlecards, digests). Models: `backend/app/db/models/`.
 
+## Demo scope
+
+The demo runs on **3 curated sources**; the full catalog stays in `config/`: **13 competitors** (plus JFrog
+itself) and **47 sources**, every other source set to `is_active: false`.
+
+| Source | Why it's in the demo |
+|---|---|
+| Sonatype Blog | Direct competitor in artifact management and supply-chain security (Nexus) |
+| GitHub Changelog | High-frequency changelog of a major platform: steady stream of concrete product changes |
+| The New Stack | Industry press: mentions many vendors, so it exercises entity linking and cross-source dedup |
+
+To widen the scope, set `is_active: true` on a source (or remove the flag) and run `make seed`; nothing needs
+to be deleted or re-added. Signals already collected from inactive sources stay in the DB, but later
+pipeline stages (dedup, enrichment, verification) only process signals whose source is active
+(`app/pipeline/scope.py`).
+
 ## Collectors (`backend/app/pipeline/collectors/`)
 
 `make collect` reads every active source and stores raw signals (no LLM calls):
@@ -69,7 +85,8 @@ row with per-source counts (new / updated / duplicate / failed / too old) and er
 
 **History limits.** RSS feeds only list their most recent items (often 10–50), so a backfill can't reach further
 back than the feed does; GitHub releases page back as far as `--since`. The collect/backfill report says per
-source whether it covered the whole window or "only back to <date>". First 90-day backfill (2026-10-20):
+source whether it covered the whole window or "only back to <date>". First 90-day backfill over the full catalog
+(2026-10-20, before the demo scope was narrowed):
 
 | Coverage | Sources |
 |---|---|
@@ -137,6 +154,7 @@ Each line: what we chose – why – what we rejected.
 - **D26 GitHub repos listed explicitly** – `options.repos` required per GitHub source (15 repos) – rejected scanning whole orgs (API quota, noise).
 - **D27 Backfill semantics** – `--since` (default 90d) everywhere; backfill pages GitHub until older than `--since`, RSS gives what the feed lists; report shows real coverage per source – rejected scraping blog archives.
 - **D28 No evasion of bot protection** – Docker/OpenSSF/CNCF feeds 403 our client by fingerprint; they stay failed in the run report until there is a sanctioned route – rejected imitating curl/browser fingerprints and silently deactivating them.
+- **D29 Demo scope: 3 active sources** – Sonatype Blog (direct competitor), GitHub Changelog (high-frequency product changes), The New Stack (industry press for entity linking and cross-source dedup); all other sources stay in config with `is_active: false`; collected signals from inactive sources are kept but out of scope for dedup/enrichment (`pipeline/scope.py`) – rejected deleting sources from config or signals from the DB.
 
 ## Repository layout
 
