@@ -60,14 +60,26 @@ class ExtractionError(ValueError):
     """The page yielded no usable text (JS shell, error page, selector matched nothing)."""
 
 
+class SectionsMissing(ExtractionError):
+    """options.sections is configured but none of its selectors matched (vendor redesign)."""
+
+
 # ---------- extraction + normalization ----------
 
 
 def extract_text(
-    html: str, selector: str | None = None, sections: list[dict[str, str]] | None = None
+    html: str,
+    selector: str | None = None,
+    sections: list[dict[str, str]] | None = None,
+    *,
+    require_sections: bool = False,
 ) -> str:
     """Main text of a page (the CSS selector's elements if given, else trafilatura), with
-    @@section/@@heading markers for the page structure (see annotate)."""
+    @@section/@@heading markers for the page structure (see annotate).
+
+    require_sections: if sections are configured and none of their selectors matches, raise
+    SectionsMissing instead of returning text without the section labels (a redesign would
+    otherwise silently drop them and produce a misleading diff)."""
     import lxml.html
 
     try:
@@ -76,7 +88,13 @@ def extract_text(
         raise ExtractionError(f"unparseable HTML: {e}") from None
     for bad in doc.xpath("//script|//style|//noscript"):
         bad.drop_tree()
-    annotate(doc, sections or [])
+    matched = annotate(doc, sections or [])
+    if require_sections and sections and not matched:
+        selectors = ", ".join(repr(x["selector"]) for x in sections)
+        raise SectionsMissing(
+            f"options.sections matched nothing: {selectors} (page redesigned? update the "
+            "selectors in config/competitors.yaml)"
+        )
     if selector:
         nodes = doc.cssselect(selector)
         if not nodes:
@@ -101,10 +119,11 @@ def _clean(text: str) -> str:
     return " ".join(_ANY_MARKER.sub(" ", text).split())
 
 
-def annotate(doc: Any, sections: list[dict[str, str]]) -> None:
+def annotate(doc: Any, sections: list[dict[str, str]]) -> set[str]:
     """Mark the page structure in place with text markers that survive extraction:
     h2-h4 → "@@heading <text>@@"; a tab panel (aria-labelledby) or an element matching a
-    configured section selector is wrapped in "@@section <label>@@" … "@@endsection@@"."""
+    configured section selector is wrapped in "@@section <label>@@" … "@@endsection@@".
+    Returns the labels of the configured sections that matched at least one element."""
     from lxml.html import Element
 
     def wrap(el: Any, label: str) -> None:
@@ -125,9 +144,12 @@ def annotate(doc: Any, sections: list[dict[str, str]]) -> None:
         ref = doc.get_element_by_id(panel.get("aria-labelledby"), None)
         if ref is not None:
             wrap(panel, ref.text_content())
+    matched: set[str] = set()
     for section in sections:
         for el in doc.cssselect(section["selector"]):
             wrap(el, section["label"])
+            matched.add(section["label"])
+    return matched
 
 
 def _node_lines(node: Any) -> str:

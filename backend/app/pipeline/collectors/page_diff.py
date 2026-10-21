@@ -2,6 +2,7 @@
 
 - Conditional GET (ETag / Last-Modified); 304 → nothing to do.
 - Text = main content (trafilatura, or options.selector), normalized (app.pipeline.page_diff).
+  options.sections configured but none matched → the source fails (redesign), no snapshot.
   Shorter than page_diff.min_text_chars → the source fails (JS shell / error page), no snapshot.
 - Same hash as the latest snapshot → unchanged, nothing stored.
 - Otherwise a new snapshot is stored (in the same transaction as the signal, by collect_source)
@@ -20,11 +21,19 @@ from app.pipeline.collectors.http import PoliteClient
 from app.pipeline.page_diff import ExtractionError, Normalizer, SnapshotInfo, extract_text
 
 
-def page_text(html: str, source: SourceRef, cfg: PageDiffSettings) -> str:
-    """Normalized text of a page, or ExtractionError if too little survives."""
+def page_text(
+    html: str, source: SourceRef, cfg: PageDiffSettings, *, require_sections: bool = True
+) -> str:
+    """Normalized text of a page, or ExtractionError if too little survives.
+
+    require_sections (default): a source with options.sections fails when none of them match
+    (SectionsMissing) – the config describes today's page. The Wayback backfill turns it off for
+    archived captures, which may predate the sectioned layout (Sonatype's 2025 page had no toggle).
+    """
     selector = source.options.get("selector")
     sections = source.options.get("sections")
-    text = Normalizer.from_settings(cfg).normalize(extract_text(html, selector, sections))
+    raw = extract_text(html, selector, sections, require_sections=require_sections)
+    text = Normalizer.from_settings(cfg).normalize(raw)
     if len(text) < cfg.min_text_chars:
         raise ExtractionError(
             f"only {len(text)} characters of text (min {cfg.min_text_chars}): "

@@ -4,14 +4,16 @@
     python -m app.pipeline.wayback --source "GitHub Pricing"
 
 For each source:
-1. Fetch today's page (reuse today's live snapshot if the text is unchanged).
+1. Fetch today's page (reuse today's live snapshot if the text is unchanged). If the source has
+   options.sections and none of them match today's page, the source fails (redesign).
 2. One CDX query lists the archived 200/HTML captures (one per day) of the last
    max(target_days_ago) + window_days days; for each target (~12, 6, 3 months ago) the closest
    capture within window_days is picked. No capture in the window → reported as missing.
 3. Each pick is fetched raw (`id_` URL: the original HTML without the Wayback toolbar) and
    checked: enough text, at least min_length_ratio of today's length, and price lines present
    if today's page has them. A capture that fails is reported (rendered differently, probably
-   JS-built) and NOT stored, so no misleading diff is produced across it.
+   JS-built) and NOT stored, so no misleading diff is produced across it. options.sections are
+   not required on archived captures: the sectioned layout may be newer than the capture.
 4. Snapshots are stored (meta: origin=wayback, wayback_timestamp) and the source's snapshots are
    diffed in captured_at order. Changes become signals dated to the later snapshot.
 
@@ -181,7 +183,8 @@ def backfill_source(
             # New capture, or a stored one in an older text format: (re-)fetch the archived HTML.
             url = wb.snapshot_url.format(timestamp=cap.timestamp, url=ref.url)
             try:
-                text = page_text(client.get(url).text, ref, cfg)
+                # Archived pages may predate options.sections (e.g. a toggle added later).
+                text = page_text(client.get(url).text, ref, cfg, require_sections=False)
             except (FetchError, ExtractionError) as e:
                 report.rejected.append({**entry, "reason": _short(e)})
                 continue

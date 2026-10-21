@@ -530,3 +530,70 @@ def test_backfill_upgrades_old_snapshots_in_place_and_only_after_limits_signals(
     assert report.pairs[0]["signal"] == "left as is (--only-after)"
     (sig,) = _rows(collect_db, Signal, pricing)  # only Jul → today
     assert sig.meta["diff_mode"] == "price_lines" and sig.meta["after_snapshot_id"] == old_live
+
+
+# ---------- options.sections health check ----------
+
+
+@pytest.fixture
+def sectioned(collect_db):
+    with collect_db.begin() as s:
+        acme = entity(s, "acme", "Acme")
+        src = Source(
+            name="Acme Sectioned Pricing", url=URL, kind=SourceKind.OFFICIAL,
+            fetch_method=FetchMethod.PAGE_DIFF, trust_score=0.9, entity_id=acme.id,
+            options={"sections": SECTIONS},
+        )  # fmt: skip
+        s.add(src)
+        s.flush()
+        return src.id
+
+
+def _redesigned(page: str) -> bytes:
+    # Same page, but the vendor renamed the toggle attribute: no configured selector matches.
+    return fixture(f"{page}.html").replace(b"data-display", b"data-view")
+
+
+def test_sections_matching_nothing_is_an_extraction_error():
+    html = _redesigned("pricing_editions_after").decode()
+    with pytest.raises(pd.SectionsMissing, match="options.sections matched nothing"):
+        pd.extract_text(html, sections=SECTIONS, require_sections=True)
+    # Without the requirement (archived captures) the text is still extracted, unlabelled.
+    assert "Pro Edition" in pd.extract_text(html, sections=SECTIONS)
+    # One matching section is enough.
+    one = fixture("pricing_editions_after.html").decode().replace("repo_self", "repo_x")
+    assert "@@section Cloud@@" in pd.extract_text(one, sections=SECTIONS, require_sections=True)
+
+
+def test_collector_fails_the_source_when_sections_match_nothing(
+    sectioned, collect_db, web, make_client
+):
+    ok = _collect(collect_db, web, make_client, "pricing_editions_after")
+    assert ok.status == "ok" and len(_rows(collect_db, PageSnapshot, sectioned)) == 1
+
+    web.add(URL, _redesigned("pricing_editions_after"))
+    report = run_collection(
+        session_factory=collect_db, client=make_client(), settings=make_settings()
+    ).sources[0]
+    assert report.status == "failed"
+    assert "options.sections matched nothing" in (report.error or "")
+    # No snapshot, no diff signal from the unlabelled page.
+    assert len(_rows(collect_db, PageSnapshot, sectioned)) == 1
+    assert _rows(collect_db, Signal, sectioned) == []
+
+
+def test_backfill_requires_sections_on_today_only(sectioned, collect_db, web, make_client):
+    # Archived capture predates the toggle (like Sonatype's 2025 page): stored, not rejected.
+    _serve_wayback(
+        web, {"20260720000000": "pricing_editions_before"}, today="pricing_editions_after"
+    )
+    ref = _ref(collect_db, sectioned)
+    report = backfill_source(
+        collect_db, make_client(), ref, CFG, run_id=_run_id(collect_db), now=NOW
+    )
+    assert report.rejected == [] and len(report.snapshots) == 2
+
+    # Today's page redesigned: the whole source fails before anything is compared.
+    web.add(URL, _redesigned("pricing_editions_after"))
+    with pytest.raises(pd.SectionsMissing):
+        backfill_source(collect_db, make_client(), ref, CFG, run_id=_run_id(collect_db), now=NOW)
