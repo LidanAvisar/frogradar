@@ -197,6 +197,20 @@ Task tiers (`bulk` / `synthesis` / `verify`) map to models in `config/llm_routin
 against `LLM_DAILY_BUDGET_USD` (and a mission's budget). With `DEMO_MODE=true` nothing reaches a provider:
 responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
 
+## Pitfalls (learned the hard way)
+
+- **Temperature is ignored for Claude Haiku 5.5.** LiteLLM's model map says the model takes no sampling
+  parameters, so with `drop_params` it silently drops `temperature`. The `temperature: 0.0` in
+  `llm_routing.yaml` has no effect for the bulk tier. Results are reproducible because of the LLM cache
+  (content-hash keys), not because of sampling settings: a cache miss can give a different answer.
+- **"No thinking" has to be explicit.** For Anthropic, LiteLLM sends nothing for `reasoning_effort="none"`. Only
+  `thinking={"type": "disabled"}` turns thinking off; `thinking: "off"` in `llm_routing.yaml` maps to it. A legacy
+  `budget_tokens` is rewritten to adaptive thinking, so the budget is ignored.
+- **Hidden output tokens count against `max_tokens`.** With thinking left at the model default, some enrich calls
+  spent most of a 1,024-token budget before writing any JSON, and the output was cut off. The gateway no longer
+  retries output cut off at `max_tokens`, and `llm_calls.tokens_reasoning` shows the split.
+- **YAML reads a bare `off` as `false`.** Quote it (`thinking: "off"`). The config schema accepts both.
+
 ## Design decisions
 
 Each line: what we chose – why – what we rejected.
@@ -238,6 +252,7 @@ Each line: what we chose – why – what we rejected.
 - **D35 Checked enrichment** – per-run schema with enum-validated entity/capability slugs; evidence quote verified verbatim in code (one retry, then flagged); the LLM confirms/corrects rule-based entity links; prompt version stored, re-enrich only on a new version or `--force` – rejected free-text entities and trusting the model's quote.
 - **D36 Confidence = fidelity to the source, computed in code** – weighted verification, source trust, corroboration and quote check with caps and bands from `pipeline.yaml`; vendor claims flagged separately (`is_claim`) – rejected LLM self-reported confidence and a "truth" score.
 - **D37 Prompt-injection defenses** – raw_text in a block tagged with its own hash, "data only" instructions, schema-constrained output, and code checks that hold even if the model obeys the injection – rejected random delimiters (break caching) and stripping instruction-like text.
+- **D38 Soft limits and explicit thinking control** – explanation fields (triage reason, impact rationale, verify notes, unsupported claims) are truncated with "…" instead of failing validation; thinking set per task in `llm_routing.yaml` (bulk `off`, verify `low`) and part of the cache key; reasoning tokens stored per call. A/B on 5 signals: thinking off kept category 5/5 and impact 3/5 (others ±1) at ~40% lower cost with no cut-off outputs, but one evidence quote was stitched from two separate sentences (caught by the code check) – rejected raising limits (still fails on the next long note) and leaving thinking at the model default (hidden tokens, cut-off outputs).
 
 ## Repository layout
 
