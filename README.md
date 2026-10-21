@@ -404,15 +404,16 @@ http://localhost:4200. Frontend tests: `npm run test:ci` (headless Chrome).
 
 Two pipeline nodes after `score`, on the synthesis model. The pattern: **the LLM proposes, code verifies**.
 
-- **Daily brief** (once per UTC day): the top 12 signals of the last 7 days → a headline (≤ 90 chars) and a 2-3
-  sentence overview. Stored as a `reports` row (`daily_brief`).
+- **Daily brief** (once per UTC day): the top 12 signals of the last 7 days → a headline (≤ 90 chars) and 3 points
+  of at most 110 characters for "What matters today" (`daily_brief.v2`). Stored as a `reports` row (`daily_brief`).
 - **Battlecards** (per competitor with signals *about* it; weekly, or when a new impact ≥ 4 signal arrives):
   positioning, strengths, weaknesses, opportunities and blind spots for JFrog, plus capability levels. Stored as a
   `reports` row (`battlecard`); accepted levels go to `capability_matrix` with their evidence signal.
 - **Checks, in order:** (1) every sentence / item cites signal ids; one id that is unknown, not usable, outside the
   input or about another company drops the whole item; (2) a capability level needs an evidence signal on which the
   competitor is primary; (3) one call to the verify model (another family) judges every remaining item against the
-  summaries of the signals it cites – only `supported` is kept. Dropped items stay in the report with the reason
+  summaries of the signals it cites, and statements about JFrog's own levels against `jfrog_capabilities.yaml`
+  (trusted context, `verify_synthesis.v3`) – only `supported` is kept. Dropped items stay in the report with the reason
   and the verifier's note; they are never shown. The API re-checks at read time: an item is hidden once a cited
   signal stops being usable.
 - **Page diffs** also get a `display_title` and proposed `price_changes`; a change is shown only if the old price
@@ -442,6 +443,11 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
 
 ## Pitfalls (learned the hard way)
 
+- **The LLM verifier is not deterministic on borderline claims.** Re-checking the same evidence can flip a
+  verdict: GitHub's `sast` and `cli-api-automation` levels were dropped in run 33 and accepted in run 35 from the
+  same signals. Verdicts are stable once generated because the LLM cache returns the stored answer for the same
+  input; a prompt or input change (or a cache miss) re-rolls borderline cases. Treat a single verdict on a
+  borderline claim as a sample, not a measurement.
 - **Temperature is ignored for Claude Haiku 5.5.** LiteLLM's model map says the model takes no sampling
   parameters, so with `drop_params` it silently drops `temperature`. The `temperature: 0.0` in
   `llm_routing.yaml` has no effect for the bulk tier. Results are reproducible because of the LLM cache
