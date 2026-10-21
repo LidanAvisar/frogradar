@@ -4,8 +4,8 @@ AI-powered competitive intelligence for JFrog. A daily pipeline collects industr
 feeds, GitHub, pricing-page changes), enriches and verifies them with LLMs, and stores everything in one
 data model that powers the Morning Brief, battlecards, cited chat, research missions and an MCP server.
 
-> Status: foundation in place (FastAPI + Postgres/pgvector schema, validated config, seed, LLM gateway,
-> collectors). Dedup, enrichment and verification are next.
+> Status: backend pipeline in place (collectors incl. pricing-page diffs with a Wayback baseline, dedup,
+> triage, enrichment, cross-provider verification, confidence, daily scheduler). The UI is next.
 
 ## Quick start
 
@@ -13,7 +13,7 @@ Requirements: Docker, [uv](https://docs.astral.sh/uv/), Node 20 (frontend).
 
 ```bash
 cp .env.example .env        # fill in API keys (never commit .env)
-make up                     # Postgres + backend; the backend applies migrations on start
+make up                     # Postgres + backend + daily scheduler; the backend applies migrations on start
 make seed                   # load competitors, sources and capabilities from config/
 curl localhost:8000/health
 ```
@@ -37,6 +37,8 @@ curl localhost:8000/health
 | `make dedup-report` | Calibration report: most similar pairs, similarity distribution, entity link counts |
 | `make pipeline` | The daily pipeline (LangGraph), paid: `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
 | `make pipeline-report` | Quality report of the latest run (`RUN=<id>`): triage, distributions, cost per model, samples |
+| `make wayback-backfill` | Baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today, diffed in date order (no LLM calls; `SOURCE=` for one) |
+| `make scheduler-logs` | Follow the `scheduler` service (daily run at `DAILY_RUN_CRON`, UTC) |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -64,14 +66,16 @@ confidence, evidence quote, verification, embedding) · `signal_entities` · `in
 
 ## Demo scope
 
-The demo runs on **3 curated sources**; the full catalog stays in `config/`: **13 competitors** (plus JFrog
-itself) and **47 sources**, every other source set to `is_active: false`.
+The demo runs on **3 curated sources plus 2 watched pricing pages**; the full catalog stays in `config/`:
+**13 competitors** (plus JFrog itself) and **47 sources**, every other source set to `is_active: false`.
 
 | Source | Why it's in the demo |
 |---|---|
 | Sonatype Blog | Direct competitor in artifact management and supply-chain security (Nexus) |
 | GitHub Changelog | High-frequency changelog of a major platform: steady stream of concrete product changes |
 | The New Stack | Industry press: mentions many vendors, so it exercises entity linking and cross-source dedup |
+| Sonatype Pricing (page diff) | The closest competitor's price list: tiers, editions, consumption pricing |
+| GitHub Pricing (page diff) | Plans and add-ons (Advanced Security, Actions minutes, Packages storage) of the largest platform |
 
 To widen the scope, set `is_active: true` on a source (or remove the flag) and run `make seed`; nothing needs
 to be deleted or re-added. Signals already collected from inactive sources stay in the DB, but later
@@ -86,7 +90,8 @@ pipeline stages (dedup, enrichment, verification) only process signals whose sou
   (trafilatura); articles already stored are not fetched again.
 - **GitHub releases** for the repos listed in `options.repos` (REST API; set `GITHUB_TOKEN` for 5000 instead of
   60 requests/hour). Drafts skipped, pre-releases flagged in `signals.meta`.
-- **page_diff / web**: stubs for now (page diffs arrive with the page-change watcher).
+- **page_diff**: watched pages (pricing, features), see [Page diff watcher](#page-diff-watcher-and-wayback-baseline).
+- **web**: stub (not planned yet).
 
 Good citizenship: identifying User-Agent, robots.txt per host, ≥1s between requests to one host (Crawl-delay
 honoured), conditional GET, timeouts. A failing source never stops the run; every run writes a `pipeline_runs`
@@ -111,6 +116,54 @@ stays its own signal.
 **Collected text is for analysis only.** `signals.raw_text` feeds enrichment, verification and search; it is never
 shown in the UI or returned verbatim by the API/MCP. Users see a summary, a short evidence quote and a link to
 the original.
+
+## Page diff watcher and Wayback baseline
+
+Pricing pages don't publish a feed, so FrogRadar keeps snapshots and reports what changed
+(`backend/app/pipeline/page_diff.py`, `collectors/page_diff.py`, `wayback.py`).
+
+- **Text:** the page's main content (trafilatura, or a CSS `options.selector`), normalized line by line: dates,
+  "© 2026", "3 days ago", cookie and navigation lines removed; runs of very short lines joined (`$` `4`
+  `per user/month` → `$ 4 per user/month`). Prices are never touched. Less than 500 characters left → the page
+  probably needs JavaScript: the source fails, no snapshot.
+- **Snapshots:** stored only when the normalized text changed (`page_snapshots`, with `captured_at` = when the page
+  looked like this and `meta.origin` live / wayback).
+- **What counts as a change:** a line diff against the last snapshot that wasn't noise.
+  - Lines that only moved are ignored, unless a feature moved from one plan's section to another's (a section is
+    the lines under a price line).
+  - Changes under 40 characters are noise, except that any change to a price line counts (`$4` → `$5`). Small
+    edits add up, because the next diff is still taken against the last non-noise snapshot.
+  - More than 50% of lines changed = a **redesign**: the snapshot is stored and marked `page_restructured`, and
+    only the price lines of both versions are compared (`diff_mode: price_lines`). No price-line change → no signal.
+- **Signal:** title "Pricing page changed: <source>", dated to the later snapshot; its text is a readable diff of the
+  changed sections only (`[before]`, `[after]`, `[context]` lines, a format note, and a list of features that moved
+  between plans). It goes through triage → enrich → verify like any other signal, with its own prompt
+  (`enrich_page_diff`: price, tier, limit or feature moved) and an evidence quote that must come from the
+  `[after]` text, i.e. the current page.
+- **Baseline:** `make wayback-backfill` takes the Wayback Machine capture closest to ~12, 6 and 3 months ago
+  (within ±31 days; one CDX query, then the raw archived HTML via `id_` URLs, 5 s between requests). A capture whose
+  text is under half of today's, or has no price lines while today's page has some, is reported as rendered
+  differently and not stored, so no misleading diff is made across it. Missing captures are reported too.
+
+**First baseline (2026-10-21):** 4 snapshots per page (2025-10-21, ~2026-04, ~2026-07, today), 6 change signals:
+
+| Page | Change found |
+|---|---|
+| Sonatype, Oct → Apr | Nexus Repository editions renamed (Free → Community Edition, Premium → Nexus Repository + Repository Firewall) |
+| Sonatype, Apr → Jul | Redesign (70% of lines): per-user monthly prices ($18.67, $57.50 per user/month) replaced by yearly ones ("Starting at $1,620 / year + consumption") |
+| Sonatype, Jul → today | Redesign (75%): Nexus Repository Pro "$1,620 / year" → "$1,950 / year + consumption"; new "Pro Edition Starting at $7,500 / year" |
+| GitHub, Oct → Apr | "Team discussions" removed from the plan features |
+| GitHub, Apr → Jul | Copilot add-on removed from the featured list; "GitHub sandbox (public preview)", usage-based, added |
+| GitHub, Jul → today | Secret scanning split into "AI detection for alerts" / "for push protection" (usage-based); trial renamed |
+
+## Daily scheduler
+
+The `scheduler` compose service (`backend/app/scheduler.py`, APScheduler) runs the whole graph once a day at
+`DAILY_RUN_CRON` (UTC, default `0 6 * * *`). Missed runs collapse into one. Only one pipeline run happens at a time:
+`make pipeline`, the scheduler and the Wayback backfill all take the same Postgres advisory lock, and a second run
+exits without starting. If the process dies, the lock is released with its connection. The daily LLM budget
+(`LLM_DAILY_BUDGET_USD`) still applies: once it is reached, the remaining LLM stages are skipped and the run is
+marked `partial`. `make pipeline` keeps working by hand.
 
 ## Dedup and entity linking (`backend/app/pipeline/`)
 
@@ -148,8 +201,10 @@ on (status `partial`); running out of LLM budget skips the remaining LLM stages.
 - **Enrich** (`enrich_signal.v1`, cheap model): category, 2–3 sentence summary, *why JFrog cares* (naming
   JFrog products; when the news is JFrog's own, framed as positioning against competitors), impact 1–5 against a
   written rubric, an evidence quote, vendor-claim flag, entities, new companies for the Competitor Radar, and
-  capabilities. The evidence quote must appear verbatim in the article; this is checked in code, retried once, then
-  flagged.
+  capabilities. The evidence quote must appear verbatim in the article; this is checked in code. A near miss
+  (a typo, a dropped word) is replaced by the real sentence it came from, but only for one sentence or two adjacent
+  ones, at ≥ 90% similarity and ≥ 90% coverage, with the same numbers (`meta.quote_repaired`). Anything else is
+  retried once, then flagged.
 - **Verify** (`verify_signal.v1`, a model from a *different provider*): is the summary supported by the source?
   `supported` / `partial` / `unsupported`, with notes.
 - **Score**: confidence is computed in code, never by a model.
@@ -210,6 +265,15 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
   spent most of a 1,024-token budget before writing any JSON, and the output was cut off. The gateway no longer
   retries output cut off at `max_tokens`, and `llm_calls.tokens_reasoning` shows the split.
 - **YAML reads a bare `off` as `false`.** Quote it (`thinking: "off"`). The config schema accepts both.
+- **Models read a comparison row as a price change.** An unchanged table row listing two plans' prices
+  ("$4 per user/month $21 per user/month") shown next to a diff was reported as "$4 → $21" by the writer *and*
+  accepted by the verifier. Diff text now carries a format note, context lines are labelled as unchanged, and
+  the prompt says only `[before]` → `[after]` is a change.
+- **A near-miss quote fix can change its meaning.** "Starting at $1,620 / year" against a source line saying
+  "$1,950" is 94% similar. Quote repair requires identical numbers.
+- **Wayback captures come gzip-encoded** with the `id_` URLs (httpx decodes them; raw curl doesn't), and
+  web.archive.org sometimes refuses connections for a minute after a burst. robots.txt unreachable means we
+  fetch nothing (RFC 9309), so the backfill fails that run and is safe to re-run.
 
 ## Design decisions
 
@@ -253,6 +317,11 @@ Each line: what we chose – why – what we rejected.
 - **D36 Confidence = fidelity to the source, computed in code** – weighted verification, source trust, corroboration and quote check with caps and bands from `pipeline.yaml`; vendor claims flagged separately (`is_claim`) – rejected LLM self-reported confidence and a "truth" score.
 - **D37 Prompt-injection defenses** – raw_text in a block tagged with its own hash, "data only" instructions, schema-constrained output, and code checks that hold even if the model obeys the injection – rejected random delimiters (break caching) and stripping instruction-like text.
 - **D38 Soft limits and explicit thinking control** – explanation fields (triage reason, impact rationale, verify notes, unsupported claims) are truncated with "…" instead of failing validation; thinking set per task in `llm_routing.yaml` (bulk `off`, verify `low`) and part of the cache key; reasoning tokens stored per call. A/B on 5 signals: thinking off kept category 5/5 and impact 3/5 (others ±1) at ~40% lower cost with no cut-off outputs, but one evidence quote was stitched from two separate sentences (caught by the code check) – rejected raising limits (still fails on the next long note) and leaving thinking at the model default (hidden tokens, cut-off outputs).
+
+- **D39 Quote repair before retry** – a near-miss evidence quote is replaced by the real source span (one sentence or two adjacent ones) when similarity and coverage are both ≥ 0.9 and the numbers are identical; `meta.quote_repaired` – rejected similarity alone (a stitched quote would be "repaired" to its longest part) and repairing to any matching text (changes what the quote proves).
+- **D40 Page diffs: normalized line diff with a price rule and redesign mode** – snapshot only on a new hash; noise threshold except for price lines; moves ignored unless between plan sections; > 50% changed lines = redesign → price-lines-only diff or no signal; diff text with a format note; own prompt; quote from `[after]` only – rejected raw-HTML or visual diffs, a whole-page LLM comparison, and character thresholds that drop `$4 → $5`.
+- **D41 Wayback baseline** – closest CDX capture to ~12/6/3 months (±31 days), raw `id_` HTML, 5 s per request, captures that render differently (length < 50% of today's, or no price lines) reported and skipped; idempotent by capture timestamp – rejected archive.org's availability API (one capture per call, more requests) and diffing every capture.
+- **D42 Scheduler + advisory lock** – APScheduler service in compose, cron from `DAILY_RUN_CRON` (UTC), one Postgres advisory lock for pipeline, scheduler and backfill (released if the process dies), budget enforced by the gateway – rejected a `pipeline_runs` "running" check (stale after a crash), cron in the host, and Celery (a queue for one daily job).
 
 ## Repository layout
 
