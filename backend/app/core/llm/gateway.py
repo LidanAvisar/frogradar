@@ -108,6 +108,7 @@ class LLMGateway:
                 prompt_version=prompt_version,
                 run_id=ctx.run_id,
                 mission_id=ctx.mission_id,
+                ask_turn_id=ctx.ask_turn_id,
                 **fields,
             )
 
@@ -271,6 +272,7 @@ class LLMGateway:
                 model=route.model,
                 run_id=ctx.run_id,
                 mission_id=ctx.mission_id,
+                ask_turn_id=ctx.ask_turn_id,
                 **fields,
             )
 

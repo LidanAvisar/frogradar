@@ -32,6 +32,7 @@ class CallRecord:
     error: str | None = None
     run_id: int | None = None
     mission_id: int | None = None
+    ask_turn_id: int | None = None
 
 
 def add(session: Session, record: CallRecord) -> None:

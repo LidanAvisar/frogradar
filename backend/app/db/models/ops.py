@@ -138,6 +138,9 @@ class LLMCall(Base):
     mission_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("missions.id", ondelete="SET NULL"), index=True
     )
+    ask_turn_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("ask_turns.id", ondelete="SET NULL"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=sql("now()"), index=True)
 
 

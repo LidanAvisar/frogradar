@@ -14,6 +14,7 @@ from dataclasses import dataclass, replace
 class LLMContext:
     run_id: int | None = None
     mission_id: int | None = None
+    ask_turn_id: int | None = None
 
 
 _EMPTY = LLMContext()
@@ -25,9 +26,16 @@ def current_context() -> LLMContext:
 
 
 @contextmanager
-def llm_context(*, run_id: int | None = None, mission_id: int | None = None) -> Iterator[None]:
-    """Set run_id and/or mission_id for calls in this block; unset fields keep the outer value."""
-    changes = {k: v for k, v in (("run_id", run_id), ("mission_id", mission_id)) if v is not None}
+def llm_context(
+    *, run_id: int | None = None, mission_id: int | None = None, ask_turn_id: int | None = None
+) -> Iterator[None]:
+    """Set run_id / mission_id / ask_turn_id for calls in this block; unset fields keep the outer
+    value."""
+    changes = {
+        k: v
+        for k, v in (("run_id", run_id), ("mission_id", mission_id), ("ask_turn_id", ask_turn_id))
+        if v is not None
+    }
     token = _current.set(replace(current_context(), **changes))
     try:
         yield

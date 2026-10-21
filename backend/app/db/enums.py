@@ -105,6 +105,7 @@ class FeedbackTarget(StrEnum):
     CAPABILITY_MATRIX = "capability_matrix"
     MISSION = "mission"
     RADAR_CANDIDATE = "radar_candidate"
+    ASK_TURN = "ask_turn"
 
 
 class FeedbackAction(StrEnum):
@@ -129,6 +130,8 @@ class ReasonCode(StrEnum):
     NOT_A_COMPETITOR = "not_a_competitor"
     TOO_SMALL = "too_small"
     ALREADY_TRACKED = "already_tracked"
+    # Ask answers ("Something's wrong", with inaccurate_summary, unsupported_claim, outdated, ...):
+    MISSING_INFORMATION = "missing_information"
     OTHER = "other"
 
 

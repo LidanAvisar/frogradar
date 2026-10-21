@@ -1,6 +1,7 @@
 """Import every model so Base.metadata is complete (Alembic and tests rely on this)."""
 
 from app.db.base import Base
+from app.db.models.ask import AskConversation, AskTurn
 from app.db.models.catalog import Capability, CapabilityMatrix, Entity, Source
 from app.db.models.intel import (
     EMBEDDING_DIM,
@@ -18,6 +19,8 @@ from app.db.models.radar import RadarCandidate, RepoStarSnapshot
 
 __all__ = [
     "EMBEDDING_DIM",
+    "AskConversation",
+    "AskTurn",
     "Base",
     "Capability",
     "CapabilityMatrix",
