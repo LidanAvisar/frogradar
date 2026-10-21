@@ -139,7 +139,7 @@ def test_nav_counts(client, build):
     build.signal("new")
     build.signal("approved", status=ReviewStatus.APPROVED)
     build.signal("irrelevant", relevant=False)
-    assert client.get("/api/nav").json() == {"signals": 2, "review_queue": 1}
+    assert client.get("/api/nav").json() == {"signals": 2, "review_queue": 1, "radar_new": 0}
 
 
 def test_self_product_terms(client, build):

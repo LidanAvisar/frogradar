@@ -22,6 +22,7 @@ from app.api.queries import (
     to_outs,
     visible,
 )
+from app.api.radar import teaser
 from app.api.schemas import (
     BriefOut,
     BriefStats,
@@ -36,9 +37,10 @@ from app.api.schemas import (
     StoryRowOut,
     TopStoryOut,
 )
+from app.core.catalog import load_discovery
 from app.db.enums import FetchMethod, ReportKind, Verification
 from app.db.models import Entity, PipelineRun, Report, Signal, Source, signal_entities
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import in_scope, not_discovery
 from app.pipeline.synthesis.inputs import display_title
 
 router = APIRouter(prefix="/api", tags=["brief"])
@@ -120,7 +122,13 @@ def get_brief(
     filtered = session.scalar(
         select(func.count())
         .select_from(Signal)
-        .where(in_scope(), canonical(), Signal.relevant.is_(False), event_time() >= since)
+        .where(
+            in_scope(),
+            canonical(),
+            not_discovery(),  # discovery items filtered by triage are radar noise, not news
+            Signal.relevant.is_(False),
+            event_time() >= since,
+        )
     )
 
     return BriefOut(
@@ -138,6 +146,7 @@ def get_brief(
         filtered_not_relevant=filtered or 0,
         pricing_watch=_pricing_watch(session, now),
         pipeline=_pipeline_info(session),
+        radar=teaser(session, load_discovery().radar.teaser_count),
     )
 
 

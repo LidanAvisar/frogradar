@@ -7,8 +7,8 @@ from sqlalchemy.orm import aliased
 from app.api.deps import DbSession
 from app.api.queries import event_time, visible
 from app.api.schemas import EntityOut, NavCounts, SelfOut
-from app.db.enums import EntityReviewStatus, EntityType, ReviewStatus
-from app.db.models import Entity, Signal, signal_entities
+from app.db.enums import EntityReviewStatus, EntityType, RadarStatus, ReviewStatus
+from app.db.models import Entity, RadarCandidate, Signal, signal_entities
 
 router = APIRouter(prefix="/api", tags=["entities"])
 
@@ -60,6 +60,14 @@ def nav_counts(session: DbSession) -> NavCounts:
     return NavCounts(
         signals=session.scalar(base) or 0,
         review_queue=session.scalar(base.where(Signal.status == ReviewStatus.NEW)) or 0,
+        radar_new=session.scalar(
+            select(func.count())
+            .select_from(RadarCandidate)
+            .where(
+                RadarCandidate.merged_into_id.is_(None), RadarCandidate.status == RadarStatus.NEW
+            )
+        )
+        or 0,
     )
 
 

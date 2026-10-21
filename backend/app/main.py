@@ -9,6 +9,7 @@ from app.api.battlecards import router as battlecards_router
 from app.api.brief import router as brief_router
 from app.api.entities import router as entities_router
 from app.api.health import router as health_router
+from app.api.radar import router as radar_router
 from app.api.signals import router as signals_router
 from app.core.config import get_settings
 from app.db.checks import EmbeddingDimMismatch, assert_embedding_dim_matches_db
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(signals_router)
     app.include_router(entities_router)
     app.include_router(battlecards_router)
+    app.include_router(radar_router)
     return app
 
 

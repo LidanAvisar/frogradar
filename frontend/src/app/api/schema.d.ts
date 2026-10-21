@@ -72,6 +72,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Candidates */
+        get: operations["list_candidates_api_radar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/radar/{candidate_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidate */
+        get: operations["get_candidate_api_radar__candidate_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/radar/{candidate_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_api_radar__candidate_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/radar/{candidate_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss */
+        post: operations["dismiss_api_radar__candidate_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/radar/{candidate_id}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Watch */
+        post: operations["watch_api_radar__candidate_id__watch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/self": {
         parameters: {
             query?: never;
@@ -199,6 +284,11 @@ export interface components {
             /** Pricing Watch */
             pricing_watch: components["schemas"]["PricingItem"][];
             /**
+             * Radar
+             * @description New on the radar: top candidates (new / watching) by emergence score
+             */
+            radar?: components["schemas"]["RadarTeaser"][];
+            /**
              * Since Yesterday
              * @description New in the last 24h, without the signals already shown above
              */
@@ -303,6 +393,24 @@ export interface components {
             signals: number;
             /** Sources */
             sources: number;
+        };
+        /** CreatedEntity */
+        CreatedEntity: {
+            /** Name */
+            name: string;
+            relationship: components["schemas"]["Relationship"];
+            /** Slug */
+            slug: string;
+            type: components["schemas"]["EntityType"];
+        };
+        /** CreatedSource */
+        CreatedSource: {
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /** Url */
+            url: string;
         };
         /** EntityOut */
         EntityOut: {
@@ -416,6 +524,12 @@ export interface components {
         };
         /** NavCounts */
         NavCounts: {
+            /**
+             * Radar New
+             * @description Radar candidates waiting for a decision (status new)
+             * @default 0
+             */
+            radar_new: number;
             /** Review Queue */
             review_queue: number;
             /** Signals */
@@ -463,6 +577,336 @@ export interface components {
              */
             changes_source?: ("verified_llm" | "parser") | null;
             signal: components["schemas"]["SignalOut"];
+        };
+        /** RadarApproveIn */
+        RadarApproveIn: {
+            /**
+             * Add Sources
+             * @description Create a (disabled) GitHub releases source for the candidate's repo
+             * @default true
+             */
+            add_sources: boolean;
+            /** Comment */
+            comment?: string | null;
+            /** Name */
+            name?: string | null;
+            /**
+             * Relationship
+             * @default competitor
+             * @enum {string}
+             */
+            relationship: "competitor" | "partner" | "coopetition";
+            /**
+             * Type
+             * @description Default: company for a company candidate, else product
+             */
+            type?: ("company" | "product") | null;
+        };
+        /** RadarApproveOut */
+        RadarApproveOut: {
+            candidate: components["schemas"]["RadarCandidateDetail"];
+            entity: components["schemas"]["CreatedEntity"];
+            /** Sources */
+            sources: components["schemas"]["CreatedSource"][];
+        };
+        /** RadarBreakdown */
+        RadarBreakdown: {
+            /** Components */
+            components: {
+                [key: string]: components["schemas"]["RadarScoreComponent"];
+            };
+            /** Formula */
+            formula: string;
+            /** Score */
+            score: number;
+        };
+        /** RadarCandidateDetail */
+        RadarCandidateDetail: {
+            /**
+             * Approved Entity
+             * @description Slug of the entity created on approval
+             */
+            approved_entity?: string | null;
+            breakdown: components["schemas"]["RadarBreakdown"] | null;
+            /** Dismiss Comment */
+            dismiss_comment: string | null;
+            /** Dismiss Reason */
+            dismiss_reason: string | null;
+            /**
+             * Dropped Statements
+             * @description Profile statements removed by the checks
+             */
+            dropped_statements: number;
+            /**
+             * First Seen
+             * Format: date-time
+             */
+            first_seen: string;
+            /** Homepage */
+            homepage: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "company" | "product" | "open_source_project";
+            /**
+             * Last Seen
+             * Format: date-time
+             */
+            last_seen: string;
+            /**
+             * Line
+             * @description One line: the profile's why-notable-now, else what it is, else a context
+             */
+            line?: string | null;
+            /** Line Source */
+            line_source?: ("why_notable_now" | "what_it_is" | "context") | null;
+            /** Mentions */
+            mentions: components["schemas"]["RadarMentionOut"][];
+            /** Mentions Count */
+            mentions_count: number;
+            /** Merges */
+            merges: components["schemas"]["RadarMergeOut"][];
+            metrics: components["schemas"]["RadarMetrics"];
+            /** Name */
+            name: string;
+            /**
+             * Origins
+             * @description How mentions reached the radar: news_new_entity, hn_new_entity, github_search, cncf_landscape, ...
+             */
+            origins: string[];
+            /** Other Names */
+            other_names: string[];
+            /** Profile Generated At */
+            profile_generated_at: string | null;
+            /**
+             * Profile Status
+             * @enum {string}
+             */
+            profile_status: "none" | "ok" | "rejected";
+            /** Repo Url */
+            repo_url: string | null;
+            /** Score */
+            score: number | null;
+            /** Segments */
+            segments: string[];
+            /** Sources Count */
+            sources_count: number;
+            /** Statements */
+            statements: components["schemas"]["RadarStatementOut"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "watching" | "approved" | "dismissed";
+        };
+        /** RadarCandidateOut */
+        RadarCandidateOut: {
+            breakdown: components["schemas"]["RadarBreakdown"] | null;
+            /**
+             * First Seen
+             * Format: date-time
+             */
+            first_seen: string;
+            /** Homepage */
+            homepage: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "company" | "product" | "open_source_project";
+            /**
+             * Last Seen
+             * Format: date-time
+             */
+            last_seen: string;
+            /**
+             * Line
+             * @description One line: the profile's why-notable-now, else what it is, else a context
+             */
+            line?: string | null;
+            /** Line Source */
+            line_source?: ("why_notable_now" | "what_it_is" | "context") | null;
+            /** Mentions Count */
+            mentions_count: number;
+            metrics: components["schemas"]["RadarMetrics"];
+            /** Name */
+            name: string;
+            /**
+             * Origins
+             * @description How mentions reached the radar: news_new_entity, hn_new_entity, github_search, cncf_landscape, ...
+             */
+            origins: string[];
+            /**
+             * Profile Status
+             * @enum {string}
+             */
+            profile_status: "none" | "ok" | "rejected";
+            /** Repo Url */
+            repo_url: string | null;
+            /** Score */
+            score: number | null;
+            /** Segments */
+            segments: string[];
+            /** Sources Count */
+            sources_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "watching" | "approved" | "dismissed";
+        };
+        /** RadarDismissIn */
+        RadarDismissIn: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "not_relevant" | "not_a_competitor" | "too_small" | "duplicate" | "already_tracked" | "other";
+        };
+        /** RadarListOut */
+        RadarListOut: {
+            /** Items */
+            items: components["schemas"]["RadarCandidateOut"][];
+            /** Total */
+            total: number;
+        };
+        /** RadarMentionOut */
+        RadarMentionOut: {
+            /** Id */
+            id: number;
+            /** Origin */
+            origin: string | null;
+            /** Published At */
+            published_at: string | null;
+            /** Source */
+            source: string | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** RadarMergeOut */
+        RadarMergeOut: {
+            /** At */
+            at?: string | null;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "absorbed" | "merged_into" | "alias";
+            /** Name */
+            name: string;
+            /** Other Id */
+            other_id?: number | null;
+            /** Rule */
+            rule: string;
+        };
+        /** RadarMetrics */
+        RadarMetrics: {
+            /** Hn Points Max */
+            hn_points_max?: number | null;
+            /**
+             * Mentions
+             * @default 0
+             */
+            mentions: number;
+            /**
+             * Mentions Recent
+             * @default 0
+             */
+            mentions_recent: number;
+            /**
+             * Sources
+             * @default 0
+             */
+            sources: number;
+            /**
+             * Star Velocity
+             * @description Stars per day
+             */
+            star_velocity?: number | null;
+            /**
+             * Star Velocity Basis
+             * @description snapshots = between runs; age = stars / repo age (first sighting)
+             */
+            star_velocity_basis?: ("snapshots" | "age") | null;
+            /** Stars */
+            stars?: number | null;
+        };
+        /** RadarScoreComponent */
+        RadarScoreComponent: {
+            /**
+             * Factor
+             * @description 0-1
+             */
+            factor: number;
+            /**
+             * Points
+             * @description 100 × weight × factor
+             */
+            points: number;
+            /**
+             * Value
+             * @description Raw inputs of this component
+             */
+            value: {
+                [key: string]: unknown;
+            };
+            /** Weight */
+            weight: number;
+        };
+        /** RadarStatementOut */
+        RadarStatementOut: {
+            /** Citations */
+            citations: components["schemas"]["CitationRef"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "what_it_is" | "segments" | "jfrog_relation" | "stage" | "why_notable_now";
+            /**
+             * Products
+             * @description JFrog product names
+             */
+            products?: string[] | null;
+            /** Relation */
+            relation?: ("threatens" | "complements" | "both") | null;
+            /** Segments */
+            segments?: string[] | null;
+            /** Stage */
+            stage?: ("open_source_project" | "startup" | "feature_of_large_company" | "unknown") | null;
+            /** Text */
+            text: string;
+        };
+        /** RadarTeaser */
+        RadarTeaser: {
+            /** Id */
+            id: number;
+            /** Line */
+            line: string | null;
+            /** Name */
+            name: string;
+            /** Score */
+            score: number | null;
+            /** Sources Count */
+            sources_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "watching" | "approved" | "dismissed";
+        };
+        /** RadarWatchIn */
+        RadarWatchIn: {
+            /** Comment */
+            comment?: string | null;
         };
         /** RankedSignalOut */
         RankedSignalOut: {
@@ -828,6 +1272,223 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NavCounts"];
+                };
+            };
+        };
+    };
+    list_candidates_api_radar_get: {
+        parameters: {
+            query?: {
+                status?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_candidate_api_radar__candidate_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCandidateDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_radar__candidate_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RadarApproveIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarApproveOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_api_radar__candidate_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RadarDismissIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCandidateDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    watch_api_radar__candidate_id__watch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RadarWatchIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCandidateDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

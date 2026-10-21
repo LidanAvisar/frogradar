@@ -20,7 +20,7 @@ def test_no_endpoint_returns_raw_text(client, build):
     urls = [
         "/api/brief", "/api/brief?days=90&limit=20", "/api/signals", "/api/signals?q=article",
         f"/api/signals?entity={company.slug}", f"/api/signals/{sig.id}", f"/api/signals/{diff.id}",
-        "/api/entities", "/api/nav",
+        "/api/entities", "/api/nav", "/api/radar",
     ]  # fmt: skip
     for url in urls:
         r = client.get(url)

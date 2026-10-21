@@ -173,6 +173,14 @@
             "title": "Pricing Watch",
             "type": "array"
           },
+          "radar": {
+            "description": "New on the radar: top candidates (new / watching) by emergence score",
+            "items": {
+              "$ref": "#/components/schemas/RadarTeaser"
+            },
+            "title": "Radar",
+            "type": "array"
+          },
           "since_yesterday": {
             "description": "New in the last 24h, without the signals already shown above",
             "items": {
@@ -480,6 +488,55 @@
         "title": "Coverage",
         "type": "object"
       },
+      "CreatedEntity": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/Relationship"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EntityType"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "type",
+          "relationship"
+        ],
+        "title": "CreatedEntity",
+        "type": "object"
+      },
+      "CreatedSource": {
+        "properties": {
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "is_active"
+        ],
+        "title": "CreatedSource",
+        "type": "object"
+      },
       "EntityOut": {
         "properties": {
           "is_self": {
@@ -750,6 +807,12 @@
       },
       "NavCounts": {
         "properties": {
+          "radar_new": {
+            "default": 0,
+            "description": "Radar candidates waiting for a decision (status new)",
+            "title": "Radar New",
+            "type": "integer"
+          },
           "review_queue": {
             "title": "Review Queue",
             "type": "integer"
@@ -904,6 +967,978 @@
           "changes"
         ],
         "title": "PricingItem",
+        "type": "object"
+      },
+      "RadarApproveIn": {
+        "properties": {
+          "add_sources": {
+            "default": true,
+            "description": "Create a (disabled) GitHub releases source for the candidate's repo",
+            "title": "Add Sources",
+            "type": "boolean"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "relationship": {
+            "default": "competitor",
+            "enum": [
+              "competitor",
+              "partner",
+              "coopetition"
+            ],
+            "title": "Relationship",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "company",
+                  "product"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Default: company for a company candidate, else product",
+            "title": "Type"
+          }
+        },
+        "title": "RadarApproveIn",
+        "type": "object"
+      },
+      "RadarApproveOut": {
+        "properties": {
+          "candidate": {
+            "$ref": "#/components/schemas/RadarCandidateDetail"
+          },
+          "entity": {
+            "$ref": "#/components/schemas/CreatedEntity"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/CreatedSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidate",
+          "entity",
+          "sources"
+        ],
+        "title": "RadarApproveOut",
+        "type": "object"
+      },
+      "RadarBreakdown": {
+        "properties": {
+          "components": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RadarScoreComponent"
+            },
+            "title": "Components",
+            "type": "object"
+          },
+          "formula": {
+            "title": "Formula",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "formula",
+          "score",
+          "components"
+        ],
+        "title": "RadarBreakdown",
+        "type": "object"
+      },
+      "RadarCandidateDetail": {
+        "properties": {
+          "approved_entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Slug of the entity created on approval",
+            "title": "Approved Entity"
+          },
+          "breakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RadarBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dismiss_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dismiss Comment"
+          },
+          "dismiss_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dismiss Reason"
+          },
+          "dropped_statements": {
+            "description": "Profile statements removed by the checks",
+            "title": "Dropped Statements",
+            "type": "integer"
+          },
+          "first_seen": {
+            "format": "date-time",
+            "title": "First Seen",
+            "type": "string"
+          },
+          "homepage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepage"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "company",
+              "product",
+              "open_source_project"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_seen": {
+            "format": "date-time",
+            "title": "Last Seen",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One line: the profile's why-notable-now, else what it is, else a context",
+            "title": "Line"
+          },
+          "line_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "why_notable_now",
+                  "what_it_is",
+                  "context"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Source"
+          },
+          "mentions": {
+            "items": {
+              "$ref": "#/components/schemas/RadarMentionOut"
+            },
+            "title": "Mentions",
+            "type": "array"
+          },
+          "mentions_count": {
+            "title": "Mentions Count",
+            "type": "integer"
+          },
+          "merges": {
+            "items": {
+              "$ref": "#/components/schemas/RadarMergeOut"
+            },
+            "title": "Merges",
+            "type": "array"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RadarMetrics"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origins": {
+            "description": "How mentions reached the radar: news_new_entity, hn_new_entity, github_search, cncf_landscape, ...",
+            "items": {
+              "type": "string"
+            },
+            "title": "Origins",
+            "type": "array"
+          },
+          "other_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Other Names",
+            "type": "array"
+          },
+          "profile_generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Generated At"
+          },
+          "profile_status": {
+            "enum": [
+              "none",
+              "ok",
+              "rejected"
+            ],
+            "title": "Profile Status",
+            "type": "string"
+          },
+          "repo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo Url"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "segments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "sources_count": {
+            "title": "Sources Count",
+            "type": "integer"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/RadarStatementOut"
+            },
+            "title": "Statements",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "watching",
+              "approved",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "homepage",
+          "repo_url",
+          "score",
+          "breakdown",
+          "sources_count",
+          "mentions_count",
+          "first_seen",
+          "last_seen",
+          "segments",
+          "profile_status",
+          "origins",
+          "metrics",
+          "statements",
+          "dropped_statements",
+          "profile_generated_at",
+          "mentions",
+          "merges",
+          "other_names",
+          "dismiss_reason",
+          "dismiss_comment"
+        ],
+        "title": "RadarCandidateDetail",
+        "type": "object"
+      },
+      "RadarCandidateOut": {
+        "properties": {
+          "breakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RadarBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_seen": {
+            "format": "date-time",
+            "title": "First Seen",
+            "type": "string"
+          },
+          "homepage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepage"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "company",
+              "product",
+              "open_source_project"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_seen": {
+            "format": "date-time",
+            "title": "Last Seen",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One line: the profile's why-notable-now, else what it is, else a context",
+            "title": "Line"
+          },
+          "line_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "why_notable_now",
+                  "what_it_is",
+                  "context"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Source"
+          },
+          "mentions_count": {
+            "title": "Mentions Count",
+            "type": "integer"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RadarMetrics"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origins": {
+            "description": "How mentions reached the radar: news_new_entity, hn_new_entity, github_search, cncf_landscape, ...",
+            "items": {
+              "type": "string"
+            },
+            "title": "Origins",
+            "type": "array"
+          },
+          "profile_status": {
+            "enum": [
+              "none",
+              "ok",
+              "rejected"
+            ],
+            "title": "Profile Status",
+            "type": "string"
+          },
+          "repo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo Url"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "segments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "sources_count": {
+            "title": "Sources Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "watching",
+              "approved",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "homepage",
+          "repo_url",
+          "score",
+          "breakdown",
+          "sources_count",
+          "mentions_count",
+          "first_seen",
+          "last_seen",
+          "segments",
+          "profile_status",
+          "origins",
+          "metrics"
+        ],
+        "title": "RadarCandidateOut",
+        "type": "object"
+      },
+      "RadarDismissIn": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "reason": {
+            "enum": [
+              "not_relevant",
+              "not_a_competitor",
+              "too_small",
+              "duplicate",
+              "already_tracked",
+              "other"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RadarDismissIn",
+        "type": "object"
+      },
+      "RadarListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RadarCandidateOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "RadarListOut",
+        "type": "object"
+      },
+      "RadarMentionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "published_at",
+          "source",
+          "origin"
+        ],
+        "title": "RadarMentionOut",
+        "type": "object"
+      },
+      "RadarMergeOut": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "direction": {
+            "enum": [
+              "absorbed",
+              "merged_into",
+              "alias"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "other_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Id"
+          },
+          "rule": {
+            "title": "Rule",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "rule",
+          "direction"
+        ],
+        "title": "RadarMergeOut",
+        "type": "object"
+      },
+      "RadarMetrics": {
+        "properties": {
+          "hn_points_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hn Points Max"
+          },
+          "mentions": {
+            "default": 0,
+            "title": "Mentions",
+            "type": "integer"
+          },
+          "mentions_recent": {
+            "default": 0,
+            "title": "Mentions Recent",
+            "type": "integer"
+          },
+          "sources": {
+            "default": 0,
+            "title": "Sources",
+            "type": "integer"
+          },
+          "star_velocity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stars per day",
+            "title": "Star Velocity"
+          },
+          "star_velocity_basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "snapshots",
+                  "age"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "snapshots = between runs; age = stars / repo age (first sighting)",
+            "title": "Star Velocity Basis"
+          },
+          "stars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stars"
+          }
+        },
+        "title": "RadarMetrics",
+        "type": "object"
+      },
+      "RadarScoreComponent": {
+        "properties": {
+          "factor": {
+            "description": "0-1",
+            "title": "Factor",
+            "type": "number"
+          },
+          "points": {
+            "description": "100 \u00d7 weight \u00d7 factor",
+            "title": "Points",
+            "type": "number"
+          },
+          "value": {
+            "additionalProperties": true,
+            "description": "Raw inputs of this component",
+            "title": "Value",
+            "type": "object"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "factor",
+          "weight",
+          "points"
+        ],
+        "title": "RadarScoreComponent",
+        "type": "object"
+      },
+      "RadarStatementOut": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationRef"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "key": {
+            "enum": [
+              "what_it_is",
+              "segments",
+              "jfrog_relation",
+              "stage",
+              "why_notable_now"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "products": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "JFrog product names",
+            "title": "Products"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "threatens",
+                  "complements",
+                  "both"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          },
+          "segments": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segments"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "open_source_project",
+                  "startup",
+                  "feature_of_large_company",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "text",
+          "citations"
+        ],
+        "title": "RadarStatementOut",
+        "type": "object"
+      },
+      "RadarTeaser": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "sources_count": {
+            "title": "Sources Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "watching",
+              "approved",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "score",
+          "sources_count",
+          "line"
+        ],
+        "title": "RadarTeaser",
+        "type": "object"
+      },
+      "RadarWatchIn": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "title": "RadarWatchIn",
         "type": "object"
       },
       "RankedSignalOut": {
@@ -1850,6 +2885,294 @@
         "summary": "Nav Counts",
         "tags": [
           "entities"
+        ]
+      }
+    },
+    "/api/radar": {
+      "get": {
+        "operationId": "list_candidates_api_radar_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "new,watching",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Candidates",
+        "tags": [
+          "radar"
+        ]
+      }
+    },
+    "/api/radar/{candidate_id}": {
+      "get": {
+        "operationId": "get_candidate_api_radar__candidate_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarCandidateDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Candidate",
+        "tags": [
+          "radar"
+        ]
+      }
+    },
+    "/api/radar/{candidate_id}/approve": {
+      "post": {
+        "operationId": "approve_api_radar__candidate_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RadarApproveIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarApproveOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve",
+        "tags": [
+          "radar"
+        ]
+      }
+    },
+    "/api/radar/{candidate_id}/dismiss": {
+      "post": {
+        "operationId": "dismiss_api_radar__candidate_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RadarDismissIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarCandidateDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss",
+        "tags": [
+          "radar"
+        ]
+      }
+    },
+    "/api/radar/{candidate_id}/watch": {
+      "post": {
+        "operationId": "watch_api_radar__candidate_id__watch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RadarWatchIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarCandidateDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Watch",
+        "tags": [
+          "radar"
         ]
       }
     },

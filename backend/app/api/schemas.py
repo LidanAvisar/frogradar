@@ -5,7 +5,7 @@ embedding or content_hash field; prices extracted from a page diff are short tok
 """
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -189,6 +189,10 @@ class BriefOut(BaseModel):
     filtered_not_relevant: int
     pricing_watch: list[PricingItem]
     pipeline: PipelineInfo
+    radar: list["RadarTeaser"] = Field(
+        default_factory=list,
+        description="New on the radar: top candidates (new / watching) by emergence score",
+    )
 
 
 class EntityOut(BaseModel):
@@ -220,6 +224,7 @@ class SelfOut(BaseModel):
 class NavCounts(BaseModel):
     signals: int
     review_queue: int
+    radar_new: int = Field(0, description="Radar candidates waiting for a decision (status new)")
 
 
 # ---------- battlecards ----------
@@ -298,3 +303,157 @@ class BattlecardOut(BaseModel):
     matrix: list[MatrixRow]
     timeline: list[TimelineItem]
     coverage: Coverage
+
+
+# ---------- competitor radar ----------
+
+RadarKindOut = Literal["company", "product", "open_source_project"]
+RadarStatusOut = Literal["new", "watching", "approved", "dismissed"]
+DismissReason = Literal[
+    "not_relevant", "not_a_competitor", "too_small", "duplicate", "already_tracked", "other"
+]
+
+
+class RadarScoreComponent(BaseModel):
+    value: dict[str, Any] = Field(description="Raw inputs of this component")
+    factor: float = Field(description="0-1")
+    weight: float
+    points: float = Field(description="100 × weight × factor")
+
+
+class RadarBreakdown(BaseModel):
+    formula: str
+    score: float
+    components: dict[str, RadarScoreComponent]
+
+
+class RadarMetrics(BaseModel):
+    mentions: int = 0
+    sources: int = 0
+    mentions_recent: int = 0
+    stars: int | None = None
+    star_velocity: float | None = Field(None, description="Stars per day")
+    star_velocity_basis: Literal["snapshots", "age"] | None = Field(
+        None, description="snapshots = between runs; age = stars / repo age (first sighting)"
+    )
+    hn_points_max: int | None = None
+
+
+class RadarCandidateOut(BaseModel):
+    id: int
+    name: str
+    kind: RadarKindOut
+    status: RadarStatusOut
+    homepage: str | None
+    repo_url: str | None
+    score: float | None
+    breakdown: RadarBreakdown | None
+    sources_count: int
+    mentions_count: int
+    first_seen: datetime
+    last_seen: datetime
+    segments: list[str]
+    line: str | None = Field(
+        None, description="One line: the profile's why-notable-now, else what it is, else a context"
+    )
+    line_source: Literal["why_notable_now", "what_it_is", "context"] | None = None
+    profile_status: Literal["none", "ok", "rejected"]
+    origins: list[str] = Field(
+        description="How mentions reached the radar: news_new_entity, hn_new_entity, "
+        "github_search, cncf_landscape, ..."
+    )
+    metrics: RadarMetrics
+
+
+class RadarListOut(BaseModel):
+    items: list[RadarCandidateOut]
+    total: int
+
+
+class RadarStatementOut(BaseModel):
+    key: Literal["what_it_is", "segments", "jfrog_relation", "stage", "why_notable_now"]
+    text: str
+    citations: list[CitationRef]
+    segments: list[str] | None = None
+    relation: Literal["threatens", "complements", "both"] | None = None
+    products: list[str] | None = Field(None, description="JFrog product names")
+    stage: (
+        Literal["open_source_project", "startup", "feature_of_large_company", "unknown"] | None
+    ) = None
+
+
+class RadarMentionOut(CitationRef):
+    source: str | None
+    origin: str | None
+
+
+class RadarMergeOut(BaseModel):
+    name: str
+    rule: str
+    direction: Literal["absorbed", "merged_into", "alias"]
+    other_id: int | None = None
+    at: str | None = None
+
+
+class RadarCandidateDetail(RadarCandidateOut):
+    statements: list[RadarStatementOut]
+    dropped_statements: int = Field(description="Profile statements removed by the checks")
+    profile_generated_at: datetime | None
+    mentions: list[RadarMentionOut]
+    merges: list[RadarMergeOut]
+    other_names: list[str]
+    dismiss_reason: str | None
+    dismiss_comment: str | None
+    approved_entity: str | None = Field(None, description="Slug of the entity created on approval")
+
+
+class RadarApproveIn(BaseModel):
+    relationship: Literal["competitor", "partner", "coopetition"] = "competitor"
+    name: Annotated[str, Field(min_length=2, max_length=100)] | None = None
+    type: Literal["company", "product"] | None = Field(
+        None, description="Default: company for a company candidate, else product"
+    )
+    add_sources: bool = Field(
+        True, description="Create a (disabled) GitHub releases source for the candidate's repo"
+    )
+    comment: Annotated[str, Field(max_length=500)] | None = None
+
+
+class RadarDismissIn(BaseModel):
+    reason: DismissReason
+    comment: Annotated[str, Field(max_length=500)] | None = None
+
+
+class RadarWatchIn(BaseModel):
+    comment: Annotated[str, Field(max_length=500)] | None = None
+
+
+class CreatedEntity(BaseModel):
+    slug: str
+    name: str
+    type: EntityType
+    relationship: Relationship
+
+
+class CreatedSource(BaseModel):
+    name: str
+    url: str
+    is_active: bool
+
+
+class RadarApproveOut(BaseModel):
+    candidate: RadarCandidateDetail
+    entity: CreatedEntity
+    sources: list[CreatedSource]
+
+
+class RadarTeaser(BaseModel):
+    id: int
+    name: str
+    status: RadarStatusOut
+    score: float | None
+    sources_count: int
+    line: str | None
+
+
+BriefOut.model_rebuild()

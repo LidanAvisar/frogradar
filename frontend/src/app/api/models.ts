@@ -28,3 +28,6 @@ export type TopStory = Schemas['TopStoryOut'];
 export type StoryRow = Schemas['StoryRowOut'];
 export type BriefStats = Schemas['BriefStats'];
 export type Battlecard = Schemas['BattlecardOut'];
+export type RadarTeaser = Schemas['RadarTeaser'];
+export type RadarCandidate = Schemas['RadarCandidateOut'];
+export type RadarCandidateDetail = Schemas['RadarCandidateDetail'];
