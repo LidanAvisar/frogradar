@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     collector_timeout_s: float = 20.0
     collector_domain_delay_s: float = 1.0  # minimum gap between requests to the same host
 
+    # Research missions (S15): Tavily web search; empty = web search skipped (knowledge base only).
+    tavily_api_key: str = ""
+    # In-process mission worker thread, started with the API (off in tests / CLI tools).
+    mission_worker: bool = True
+
     # Scheduler service (app/scheduler.py): standard 5-field cron, evaluated in UTC.
     daily_run_cron: str = "0 6 * * *"
 

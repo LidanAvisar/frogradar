@@ -62,14 +62,23 @@ class PoliteClient:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
         host_delays: dict[str, float] | None = None,
+        url_guard: Callable[[str], None] | None = None,
+        max_bytes: int | None = None,
+        max_redirects: int = MAX_REDIRECTS,
+        timeout_s: float | None = None,
     ) -> None:
         self.settings = settings
+        # Research missions (D72): url_guard raises FetchError for unsafe URLs; it runs before every
+        # request (robots.txt and each redirect hop included). max_bytes caps the response body.
+        self.url_guard = url_guard
+        self.max_bytes = max_bytes
+        self.max_redirects = max_redirects
         # Slower minimum gaps for specific hosts (e.g. web.archive.org); the larger delay wins.
         self.host_delays = {h.lower(): d for h, d in (host_delays or {}).items()}
         self.user_agent = settings.collector_user_agent
         self._client = httpx.Client(
             headers={"User-Agent": self.user_agent},
-            timeout=httpx.Timeout(settings.collector_timeout_s),
+            timeout=httpx.Timeout(timeout_s or settings.collector_timeout_s),
             follow_redirects=False,
             transport=transport,
         )
@@ -105,7 +114,9 @@ class PoliteClient:
         if last_modified:
             req_headers["If-Modified-Since"] = last_modified
 
-        for _ in range(MAX_REDIRECTS + 1):
+        for _ in range(self.max_redirects + 1):
+            if self.url_guard is not None:
+                self.url_guard(url)  # every hop, before robots.txt (its own request is guarded too)
             host = urlsplit(url).netloc.lower()
             if host not in ROBOTS_EXEMPT_HOSTS:
                 robots = self._robots_for(url)
@@ -125,15 +136,41 @@ class PoliteClient:
     # ---------- internals ----------
 
     def _send(self, url: str, headers: dict[str, str]) -> httpx.Response:
+        if self.url_guard is not None:
+            self.url_guard(url)
         host = urlsplit(url).netloc.lower()
         self._wait(host)
         self.request_count += 1
         try:
-            return self._client.get(url, headers=headers)
+            if self.max_bytes is None:
+                return self._client.get(url, headers=headers)
+            return self._capped_get(url, headers, self.max_bytes)
         except httpx.HTTPError as e:
             raise FetchError(f"{type(e).__name__} for {url}") from e
         finally:
             self._last_request[host] = self._clock()
+
+    def _capped_get(self, url: str, headers: dict[str, str], limit: int) -> httpx.Response:
+        request = self._client.build_request("GET", url, headers=headers)
+        resp = self._client.send(request, stream=True)
+        try:
+            declared = resp.headers.get("content-length", "")
+            if declared.isdigit() and int(declared) > limit:
+                raise FetchError(f"response larger than {limit} bytes for {url}")
+            body = bytearray()
+            for chunk in resp.iter_bytes():
+                body += chunk
+                if len(body) > limit:
+                    raise FetchError(f"response larger than {limit} bytes for {url}")
+        finally:
+            resp.close()
+        # iter_bytes() already decoded the body: drop the encoding headers of the original.
+        keep = {
+            k: v
+            for k, v in resp.headers.items()
+            if k.lower() not in ("content-encoding", "content-length", "transfer-encoding")
+        }
+        return httpx.Response(resp.status_code, headers=keep, content=bytes(body), request=request)
 
     def _delay_for(self, host: str) -> float:
         delay = max(self.settings.collector_domain_delay_s, self.host_delays.get(host, 0.0))
