@@ -1,0 +1,555 @@
+{
+  "summary": {
+    "questions": 12,
+    "mean_recall_at_k": 0.833,
+    "full_recall": 7,
+    "answers_ok": null,
+    "answered": 0,
+    "cost_usd": 0.0
+  },
+  "k": 8,
+  "rows": [
+    {
+      "id": "q01",
+      "question": "What changed in Sonatype's pricing this year?",
+      "expected": [
+        "sig:1055",
+        "sig:1054",
+        "sig:1053"
+      ],
+      "retrieved": [
+        "sig:1054",
+        "sig:1055",
+        "sig:1053",
+        "sig:59",
+        "sig:52",
+        "sig:51",
+        "sig:57",
+        "sig:55"
+      ],
+      "hits": [
+        "sig:1055",
+        "sig:1054",
+        "sig:1053"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": "sonatype",
+        "company_name": "Sonatype",
+        "entity_ids": [
+          2,
+          23,
+          24,
+          25
+        ],
+        "since": "2026-01-01T00:00:00+00:00",
+        "until": null,
+        "window": "2026",
+        "categories": [
+          "pricing_change"
+        ]
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.08,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q02",
+      "question": "Who launched a package firewall?",
+      "expected": [
+        "sig:1046",
+        "sig:52",
+        "sig:50"
+      ],
+      "retrieved": [
+        "sig:1046",
+        "bc:github:strengths:2",
+        "bc:sonatype:weaknesses:2",
+        "bc:github:weaknesses:1",
+        "sig:50",
+        "sig:52",
+        "sig:1008",
+        "sig:54"
+      ],
+      "hits": [
+        "sig:1046",
+        "sig:52",
+        "sig:50"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": null,
+        "company_name": null,
+        "entity_ids": [],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": [
+          "product_launch"
+        ]
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.82,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q03",
+      "question": "What supply-chain security incidents happened recently?",
+      "expected": [
+        "sig:1005",
+        "sig:53"
+      ],
+      "retrieved": [
+        "sig:1005",
+        "sig:53",
+        "sig:51",
+        "sig:55",
+        "sig:991",
+        "radar:159",
+        "bc:github:opportunities_for_jfrog:2",
+        "bc:github:positioning:1"
+      ],
+      "hits": [
+        "sig:1005",
+        "sig:53"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": null,
+        "company_name": null,
+        "entity_ids": [],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": [
+          "security_incident"
+        ]
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.05,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q04",
+      "question": "What did GitHub change in secret scanning?",
+      "expected": [
+        "sig:1058",
+        "sig:1044"
+      ],
+      "retrieved": [
+        "sig:1044",
+        "bc:github:strengths:3",
+        "sig:1058",
+        "sig:1005",
+        "bc:github:opportunities_for_jfrog:3",
+        "bc:github:opportunities_for_jfrog:2",
+        "sig:1057",
+        "sig:1056"
+      ],
+      "hits": [
+        "sig:1058",
+        "sig:1044"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": "github",
+        "company_name": "GitHub",
+        "entity_ids": [
+          3,
+          26,
+          27,
+          28
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": []
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.03,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q05",
+      "question": "How is Sonatype talking about AI agents choosing dependencies?",
+      "expected": [
+        "sig:56",
+        "sig:58",
+        "sig:57",
+        "sig:51"
+      ],
+      "retrieved": [
+        "bc:sonatype:strengths:4",
+        "sig:56",
+        "sig:58",
+        "sig:51",
+        "bc:sonatype:positioning:1",
+        "bc:sonatype:blind_spots_for_jfrog:1",
+        "sig:57",
+        "sig:55"
+      ],
+      "hits": [
+        "sig:56",
+        "sig:58",
+        "sig:57",
+        "sig:51"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": "sonatype",
+        "company_name": "Sonatype",
+        "entity_ids": [
+          2,
+          23,
+          24,
+          25
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": []
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.03,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q06",
+      "question": "What did Sonatype's Q3 malware report find?",
+      "expected": [
+        "sig:54"
+      ],
+      "retrieved": [
+        "sig:54",
+        "sig:51",
+        "bc:sonatype:strengths:2",
+        "bc:sonatype:positioning:1",
+        "bc:sonatype:blind_spots_for_jfrog:2",
+        "sig:57",
+        "sig:53",
+        "sig:52"
+      ],
+      "hits": [
+        "sig:54"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": "sonatype",
+        "company_name": "Sonatype",
+        "entity_ids": [
+          2,
+          23,
+          24,
+          25
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": [
+          "analyst_report"
+        ]
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.03,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q07",
+      "question": "Is GitHub moving into license compliance?",
+      "expected": [
+        "sig:79"
+      ],
+      "retrieved": [
+        "bc:github:strengths:1",
+        "bc:github:blind_spots_for_jfrog:1",
+        "sig:79",
+        "bc:github:positioning:1",
+        "sig:82",
+        "sig:1057",
+        "sig:1046",
+        "sig:1058"
+      ],
+      "hits": [
+        "sig:79"
+      ],
+      "recall": 1.0,
+      "filters": {
+        "company_slug": "github",
+        "company_name": "GitHub",
+        "entity_ids": [
+          3,
+          26,
+          27,
+          28
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": []
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.03,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q08",
+      "question": "What is Sonatype doing in the US public sector?",
+      "expected": [
+        "sig:59",
+        "sig:56"
+      ],
+      "retrieved": [
+        "bc:sonatype:strengths:3",
+        "sig:59",
+        "bc:sonatype:positioning:1",
+        "sig:1053",
+        "bc:sonatype:strengths:4",
+        "sig:52",
+        "sig:1054",
+        "sig:55"
+      ],
+      "hits": [
+        "sig:59"
+      ],
+      "recall": 0.5,
+      "filters": {
+        "company_slug": "sonatype",
+        "company_name": "Sonatype",
+        "entity_ids": [
+          2,
+          23,
+          24,
+          25
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": []
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.02,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q09",
+      "question": "What does GitLab charge for its Ultimate tier?",
+      "expected": [],
+      "retrieved": [],
+      "hits": [],
+      "recall": null,
+      "filters": {
+        "company_slug": "gitlab",
+        "company_name": "GitLab",
+        "entity_ids": [
+          4,
+          29,
+          30,
+          31
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": [
+          "pricing_change"
+        ]
+      },
+      "expect_not_enough": true,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.01,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q10",
+      "question": "Did Cloudsmith raise funding this year?",
+      "expected": [],
+      "retrieved": [],
+      "hits": [],
+      "recall": null,
+      "filters": {
+        "company_slug": "cloudsmith",
+        "company_name": "Cloudsmith",
+        "entity_ids": [
+          6
+        ],
+        "since": "2026-01-01T00:00:00+00:00",
+        "until": null,
+        "window": "2026",
+        "categories": [
+          "funding"
+        ]
+      },
+      "expect_not_enough": true,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.01,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q11",
+      "question": "What new tools or startups have appeared that could compete with Xray or Curation?",
+      "expected": [
+        "radar:158",
+        "radar:159"
+      ],
+      "retrieved": [
+        "radar:158",
+        "bc:sonatype:opportunities_for_jfrog:4",
+        "bc:sonatype:opportunities_for_jfrog:2",
+        "radar:152",
+        "sig:51",
+        "sig:1001",
+        "bc:github:blind_spots_for_jfrog:1",
+        "sig:52"
+      ],
+      "hits": [
+        "radar:158"
+      ],
+      "recall": 0.5,
+      "filters": {
+        "company_slug": null,
+        "company_name": null,
+        "entity_ids": [],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": []
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.03,
+      "turn_id": null,
+      "answer": null
+    },
+    {
+      "id": "q12",
+      "question": "What are Sonatype's weaknesses compared to JFrog?",
+      "expected": [
+        "bc:sonatype:weaknesses:*",
+        "sig:1055",
+        "sig:1054"
+      ],
+      "retrieved": [
+        "bc:sonatype:blind_spots_for_jfrog:1",
+        "bc:sonatype:opportunities_for_jfrog:2",
+        "bc:sonatype:opportunities_for_jfrog:3",
+        "sig:59",
+        "sig:52",
+        "sig:55",
+        "sig:1053",
+        "sig:1054"
+      ],
+      "hits": [
+        "sig:1054"
+      ],
+      "recall": 0.3333333333333333,
+      "filters": {
+        "company_slug": "sonatype",
+        "company_name": "Sonatype",
+        "entity_ids": [
+          2,
+          23,
+          24,
+          25
+        ],
+        "since": null,
+        "until": null,
+        "window": null,
+        "categories": []
+      },
+      "expect_not_enough": false,
+      "not_enough": null,
+      "cited": [],
+      "cites_expected": null,
+      "ok": null,
+      "points": null,
+      "cost_usd": 0.0,
+      "cached": null,
+      "latency_s": 0.02,
+      "turn_id": null,
+      "answer": null
+    }
+  ]
+}
