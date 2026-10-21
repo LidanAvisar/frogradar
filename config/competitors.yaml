@@ -1,3 +1,7 @@
+# DEMO SCOPE: the demo runs on 3 curated sources (Sonatype Blog, GitHub Changelog, The New Stack);
+# every other source below has `is_active: false`. Nothing is deleted: to enable a source, set
+# `is_active: true` (or remove the flag) and run `make seed`. See README "Demo scope".
+#
 # Companies FrogRadar tracks, their products, and where to watch them.
 # Validated by app/core/catalog.py (CompetitorsFile). Loaded into the DB by `make seed`.
 #
@@ -32,9 +36,9 @@ companies:
       - {slug: jfrog-connect, name: JFrog Connect, segments: [distribution]}
       - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd]}
     sources:
-      - {name: JFrog Blog, url: https://jfrog.com/blog/feed/, kind: official, fetch_method: rss}
-      - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github, options: {repos: [jfrog-cli, frogbot, jfrog-cli-security]}}
-      - {name: JFrog Pricing, url: https://jfrog.com/pricing/, kind: official, fetch_method: page_diff}
+      - {name: JFrog Blog, url: https://jfrog.com/blog/feed/, kind: official, fetch_method: rss, is_active: false}
+      - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github, options: {repos: [jfrog-cli, frogbot, jfrog-cli-security]}, is_active: false}
+      - {name: JFrog Pricing, url: https://jfrog.com/pricing/, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: sonatype
     name: Sonatype
@@ -48,8 +52,8 @@ companies:
       - {slug: sonatype-firewall, name: Sonatype Repository Firewall, aliases: [Nexus Firewall], segments: [supply_chain_security]}
     sources:
       - {name: Sonatype Blog, url: https://www.sonatype.com/blog/rss.xml, kind: official, fetch_method: rss}
-      - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github, options: {repos: [nexus-public]}}
-      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff}
+      - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github, options: {repos: [nexus-public]}, is_active: false}
+      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: github
     name: GitHub
@@ -63,9 +67,9 @@ companies:
       - {slug: github-actions, name: GitHub Actions, segments: [cicd]}
     sources:
       - {name: GitHub Changelog, url: https://github.blog/changelog/feed/, kind: official, fetch_method: rss}
-      - {name: GitHub Blog, url: https://github.blog/feed/, kind: official, fetch_method: rss}
-      - {name: GitHub Pricing, url: https://github.com/pricing, kind: official, fetch_method: page_diff}
-      - {name: GitHub Advanced Security page, url: https://github.com/security/advanced-security, kind: official, fetch_method: page_diff}
+      - {name: GitHub Blog, url: https://github.blog/feed/, kind: official, fetch_method: rss, is_active: false}
+      - {name: GitHub Pricing, url: https://github.com/pricing, kind: official, fetch_method: page_diff, is_active: false}
+      - {name: GitHub Advanced Security page, url: https://github.com/security/advanced-security, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: gitlab
     name: GitLab
@@ -78,10 +82,10 @@ companies:
       - {slug: gitlab-ultimate-security, name: GitLab Application Security, aliases: [GitLab Ultimate, GitLab Dependency Scanning], segments: [supply_chain_security]}
       - {slug: gitlab-ci, name: GitLab CI/CD, aliases: [GitLab CI], segments: [cicd]}
     sources:
-      - {name: GitLab Blog, url: https://about.gitlab.com/atom.xml, kind: official, fetch_method: rss}
-      - {name: GitLab Releases, url: https://docs.gitlab.com/releases/releases.xml, kind: official, fetch_method: rss}
-      - {name: GitLab GitHub mirror, url: https://github.com/gitlabhq, kind: github, fetch_method: github, options: {repos: [gitlabhq]}}
-      - {name: GitLab Pricing, url: https://about.gitlab.com/pricing/, kind: official, fetch_method: page_diff}
+      - {name: GitLab Blog, url: https://about.gitlab.com/atom.xml, kind: official, fetch_method: rss, is_active: false}
+      - {name: GitLab Releases, url: https://docs.gitlab.com/releases/releases.xml, kind: official, fetch_method: rss, is_active: false}
+      - {name: GitLab GitHub mirror, url: https://github.com/gitlabhq, kind: github, fetch_method: github, options: {repos: [gitlabhq]}, is_active: false}
+      - {name: GitLab Pricing, url: https://about.gitlab.com/pricing/, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: snyk
     name: Snyk
@@ -94,9 +98,9 @@ companies:
       - {slug: snyk-container, name: Snyk Container, segments: [supply_chain_security]}
       - {slug: snyk-code, name: Snyk Code, segments: [supply_chain_security]}
     sources:
-      - {name: Snyk Blog, url: https://snyk.io/blog/feed/, kind: official, fetch_method: rss}
-      - {name: Snyk GitHub, url: https://github.com/snyk, kind: github, fetch_method: github, options: {repos: [cli]}}
-      - {name: Snyk Plans, url: https://snyk.io/plans/, kind: official, fetch_method: page_diff}
+      - {name: Snyk Blog, url: https://snyk.io/blog/feed/, kind: official, fetch_method: rss, is_active: false}
+      - {name: Snyk GitHub, url: https://github.com/snyk, kind: github, fetch_method: github, options: {repos: [cli]}, is_active: false}
+      - {name: Snyk Plans, url: https://snyk.io/plans/, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: cloudsmith
     name: Cloudsmith
@@ -105,8 +109,8 @@ companies:
     segments: [artifact_management, supply_chain_security, distribution]
     website: https://cloudsmith.com
     sources:
-      - {name: Cloudsmith Blog, url: https://cloudsmith.com/rss/blog.xml, kind: official, fetch_method: rss}
-      - {name: Cloudsmith GitHub, url: https://github.com/cloudsmith-io, kind: github, fetch_method: github, options: {repos: [cloudsmith-cli]}}
+      - {name: Cloudsmith Blog, url: https://cloudsmith.com/rss/blog.xml, kind: official, fetch_method: rss, is_active: false}
+      - {name: Cloudsmith GitHub, url: https://github.com/cloudsmith-io, kind: github, fetch_method: github, options: {repos: [cloudsmith-cli]}, is_active: false}
       # TODO verify: returned HTTP 429 (rate limited) during the config check.
       - {name: Cloudsmith Pricing, url: https://cloudsmith.com/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
@@ -124,8 +128,8 @@ companies:
         aliases: [CodeArtifact, Amazon CodeArtifact]
         segments: [artifact_management]
         sources:
-          - {name: AWS CodeArtifact Pricing, url: https://aws.amazon.com/codeartifact/pricing/, kind: official, fetch_method: page_diff}
-          - {name: AWS CodeArtifact Features, url: https://aws.amazon.com/codeartifact/features/, kind: official, fetch_method: page_diff}
+          - {name: AWS CodeArtifact Pricing, url: https://aws.amazon.com/codeartifact/pricing/, kind: official, fetch_method: page_diff, is_active: false}
+          - {name: AWS CodeArtifact Features, url: https://aws.amazon.com/codeartifact/features/, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: microsoft
     name: Microsoft
@@ -139,9 +143,9 @@ companies:
         aliases: [Azure DevOps Artifacts]
         segments: [artifact_management]
         sources:
-          - {name: Azure DevOps Blog, url: https://devblogs.microsoft.com/devops/feed/, kind: official, fetch_method: rss}
-          - {name: Azure DevOps Features Timeline, url: https://learn.microsoft.com/en-us/azure/devops/release-notes/features-timeline, kind: official, fetch_method: page_diff}
-          - {name: Azure DevOps Pricing, url: https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/, kind: official, fetch_method: page_diff}
+          - {name: Azure DevOps Blog, url: https://devblogs.microsoft.com/devops/feed/, kind: official, fetch_method: rss, is_active: false}
+          - {name: Azure DevOps Features Timeline, url: https://learn.microsoft.com/en-us/azure/devops/release-notes/features-timeline, kind: official, fetch_method: page_diff, is_active: false}
+          - {name: Azure DevOps Pricing, url: https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: google
     name: Google Cloud
@@ -155,8 +159,8 @@ companies:
         aliases: [Artifact Registry, GCP Artifact Registry]
         segments: [artifact_management]
         sources:
-          - {name: Artifact Registry Release Notes, url: https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml, kind: official, fetch_method: rss, options: {keep_fragment: true}}
-          - {name: Artifact Registry Pricing, url: https://cloud.google.com/artifact-registry/pricing, kind: official, fetch_method: page_diff}
+          - {name: Artifact Registry Release Notes, url: https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml, kind: official, fetch_method: rss, options: {keep_fragment: true}, is_active: false}
+          - {name: Artifact Registry Pricing, url: https://cloud.google.com/artifact-registry/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: docker
     name: Docker
@@ -169,9 +173,9 @@ companies:
       - {slug: docker-scout, name: Docker Scout, segments: [supply_chain_security]}
       - {slug: docker-hardened-images, name: Docker Hardened Images, aliases: [DHI], segments: [supply_chain_security]}
     sources:
-      - {name: Docker Blog, url: https://www.docker.com/feed/, kind: official, fetch_method: rss}
-      - {name: Docker GitHub, url: https://github.com/docker, kind: github, fetch_method: github, options: {repos: [compose, buildx, scout-cli]}}
-      - {name: Docker Pricing, url: https://www.docker.com/pricing/, kind: official, fetch_method: page_diff}
+      - {name: Docker Blog, url: https://www.docker.com/feed/, kind: official, fetch_method: rss, is_active: false}
+      - {name: Docker GitHub, url: https://github.com/docker, kind: github, fetch_method: github, options: {repos: [compose, buildx, scout-cli]}, is_active: false}
+      - {name: Docker Pricing, url: https://www.docker.com/pricing/, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: chainguard
     name: Chainguard
@@ -183,9 +187,9 @@ companies:
       - {slug: chainguard-containers, name: Chainguard Containers, aliases: [Chainguard Images], segments: [supply_chain_security]}
       - {slug: chainguard-libraries, name: Chainguard Libraries, segments: [supply_chain_security, artifact_management]}
     sources:
-      - {name: Chainguard Blog, url: https://www.chainguard.dev/unchained/rss.xml, kind: official, fetch_method: rss}
-      - {name: Chainguard GitHub, url: https://github.com/chainguard-dev, kind: github, fetch_method: github, options: {repos: [apko, melange]}}
-      - {name: Chainguard Pricing, url: https://www.chainguard.dev/pricing, kind: official, fetch_method: page_diff}
+      - {name: Chainguard Blog, url: https://www.chainguard.dev/unchained/rss.xml, kind: official, fetch_method: rss, is_active: false}
+      - {name: Chainguard GitHub, url: https://github.com/chainguard-dev, kind: github, fetch_method: github, options: {repos: [apko, melange]}, is_active: false}
+      - {name: Chainguard Pricing, url: https://www.chainguard.dev/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: endor-labs
     name: Endor Labs
@@ -194,9 +198,9 @@ companies:
     segments: [supply_chain_security]
     website: https://www.endorlabs.com
     sources:
-      - {name: Endor Labs Blog, url: https://www.endorlabs.com/learn/rss.xml, kind: official, fetch_method: rss}
-      - {name: Endor Labs GitHub, url: https://github.com/endorlabs, kind: github, fetch_method: github, options: {repos: [github-action]}}
-      - {name: Endor Labs Pricing, url: https://www.endorlabs.com/pricing, kind: official, fetch_method: page_diff}
+      - {name: Endor Labs Blog, url: https://www.endorlabs.com/learn/rss.xml, kind: official, fetch_method: rss, is_active: false}
+      - {name: Endor Labs GitHub, url: https://github.com/endorlabs, kind: github, fetch_method: github, options: {repos: [github-action]}, is_active: false}
+      - {name: Endor Labs Pricing, url: https://www.endorlabs.com/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: socket
     name: Socket
@@ -205,9 +209,9 @@ companies:
     segments: [supply_chain_security]
     website: https://socket.dev
     sources:
-      - {name: Socket Blog, url: https://socket.dev/api/blog/feed.atom, kind: official, fetch_method: rss}
-      - {name: Socket GitHub, url: https://github.com/SocketDev, kind: github, fetch_method: github, options: {repos: [socket-cli]}}
-      - {name: Socket Pricing, url: https://socket.dev/pricing, kind: official, fetch_method: page_diff}
+      - {name: Socket Blog, url: https://socket.dev/api/blog/feed.atom, kind: official, fetch_method: rss, is_active: false}
+      - {name: Socket GitHub, url: https://github.com/SocketDev, kind: github, fetch_method: github, options: {repos: [socket-cli]}, is_active: false}
+      - {name: Socket Pricing, url: https://socket.dev/pricing, kind: official, fetch_method: page_diff, is_active: false}
 
   - slug: hugging-face
     name: Hugging Face
@@ -218,6 +222,6 @@ companies:
     products:
       - {slug: hugging-face-hub, name: Hugging Face Hub, aliases: [HF Hub], segments: [mlops]}
     sources:
-      - {name: Hugging Face Blog, url: https://huggingface.co/blog/feed.xml, kind: official, fetch_method: rss}
-      - {name: Hugging Face GitHub, url: https://github.com/huggingface, kind: github, fetch_method: github, options: {repos: [huggingface_hub]}}
-      - {name: Hugging Face Pricing, url: https://huggingface.co/pricing, kind: official, fetch_method: page_diff}
+      - {name: Hugging Face Blog, url: https://huggingface.co/blog/feed.xml, kind: official, fetch_method: rss, is_active: false}
+      - {name: Hugging Face GitHub, url: https://github.com/huggingface, kind: github, fetch_method: github, options: {repos: [huggingface_hub]}, is_active: false}
+      - {name: Hugging Face Pricing, url: https://huggingface.co/pricing, kind: official, fetch_method: page_diff, is_active: false}

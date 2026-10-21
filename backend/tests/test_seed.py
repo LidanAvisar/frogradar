@@ -74,8 +74,11 @@ def test_config_change_updates_in_place(db_session, config_copy):
 
 def test_removed_source_is_deactivated_not_deleted(db_session, config_copy):
     seed(db_session, config_copy)
-    removed_url = yaml.safe_load((config_copy / "sources.yaml").read_text())["sources"][0]["url"]
-    _edit_yaml(config_copy / "sources.yaml", lambda d: d["sources"].pop(0))
+    # Remove an active source (most are inactive in the demo config).
+    sources = yaml.safe_load((config_copy / "sources.yaml").read_text())["sources"]
+    idx = next(i for i, src in enumerate(sources) if src.get("is_active", True))
+    removed_url = sources[idx]["url"]
+    _edit_yaml(config_copy / "sources.yaml", lambda d: d["sources"].pop(idx))
     catalog.clear_cache()
     report = seed(db_session, config_copy)
     db_session.expire_all()

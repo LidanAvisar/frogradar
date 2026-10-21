@@ -1,9 +1,13 @@
+# DEMO SCOPE: the demo runs on 3 curated sources (Sonatype Blog, GitHub Changelog, The New Stack);
+# every other source below has `is_active: false`. Nothing is deleted: to enable a source, set
+# `is_active: true` (or remove the flag) and run `make seed`. See README "Demo scope".
+#
 # Industry sources not tied to a single competitor (press, foundations, community).
 # Same schema as competitor sources (app/core/catalog.py SourceConfig). URLs checked 2026-10-20.
 
 sources:
-  - {name: OpenSSF Blog, url: https://openssf.org/feed/, kind: community, fetch_method: rss, trust_score: 0.75}
-  - {name: CNCF Blog, url: https://www.cncf.io/feed/, kind: community, fetch_method: rss, trust_score: 0.7}
+  - {name: OpenSSF Blog, url: https://openssf.org/feed/, kind: community, fetch_method: rss, trust_score: 0.75, is_active: false}
+  - {name: CNCF Blog, url: https://www.cncf.io/feed/, kind: community, fetch_method: rss, trust_score: 0.7, is_active: false}
   - {name: The New Stack, url: https://thenewstack.io/feed/, kind: press, fetch_method: rss}
-  - {name: InfoQ, url: https://feed.infoq.com/, kind: press, fetch_method: rss}
-  - {name: BleepingComputer, url: https://www.bleepingcomputer.com/feed/, kind: press, fetch_method: rss}
+  - {name: InfoQ, url: https://feed.infoq.com/, kind: press, fetch_method: rss, is_active: false}
+  - {name: BleepingComputer, url: https://www.bleepingcomputer.com/feed/, kind: press, fetch_method: rss, is_active: false}
