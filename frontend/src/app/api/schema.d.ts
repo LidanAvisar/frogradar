@@ -161,6 +161,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/missions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Missions */
+        get: operations["list_missions_api_missions_get"];
+        put?: never;
+        /** Post Mission */
+        post: operations["post_mission_api_missions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/findings/{finding_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Approve */
+        post: operations["post_approve_api_missions_findings__finding_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/findings/{finding_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Reject */
+        post: operations["post_reject_api_missions_findings__finding_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Prefill */
+        get: operations["get_prefill_api_missions_prefill_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/{mission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mission */
+        get: operations["get_mission_api_missions__mission_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/{mission_id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Plan */
+        post: operations["post_plan_api_missions__mission_id__plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/{mission_id}/refresh-radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Refresh Radar */
+        post: operations["post_refresh_radar_api_missions__mission_id__refresh_radar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/{mission_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Stop */
+        post: operations["post_stop_api_missions__mission_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nav": {
         parameters: {
             query?: never;
@@ -894,6 +1031,23 @@ export interface components {
             /** @description relevant corrected to no, or rejected as not relevant */
             relevance: components["schemas"]["FieldRate"];
         };
+        /** FindingReviewIn */
+        FindingReviewIn: {
+            /**
+             * Analyst
+             * @default
+             */
+            analyst: string;
+            /** Comment */
+            comment?: string | null;
+            reason?: components["schemas"]["ReasonCode"] | null;
+        };
+        /** FindingReviewOut */
+        FindingReviewOut: {
+            finding: components["schemas"]["MissionFindingOut"];
+            /** Signal Id */
+            signal_id: number | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -967,6 +1121,337 @@ export interface components {
             changed_recently: boolean;
             competitor: components["schemas"]["CompetitorLevel"];
             jfrog: components["schemas"]["JFrogLevel"];
+        };
+        /** MissionCreateIn */
+        MissionCreateIn: {
+            /**
+             * Analyst
+             * @default
+             */
+            analyst: string;
+            /** Brief */
+            brief: string;
+            /** Budget Usd */
+            budget_usd?: number | null;
+            /** Max Steps */
+            max_steps?: number | null;
+            /**
+             * Origin Kind
+             * @default manual
+             * @enum {string}
+             */
+            origin_kind: "manual" | "signal" | "radar_candidate" | "capability" | "ask_turn";
+            /** Origin Ref */
+            origin_ref?: {
+                [key: string]: number;
+            };
+            scope?: components["schemas"]["MissionScopeIn"];
+        };
+        /** MissionDetailOut */
+        MissionDetailOut: {
+            /** Brief */
+            brief: string;
+            /** Budget Usd */
+            budget_usd: number;
+            /** Company Ids */
+            company_ids: number[];
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Days */
+            days: number | null;
+            /**
+             * Dropped
+             * @description Why findings were dropped (short reasons)
+             */
+            dropped: string[];
+            /** Dropped Count */
+            dropped_count: number;
+            /** Error */
+            error: string | null;
+            /** Findings */
+            findings: components["schemas"]["MissionFindingOut"][];
+            /** Findings Approved */
+            findings_approved: number;
+            /** Findings New */
+            findings_new: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: number;
+            /** Max Steps */
+            max_steps: number;
+            /**
+             * Origin Kind
+             * @enum {string}
+             */
+            origin_kind: "manual" | "signal" | "radar_candidate" | "capability" | "ask_turn";
+            /** Origin Label */
+            origin_label: string;
+            /**
+             * Origin Link
+             * @description App route of the origin, e.g. /radar/12
+             */
+            origin_link: string | null;
+            /** Origin Ref */
+            origin_ref: {
+                [key: string]: number;
+            };
+            plan: components["schemas"]["MissionPlanOut"] | null;
+            /** Radar Candidate Id */
+            radar_candidate_id: number | null;
+            report: components["schemas"]["MissionReportOut"] | null;
+            /** Scope Label */
+            scope_label: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "planning" | "awaiting_approval" | "running" | "completed" | "failed" | "cancelled" | "budget_exceeded";
+            /** Steps */
+            steps: components["schemas"]["MissionStepOut"][];
+            /** Steps Used */
+            steps_used: number;
+            /** Stop Requested */
+            stop_requested: boolean;
+            /** Title */
+            title: string;
+        };
+        /** MissionFindingOut */
+        MissionFindingOut: {
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /** Evidence Quote */
+            evidence_quote: string;
+            /** Id */
+            id: number;
+            /** Impact */
+            impact: number | null;
+            /** Is Claim */
+            is_claim: boolean;
+            /** Reviewed By */
+            reviewed_by: string | null;
+            /** Signal Id */
+            signal_id: number | null;
+            source: components["schemas"]["MissionSourceOut"];
+            /** Statement */
+            statement: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "approved" | "rejected";
+            /** Sub Question No */
+            sub_question_no: number;
+            /**
+             * Verification
+             * @enum {string}
+             */
+            verification: "supported" | "partial";
+            /**
+             * Verification Label
+             * @description "Verified" or "Partly verified"
+             */
+            verification_label: string;
+            /** Verification Notes */
+            verification_notes: string | null;
+        };
+        /** MissionListOut */
+        MissionListOut: {
+            /** Items */
+            items: components["schemas"]["MissionOut"][];
+        };
+        /** MissionOut */
+        MissionOut: {
+            /** Brief */
+            brief: string;
+            /** Budget Usd */
+            budget_usd: number;
+            /** Company Ids */
+            company_ids: number[];
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Days */
+            days: number | null;
+            /** Error */
+            error: string | null;
+            /** Findings Approved */
+            findings_approved: number;
+            /** Findings New */
+            findings_new: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: number;
+            /** Max Steps */
+            max_steps: number;
+            /**
+             * Origin Kind
+             * @enum {string}
+             */
+            origin_kind: "manual" | "signal" | "radar_candidate" | "capability" | "ask_turn";
+            /** Origin Label */
+            origin_label: string;
+            /**
+             * Origin Link
+             * @description App route of the origin, e.g. /radar/12
+             */
+            origin_link: string | null;
+            /** Origin Ref */
+            origin_ref: {
+                [key: string]: number;
+            };
+            /** Scope Label */
+            scope_label: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "planning" | "awaiting_approval" | "running" | "completed" | "failed" | "cancelled" | "budget_exceeded";
+            /** Steps Used */
+            steps_used: number;
+            /** Title */
+            title: string;
+        };
+        /** MissionPlanIn */
+        MissionPlanIn: {
+            /**
+             * Analyst
+             * @default
+             */
+            analyst: string;
+            /** Sub Questions */
+            sub_questions?: components["schemas"]["SubQuestionIn"][] | null;
+        };
+        /** MissionPlanOut */
+        MissionPlanOut: {
+            /** Approved */
+            approved: boolean;
+            /** Approved By */
+            approved_by?: string | null;
+            /**
+             * Edited By Analyst
+             * @default false
+             */
+            edited_by_analyst: boolean;
+            /** Sub Questions */
+            sub_questions: components["schemas"]["SubQuestionOut"][];
+        };
+        /** MissionPrefillOut */
+        MissionPrefillOut: {
+            /** Brief */
+            brief: string;
+            /** Budget Usd */
+            budget_usd: number;
+            /** Company Ids */
+            company_ids: number[];
+            /** Days */
+            days: number | null;
+            /** Max Budget Usd */
+            max_budget_usd: number;
+            /** Max Max Steps */
+            max_max_steps: number;
+            /** Max Steps */
+            max_steps: number;
+            /**
+             * Origin Kind
+             * @enum {string}
+             */
+            origin_kind: "manual" | "signal" | "radar_candidate" | "capability" | "ask_turn";
+            /** Origin Label */
+            origin_label: string;
+            /** Origin Ref */
+            origin_ref: {
+                [key: string]: number;
+            };
+        };
+        /** MissionReportOut */
+        MissionReportOut: {
+            /**
+             * Generated
+             * @enum {string}
+             */
+            generated: "llm" | "fallback";
+            /** Open Questions */
+            open_questions: string[];
+            /** Stopped Reason */
+            stopped_reason: string | null;
+            /** Summary */
+            summary: components["schemas"]["MissionReportPointOut"][];
+        };
+        /** MissionReportPointOut */
+        MissionReportPointOut: {
+            /** Finding Ids */
+            finding_ids: number[];
+            /** Text */
+            text: string;
+        };
+        /** MissionScopeIn */
+        MissionScopeIn: {
+            /** Company Ids */
+            company_ids?: number[];
+            /** Days */
+            days?: number | null;
+        };
+        /**
+         * MissionSourceOut
+         * @description A source the agent read: link and title only (the fetched text is never returned).
+         */
+        MissionSourceOut: {
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "kb" | "web";
+            /** Signal Id */
+            signal_id: number | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** MissionStepOut */
+        MissionStepOut: {
+            /** Cost Usd */
+            cost_usd: number;
+            /**
+             * Counted
+             * @description Counts toward max_steps (search / read / extract / verify)
+             */
+            counted: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Kind */
+            kind: string;
+            /** Step No */
+            step_no: number;
+            /** Summary */
+            summary: string;
         };
         /** NavCounts */
         NavCounts: {
@@ -1351,6 +1836,13 @@ export interface components {
             /** Stars */
             stars?: number | null;
         };
+        /** RadarRefreshOut */
+        RadarRefreshOut: {
+            after: components["schemas"]["RadarSnapshotOut"];
+            before: components["schemas"]["RadarSnapshotOut"];
+            /** Status */
+            status: string;
+        };
         /** RadarScoreComponent */
         RadarScoreComponent: {
             /**
@@ -1372,6 +1864,19 @@ export interface components {
             };
             /** Weight */
             weight: number;
+        };
+        /** RadarSnapshotOut */
+        RadarSnapshotOut: {
+            /** Mentions */
+            mentions: number;
+            /** Profile Status */
+            profile_status: string;
+            /** Relation */
+            relation: string | null;
+            /** Score */
+            score: number | null;
+            /** Statements */
+            statements: string[];
         };
         /** RadarStatementOut */
         RadarStatementOut: {
@@ -1784,6 +2289,33 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** SubQuestionIn */
+        SubQuestionIn: {
+            /** Question */
+            question: string;
+            /**
+             * Search Query
+             * @default
+             */
+            search_query: string;
+            /**
+             * Why
+             * @default
+             */
+            why: string;
+        };
+        /** SubQuestionOut */
+        SubQuestionOut: {
+            /** Question */
+            question: string;
+            /** Search Query */
+            search_query: string;
+            /**
+             * Why
+             * @default
+             */
+            why: string;
+        };
         /** TimelineItem */
         TimelineItem: {
             category: components["schemas"]["SignalCategory"] | null;
@@ -2153,6 +2685,303 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScorecardOut"];
+                };
+            };
+        };
+    };
+    list_missions_api_missions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_mission_api_missions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_approve_api_missions_findings__finding_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingReviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_reject_api_missions_findings__finding_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingReviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_prefill_api_missions_prefill_get: {
+        parameters: {
+            query?: {
+                signal?: number | null;
+                candidate?: number | null;
+                entity?: number | null;
+                capability?: number | null;
+                turn?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionPrefillOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mission_api_missions__mission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_plan_api_missions__mission_id__plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionPlanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_refresh_radar_api_missions__mission_id__refresh_radar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarRefreshOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_stop_api_missions__mission_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -701,3 +701,177 @@ class ScorecardWeek(ScorecardStats):
 class ScorecardOut(BaseModel):
     overall: ScorecardStats
     weeks: list[ScorecardWeek] = Field(description="Newest week first")
+
+
+# ---------- Research missions (S15) ----------
+
+MissionStatusOut = Literal[
+    "queued", "planning", "awaiting_approval", "running", "completed", "failed", "cancelled",
+    "budget_exceeded",
+]  # fmt: skip
+MissionOriginOut = Literal["manual", "signal", "radar_candidate", "capability", "ask_turn"]
+
+
+class MissionScopeIn(BaseModel):
+    company_ids: Annotated[list[int], Field(max_length=5)] = Field(default_factory=list)
+    days: Annotated[int, Field(ge=1, le=3650)] | None = None
+
+
+class MissionCreateIn(BaseModel):
+    brief: Annotated[str, Field(min_length=10, max_length=4000)]
+    scope: MissionScopeIn = Field(default_factory=MissionScopeIn)
+    budget_usd: Annotated[float, Field(gt=0, le=20)] | None = None
+    max_steps: Annotated[int, Field(ge=1, le=200)] | None = None
+    origin_kind: MissionOriginOut = "manual"
+    origin_ref: dict[str, int] = Field(default_factory=dict)
+    analyst: Annotated[str, Field(max_length=100)] = ""
+
+
+class MissionPrefillOut(BaseModel):
+    brief: str
+    origin_kind: MissionOriginOut
+    origin_ref: dict[str, int]
+    origin_label: str
+    company_ids: list[int]
+    days: int | None
+    budget_usd: float
+    max_steps: int
+    max_budget_usd: float
+    max_max_steps: int
+
+
+class SubQuestionOut(BaseModel):
+    question: str
+    search_query: str
+    why: str = ""
+
+
+class SubQuestionIn(BaseModel):
+    question: Annotated[str, Field(min_length=5, max_length=300)]
+    search_query: Annotated[str, Field(max_length=200)] = ""
+    why: Annotated[str, Field(max_length=300)] = ""
+
+
+class MissionPlanOut(BaseModel):
+    sub_questions: list[SubQuestionOut]
+    approved: bool
+    approved_by: str | None = None
+    edited_by_analyst: bool = False
+
+
+class MissionPlanIn(BaseModel):
+    sub_questions: Annotated[list[SubQuestionIn], Field(min_length=1, max_length=6)] | None = None
+    analyst: Annotated[str, Field(max_length=100)] = ""
+
+
+class MissionStepOut(BaseModel):
+    step_no: int
+    kind: str
+    summary: str
+    cost_usd: float
+    created_at: datetime
+    counted: bool = Field(description="Counts toward max_steps (search / read / extract / verify)")
+
+
+class MissionSourceOut(BaseModel):
+    """A source the agent read: link and title only (the fetched text is never returned)."""
+
+    id: int
+    kind: Literal["kb", "web"]
+    url: str
+    title: str
+    signal_id: int | None
+
+
+class MissionFindingOut(BaseModel):
+    id: int
+    sub_question_no: int
+    statement: str
+    evidence_quote: str
+    source: MissionSourceOut
+    confidence: Literal["high", "medium", "low"]
+    verification: Literal["supported", "partial"]
+    verification_label: str = Field(description='"Verified" or "Partly verified"')
+    verification_notes: str | None
+    is_claim: bool
+    impact: int | None
+    status: Literal["new", "approved", "rejected"]
+    signal_id: int | None
+    reviewed_by: str | None
+
+
+class MissionReportPointOut(BaseModel):
+    text: str
+    finding_ids: list[int]
+
+
+class MissionReportOut(BaseModel):
+    summary: list[MissionReportPointOut]
+    open_questions: list[str]
+    stopped_reason: str | None
+    generated: Literal["llm", "fallback"]
+
+
+class MissionOut(BaseModel):
+    id: int
+    title: str
+    brief: str
+    status: MissionStatusOut
+    origin_kind: MissionOriginOut
+    origin_ref: dict[str, int]
+    origin_label: str
+    origin_link: str | None = Field(description="App route of the origin, e.g. /radar/12")
+    scope_label: str
+    company_ids: list[int]
+    days: int | None
+    budget_usd: float
+    cost_usd: float
+    max_steps: int
+    steps_used: int
+    findings_new: int
+    findings_approved: int
+    created_by: str
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    error: str | None
+
+
+class MissionListOut(BaseModel):
+    items: list[MissionOut]
+
+
+class MissionDetailOut(MissionOut):
+    plan: MissionPlanOut | None
+    steps: list[MissionStepOut]
+    findings: list[MissionFindingOut]
+    dropped_count: int
+    dropped: list[str] = Field(description="Why findings were dropped (short reasons)")
+    report: MissionReportOut | None
+    radar_candidate_id: int | None
+    stop_requested: bool
+
+
+class FindingReviewIn(BaseModel):
+    analyst: Annotated[str, Field(max_length=100)] = ""
+    reason: ReasonCode | None = None
+    comment: Annotated[str, Field(max_length=500)] | None = None
+
+
+class FindingReviewOut(BaseModel):
+    finding: MissionFindingOut
+    signal_id: int | None
+
+
+class RadarSnapshotOut(BaseModel):
+    profile_status: str
+    relation: str | None
+    score: float | None
+    mentions: int
+    statements: list[str]
+
+
+class RadarRefreshOut(BaseModel):
+    status: str
+    before: RadarSnapshotOut
+    after: RadarSnapshotOut

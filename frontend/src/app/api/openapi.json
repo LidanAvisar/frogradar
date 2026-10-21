@@ -1357,6 +1357,64 @@
         "title": "FieldRates",
         "type": "object"
       },
+      "FindingReviewIn": {
+        "properties": {
+          "analyst": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Analyst",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "FindingReviewIn",
+        "type": "object"
+      },
+      "FindingReviewOut": {
+        "properties": {
+          "finding": {
+            "$ref": "#/components/schemas/MissionFindingOut"
+          },
+          "signal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Id"
+          }
+        },
+        "required": [
+          "finding",
+          "signal_id"
+        ],
+        "title": "FindingReviewOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1529,6 +1587,961 @@
           "changed_recently"
         ],
         "title": "MatrixRow",
+        "type": "object"
+      },
+      "MissionCreateIn": {
+        "properties": {
+          "analyst": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Analyst",
+            "type": "string"
+          },
+          "brief": {
+            "maxLength": 4000,
+            "minLength": 10,
+            "title": "Brief",
+            "type": "string"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 20.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "max_steps": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Steps"
+          },
+          "origin_kind": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "signal",
+              "radar_candidate",
+              "capability",
+              "ask_turn"
+            ],
+            "title": "Origin Kind",
+            "type": "string"
+          },
+          "origin_ref": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Origin Ref",
+            "type": "object"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/MissionScopeIn"
+          }
+        },
+        "required": [
+          "brief"
+        ],
+        "title": "MissionCreateIn",
+        "type": "object"
+      },
+      "MissionDetailOut": {
+        "properties": {
+          "brief": {
+            "title": "Brief",
+            "type": "string"
+          },
+          "budget_usd": {
+            "title": "Budget Usd",
+            "type": "number"
+          },
+          "company_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Company Ids",
+            "type": "array"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "dropped": {
+            "description": "Why findings were dropped (short reasons)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Dropped",
+            "type": "array"
+          },
+          "dropped_count": {
+            "title": "Dropped Count",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/MissionFindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "findings_approved": {
+            "title": "Findings Approved",
+            "type": "integer"
+          },
+          "findings_new": {
+            "title": "Findings New",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "max_steps": {
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "origin_kind": {
+            "enum": [
+              "manual",
+              "signal",
+              "radar_candidate",
+              "capability",
+              "ask_turn"
+            ],
+            "title": "Origin Kind",
+            "type": "string"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "origin_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "App route of the origin, e.g. /radar/12",
+            "title": "Origin Link"
+          },
+          "origin_ref": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Origin Ref",
+            "type": "object"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MissionPlanOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "radar_candidate_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radar Candidate Id"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MissionReportOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope_label": {
+            "title": "Scope Label",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "planning",
+              "awaiting_approval",
+              "running",
+              "completed",
+              "failed",
+              "cancelled",
+              "budget_exceeded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/MissionStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "steps_used": {
+            "title": "Steps Used",
+            "type": "integer"
+          },
+          "stop_requested": {
+            "title": "Stop Requested",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "brief",
+          "status",
+          "origin_kind",
+          "origin_ref",
+          "origin_label",
+          "origin_link",
+          "scope_label",
+          "company_ids",
+          "days",
+          "budget_usd",
+          "cost_usd",
+          "max_steps",
+          "steps_used",
+          "findings_new",
+          "findings_approved",
+          "created_by",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "error",
+          "plan",
+          "steps",
+          "findings",
+          "dropped_count",
+          "dropped",
+          "report",
+          "radar_candidate_id",
+          "stop_requested"
+        ],
+        "title": "MissionDetailOut",
+        "type": "object"
+      },
+      "MissionFindingOut": {
+        "properties": {
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "evidence_quote": {
+            "title": "Evidence Quote",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "is_claim": {
+            "title": "Is Claim",
+            "type": "boolean"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "signal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MissionSourceOut"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "sub_question_no": {
+            "title": "Sub Question No",
+            "type": "integer"
+          },
+          "verification": {
+            "enum": [
+              "supported",
+              "partial"
+            ],
+            "title": "Verification",
+            "type": "string"
+          },
+          "verification_label": {
+            "description": "\"Verified\" or \"Partly verified\"",
+            "title": "Verification Label",
+            "type": "string"
+          },
+          "verification_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Notes"
+          }
+        },
+        "required": [
+          "id",
+          "sub_question_no",
+          "statement",
+          "evidence_quote",
+          "source",
+          "confidence",
+          "verification",
+          "verification_label",
+          "verification_notes",
+          "is_claim",
+          "impact",
+          "status",
+          "signal_id",
+          "reviewed_by"
+        ],
+        "title": "MissionFindingOut",
+        "type": "object"
+      },
+      "MissionListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MissionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MissionListOut",
+        "type": "object"
+      },
+      "MissionOut": {
+        "properties": {
+          "brief": {
+            "title": "Brief",
+            "type": "string"
+          },
+          "budget_usd": {
+            "title": "Budget Usd",
+            "type": "number"
+          },
+          "company_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Company Ids",
+            "type": "array"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "findings_approved": {
+            "title": "Findings Approved",
+            "type": "integer"
+          },
+          "findings_new": {
+            "title": "Findings New",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "max_steps": {
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "origin_kind": {
+            "enum": [
+              "manual",
+              "signal",
+              "radar_candidate",
+              "capability",
+              "ask_turn"
+            ],
+            "title": "Origin Kind",
+            "type": "string"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "origin_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "App route of the origin, e.g. /radar/12",
+            "title": "Origin Link"
+          },
+          "origin_ref": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Origin Ref",
+            "type": "object"
+          },
+          "scope_label": {
+            "title": "Scope Label",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "planning",
+              "awaiting_approval",
+              "running",
+              "completed",
+              "failed",
+              "cancelled",
+              "budget_exceeded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "steps_used": {
+            "title": "Steps Used",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "brief",
+          "status",
+          "origin_kind",
+          "origin_ref",
+          "origin_label",
+          "origin_link",
+          "scope_label",
+          "company_ids",
+          "days",
+          "budget_usd",
+          "cost_usd",
+          "max_steps",
+          "steps_used",
+          "findings_new",
+          "findings_approved",
+          "created_by",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "MissionOut",
+        "type": "object"
+      },
+      "MissionPlanIn": {
+        "properties": {
+          "analyst": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Analyst",
+            "type": "string"
+          },
+          "sub_questions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SubQuestionIn"
+                },
+                "maxItems": 6,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Questions"
+          }
+        },
+        "title": "MissionPlanIn",
+        "type": "object"
+      },
+      "MissionPlanOut": {
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "edited_by_analyst": {
+            "default": false,
+            "title": "Edited By Analyst",
+            "type": "boolean"
+          },
+          "sub_questions": {
+            "items": {
+              "$ref": "#/components/schemas/SubQuestionOut"
+            },
+            "title": "Sub Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sub_questions",
+          "approved"
+        ],
+        "title": "MissionPlanOut",
+        "type": "object"
+      },
+      "MissionPrefillOut": {
+        "properties": {
+          "brief": {
+            "title": "Brief",
+            "type": "string"
+          },
+          "budget_usd": {
+            "title": "Budget Usd",
+            "type": "number"
+          },
+          "company_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Company Ids",
+            "type": "array"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "max_budget_usd": {
+            "title": "Max Budget Usd",
+            "type": "number"
+          },
+          "max_max_steps": {
+            "title": "Max Max Steps",
+            "type": "integer"
+          },
+          "max_steps": {
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "origin_kind": {
+            "enum": [
+              "manual",
+              "signal",
+              "radar_candidate",
+              "capability",
+              "ask_turn"
+            ],
+            "title": "Origin Kind",
+            "type": "string"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "origin_ref": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Origin Ref",
+            "type": "object"
+          }
+        },
+        "required": [
+          "brief",
+          "origin_kind",
+          "origin_ref",
+          "origin_label",
+          "company_ids",
+          "days",
+          "budget_usd",
+          "max_steps",
+          "max_budget_usd",
+          "max_max_steps"
+        ],
+        "title": "MissionPrefillOut",
+        "type": "object"
+      },
+      "MissionReportOut": {
+        "properties": {
+          "generated": {
+            "enum": [
+              "llm",
+              "fallback"
+            ],
+            "title": "Generated",
+            "type": "string"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Questions",
+            "type": "array"
+          },
+          "stopped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stopped Reason"
+          },
+          "summary": {
+            "items": {
+              "$ref": "#/components/schemas/MissionReportPointOut"
+            },
+            "title": "Summary",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary",
+          "open_questions",
+          "stopped_reason",
+          "generated"
+        ],
+        "title": "MissionReportOut",
+        "type": "object"
+      },
+      "MissionReportPointOut": {
+        "properties": {
+          "finding_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Finding Ids",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "finding_ids"
+        ],
+        "title": "MissionReportPointOut",
+        "type": "object"
+      },
+      "MissionScopeIn": {
+        "properties": {
+          "company_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 5,
+            "title": "Company Ids",
+            "type": "array"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          }
+        },
+        "title": "MissionScopeIn",
+        "type": "object"
+      },
+      "MissionSourceOut": {
+        "description": "A source the agent read: link and title only (the fetched text is never returned).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "kb",
+              "web"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "signal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "url",
+          "title",
+          "signal_id"
+        ],
+        "title": "MissionSourceOut",
+        "type": "object"
+      },
+      "MissionStepOut": {
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "counted": {
+            "description": "Counts toward max_steps (search / read / extract / verify)",
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "step_no": {
+            "title": "Step No",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_no",
+          "kind",
+          "summary",
+          "cost_usd",
+          "created_at",
+          "counted"
+        ],
+        "title": "MissionStepOut",
         "type": "object"
       },
       "NavCounts": {
@@ -2632,6 +3645,27 @@
         "title": "RadarMetrics",
         "type": "object"
       },
+      "RadarRefreshOut": {
+        "properties": {
+          "after": {
+            "$ref": "#/components/schemas/RadarSnapshotOut"
+          },
+          "before": {
+            "$ref": "#/components/schemas/RadarSnapshotOut"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "before",
+          "after"
+        ],
+        "title": "RadarRefreshOut",
+        "type": "object"
+      },
       "RadarScoreComponent": {
         "properties": {
           "factor": {
@@ -2662,6 +3696,56 @@
           "points"
         ],
         "title": "RadarScoreComponent",
+        "type": "object"
+      },
+      "RadarSnapshotOut": {
+        "properties": {
+          "mentions": {
+            "title": "Mentions",
+            "type": "integer"
+          },
+          "profile_status": {
+            "title": "Profile Status",
+            "type": "string"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "statements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "profile_status",
+          "relation",
+          "score",
+          "mentions",
+          "statements"
+        ],
+        "title": "RadarSnapshotOut",
         "type": "object"
       },
       "RadarStatementOut": {
@@ -3876,6 +4960,56 @@
         "title": "StoryRowOut",
         "type": "object"
       },
+      "SubQuestionIn": {
+        "properties": {
+          "question": {
+            "maxLength": 300,
+            "minLength": 5,
+            "title": "Question",
+            "type": "string"
+          },
+          "search_query": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Search Query",
+            "type": "string"
+          },
+          "why": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "SubQuestionIn",
+        "type": "object"
+      },
+      "SubQuestionOut": {
+        "properties": {
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "search_query": {
+            "title": "Search Query",
+            "type": "string"
+          },
+          "why": {
+            "default": "",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "search_query"
+        ],
+        "title": "SubQuestionOut",
+        "type": "object"
+      },
       "TimelineItem": {
         "properties": {
           "category": {
@@ -4471,6 +5605,485 @@
         "summary": "Scorecard",
         "tags": [
           "review"
+        ]
+      }
+    },
+    "/api/missions": {
+      "get": {
+        "operationId": "list_missions_api_missions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Missions",
+        "tags": [
+          "missions"
+        ]
+      },
+      "post": {
+        "operationId": "post_mission_api_missions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/findings/{finding_id}/approve": {
+      "post": {
+        "operationId": "post_approve_api_missions_findings__finding_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "title": "Finding Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Approve",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/findings/{finding_id}/reject": {
+      "post": {
+        "operationId": "post_reject_api_missions_findings__finding_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "title": "Finding Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Reject",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/prefill": {
+      "get": {
+        "operationId": "get_prefill_api_missions_prefill_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "candidate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Candidate"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capability",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capability"
+            }
+          },
+          {
+            "in": "query",
+            "name": "turn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Turn"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionPrefillOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Prefill",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}": {
+      "get": {
+        "operationId": "get_mission_api_missions__mission_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}/plan": {
+      "post": {
+        "operationId": "post_plan_api_missions__mission_id__plan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionPlanIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Plan",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}/refresh-radar": {
+      "post": {
+        "operationId": "post_refresh_radar_api_missions__mission_id__refresh_radar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarRefreshOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Refresh Radar",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}/stop": {
+      "post": {
+        "operationId": "post_stop_api_missions__mission_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Stop",
+        "tags": [
+          "missions"
         ]
       }
     },
