@@ -469,6 +469,27 @@ class AskSettings(_Strict):
         return self
 
 
+class MissionSettings(_Strict):
+    """Research missions (S15, D71-D73): defaults for new missions and per-step limits."""
+
+    default_budget_usd: Annotated[float, Field(gt=0, le=5)] = 0.30
+    max_budget_usd: Annotated[float, Field(gt=0, le=20)] = 2.0
+    default_max_steps: Annotated[int, Field(ge=1, le=100)] = 12
+    max_max_steps: Annotated[int, Field(ge=1, le=200)] = 40
+    timeout_s: Annotated[int, Field(ge=30, le=7200)] = 600  # wall clock, from research start
+    kb_results: Annotated[int, Field(ge=0, le=10)] = 3  # FrogRadar signals per sub-question
+    web_results: Annotated[int, Field(ge=0, le=10)] = 4  # Tavily results per sub-question
+    pages_per_question: Annotated[int, Field(ge=0, le=5)] = 2  # web pages fetched per sub-question
+    excerpt_chars: Annotated[int, Field(ge=500, le=50000)] = 8000  # stored text per page
+    extract_chars: Annotated[int, Field(ge=500, le=20000)] = 5000  # per source in prompts
+    max_findings_per_question: Annotated[int, Field(ge=1, le=10)] = 4
+    min_page_chars: Annotated[int, Field(ge=0, le=5000)] = 300  # less = login / paywall / JS page
+    # Fetch limits (SSRF guard, D72): per request timeout, body size, redirects.
+    fetch_timeout_s: Annotated[float, Field(gt=0, le=60)] = 15.0
+    fetch_max_bytes: Annotated[int, Field(ge=10_000, le=20_000_000)] = 3_000_000
+    fetch_max_redirects: Annotated[int, Field(ge=0, le=10)] = 3
+
+
 class PipelineFile(_Strict):
     embedding: EmbedSettings = Field(default_factory=EmbedSettings)
     dedup: DedupSettings = Field(default_factory=DedupSettings)
@@ -481,6 +502,7 @@ class PipelineFile(_Strict):
     page_diff: PageDiffSettings = Field(default_factory=PageDiffSettings)
     synthesis: SynthesisSettings = Field(default_factory=SynthesisSettings)
     ask: AskSettings = Field(default_factory=AskSettings)
+    missions: MissionSettings = Field(default_factory=MissionSettings)
 
 
 # ---------- discovery.yaml (Competitor Radar) ----------

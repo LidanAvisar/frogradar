@@ -116,3 +116,22 @@ ask:
   max_per_type: {battlecard: 3, radar: 3}
   question_max_chars: 500
   doc_max_chars: 1200
+
+# Research missions (S15): an analyst gives the agent a task; it plans, searches, reads and
+# returns cited, verified findings (app/agents/mission).
+missions:
+  default_budget_usd: 0.30    # hard cap per mission (llm_calls.mission_id, checked before each call)
+  max_budget_usd: 2.0         # the form can't ask for more
+  default_max_steps: 12       # counted: search / read / extract / verify rows (not plan, report)
+  max_max_steps: 40
+  timeout_s: 600              # wall clock from the start of research
+  kb_results: 3               # FrogRadar signals per sub-question (Ask retrieval)
+  web_results: 4              # Tavily results per sub-question
+  pages_per_question: 2       # web pages fetched per sub-question
+  excerpt_chars: 8000         # page text stored per source (analysis only, never returned)
+  extract_chars: 5000         # per source in the extract / verify prompts
+  max_findings_per_question: 4
+  min_page_chars: 300         # shorter extracted text = login wall / paywall / JS page: skipped
+  fetch_timeout_s: 15         # SSRF guard limits (D72)
+  fetch_max_bytes: 3000000
+  fetch_max_redirects: 3
