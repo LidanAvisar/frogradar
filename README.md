@@ -36,6 +36,8 @@ curl localhost:8000/health
 | `make link` | Rule-based entity linking from names/aliases in `competitors.yaml` (no LLM calls) |
 | `make dedup-report` | Calibration report: most similar pairs, similarity distribution, entity link counts |
 | `make pipeline` | The daily pipeline (LangGraph), paid: `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
+| `make brief` | The daily brief only (1 synthesis + 1 verify call, once per UTC day; `ARGS="--force brief"`) |
+| `make battlecards` | Battlecards for due competitors (1 synthesis + 1 verify call each; `ARGS="--force battlecards"`) |
 | `make pipeline-report` | Quality report of the latest run (`RUN=<id>`): triage, distributions, cost per model, samples |
 | `make wayback-backfill` | Baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today, diffed in date order (no LLM calls; `SOURCE=` for one) |
 | `make scheduler-up` / `make scheduler-down` | Opt in / out of the daily paid run (`scheduler` compose profile, `DAILY_RUN_CRON`, UTC) |
@@ -57,9 +59,11 @@ All "what to track" settings are YAML, validated by Pydantic on load (`backend/a
   ambiguous names), segments, products, sources
 - `sources.yaml` – industry sources not tied to one competitor
 - `capabilities.yaml` – capability taxonomy by segment (artifact management, supply-chain security, MLOps, CI/CD, distribution)
+- `jfrog_capabilities.yaml` – JFrog's own level per capability for the battlecard matrix, each with a note and the
+  public JFrog doc it comes from; `unknown` where no doc clearly states it (never from the LLM)
 - `llm_routing.yaml` – model per task (bulk / synthesis / verify), embedding model + dimension, fallback pricing
 - `pipeline.yaml` – embedding input, dedup window and thresholds, LLM parallelism, text limits per stage,
-  confidence weights / caps / bands
+  confidence weights / caps / bands, daily brief window, battlecard refresh rules
 
 Adding a competitor = add a block to `competitors.yaml`, then `make seed`.
 
@@ -365,8 +369,9 @@ side by side.
 ![Morning Brief at 1440 px](docs/screenshots/brief-1440.png)
 
 The first screen (`/`): the top 5 developments of the last 7 days, ranked by impact × confidence. Each card starts
-collapsed: impact, company, title, confidence and the takeaway (first sentence of "Why JFrog cares", with JFrog
-product names highlighted). Expanding a card (chevron, header row, or "Expand all") shows the summary, the full
+collapsed: impact, company, title, confidence and the takeaway (one sentence written at enrichment, naming the
+affected JFrog product; highlighted). The headline and overview at the top are the daily brief, each sentence
+followed by numbered links to the signals it relies on. Expanding a card (chevron, header row, or "Expand all") shows the summary, the full
 "Why JFrog cares", the verbatim evidence quote, the source link and actions; expanded cards are remembered for the
 session only. The right rail shows the pricing watch (latest change per watched pricing page, highest impact
 first, compared with a Wayback Machine capture), what else was published since yesterday (without repeating the
@@ -383,6 +388,7 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `GET /api/signals/{id}` | one signal |
 | `GET /api/entities` | tracked companies with signal counts |
 | `GET /api/nav` | sidebar counts |
+| `GET /api/entities/{slug}/battlecard` | latest battlecard, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
 | `GET /api/self` | JFrog and its product names (from `competitors.yaml`) for highlighting |
 
 Rules: only in-scope, canonical, enriched signals are returned; `raw_text` is never returned; a quote that was not
@@ -392,6 +398,27 @@ Frontend (`frontend/`, Angular 18): design tokens in `src/styles/tokens.css` (no
 `npm run lint:tokens`), shared components in `src/app/shared/`, API types generated from OpenAPI
 (`make api-types`). Run it with `make up` and `cd frontend && npm start` (proxy to :8000), then open
 http://localhost:4200. Frontend tests: `npm run test:ci` (headless Chrome).
+
+## Synthesis: daily brief and battlecards (`backend/app/pipeline/synthesis/`)
+
+Two pipeline nodes after `score`, on the synthesis model. The pattern: **the LLM proposes, code verifies**.
+
+- **Daily brief** (once per UTC day): the top 12 signals of the last 7 days → a headline (≤ 90 chars) and a 2-3
+  sentence overview. Stored as a `reports` row (`daily_brief`).
+- **Battlecards** (per competitor with signals *about* it; weekly, or when a new impact ≥ 4 signal arrives):
+  positioning, strengths, weaknesses, opportunities and blind spots for JFrog, plus capability levels. Stored as a
+  `reports` row (`battlecard`); accepted levels go to `capability_matrix` with their evidence signal.
+- **Checks, in order:** (1) every sentence / item cites signal ids; one id that is unknown, not usable, outside the
+  input or about another company drops the whole item; (2) a capability level needs an evidence signal on which the
+  competitor is primary; (3) one call to the verify model (another family) judges every remaining item against the
+  summaries of the signals it cites – only `supported` is kept. Dropped items stay in the report with the reason
+  and the verifier's note; they are never shown. The API re-checks at read time: an item is hidden once a cited
+  signal stops being usable.
+- **Page diffs** also get a `display_title` and proposed `price_changes`; a change is shown only if the old price
+  is in a `[before]` line and the new one in an `[after]` line of the same change, with the same billing unit;
+  the label comes from the page's section path.
+
+Run 33 (S10): 80 calls, $0.216 – re-enrichment and re-verification of 32 signals, one brief, two battlecards.
 
 ## LLM gateway (`backend/app/core/llm/`)
 
@@ -500,6 +527,9 @@ Each line: what we chose – why – what we rejected.
 - **D47 Read API: one "visible" filter** – a signal is shown only if in scope, canonical and enriched; one `SignalOut` DTO without raw_text/meta/embedding (tested on every endpoint and in the OpenAPI schema); unverified quotes flagged and hidden in the UI; brief ranks verified signals by impact × confidence; "since yesterday" goes by publish date – rejected per-endpoint field filtering and fetched_at for "new".
 - **D48 Deterministic price pairs** – the pricing watch pairs `[before]`/`[after]` price lines from the stored diff only when unambiguous (same or uniquely matching section label, one price per line); otherwise it shows the summary and verified quote – rejected an LLM extraction step and fuzzy matching.
 - **D49 Design tokens + CDK** – every color/type/spacing value is a CSS custom property in `tokens.css` (lint fails on stray colors); small standalone components; Angular Material only where it saves work, themed with the tokens – rejected restyling Material defaults and Tailwind.
+- **D54 Battlecards + capability matrix** – one synthesis call per competitor with signals about it, weekly or on a new impact ≥ 4 signal; levels need a primary evidence signal and pass the verify model; JFrog's own levels from config with a doc link per level (unknown where no doc) – rejected LLM-written JFrog levels and levels from the model's general knowledge.
+- **D53 Synthesis with code-checked citations + a second-model check** – one invalid id drops the whole sentence; the verify model (other family) keeps only `supported` items; one brief per UTC day – rejected keeping the valid ids of a partly invalid citation, and trusting citation ids without checking the claim.
+- **D52 Takeaway, display title, verified price changes** – one-sentence takeaway (≤ 160 hard) from enrichment; diffs get a headline and model-proposed prices that code accepts only when both strings are in the right side of the same change, with the same billing unit – rejected overwriting the collected title (part of the content hash) and showing unchecked model prices.
 - **D51 Takeaway-first Brief cards** – cards collapsed by default (header + first sentence of "why"), expanded state in memory for the session; JFrog product names highlighted from config through a text-segment pipe (no innerHTML), bare names like "Advanced Security" skipped after another vendor's name; since yesterday doesn't repeat the Top 5 – rejected a hard-coded product list and highlighting every bare name.
 - **D50 Generated API types** – `make api-types` turns FastAPI's OpenAPI into TypeScript types (committed; a test fails when they are stale) – rejected hand-written interfaces.
 
