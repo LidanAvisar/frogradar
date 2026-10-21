@@ -368,23 +368,26 @@ side by side.
 
 ![Morning Brief at 1440 px](docs/screenshots/brief-1440.png)
 
-The first screen (`/`): the top 5 developments of the last 7 days, ranked by impact × confidence. Each card starts
-collapsed: impact, company, title, confidence and the takeaway (one sentence written at enrichment, naming the
-affected JFrog product; highlighted). The headline at the top is the daily brief's; below it "What matters today" lists up to 3 points,
-each with the company, the JFrog products it names ("Affects …") and numbered links to the signals it relies on
-(long sentences are clamped to two lines). Expanding a card (chevron, header row, or "Expand all") shows the summary, the full
-"Why JFrog cares", the verbatim evidence quote, the source link and actions; expanded cards are remembered for the
-session only. The right rail shows the pricing watch (latest change per watched pricing page, highest impact
-first, compared with a Wayback Machine capture), what else was published since yesterday (without repeating the
-Top 5), how many items were filtered as not relevant, and the last pipeline run. "Executive view" turns the list
-into rank, title and takeaway only, remembered per browser. At phone width the sidebar becomes a top bar with a
-Menu button and the rail drops below the cards ([390 px screenshot](docs/screenshots/brief-390.png)).
+The first screen (`/`) tells one story once:
+- **Stat tiles:** new signals since yesterday, how many are high impact (4-5), price changes in the last 7 days;
+  each opens the Signals list with that filter.
+- **Top story today:** a plain-language title, then *What happened*, *Why it matters* (for JFrog) and a
+  *Suggested move* for a JFrog team, each with numbered links to its sources, plus company, affected JFrog
+  product and confidence. It comes from the daily brief; without one (or when its sources stop checking out) the
+  top-ranked signal is shown instead (title, summary, takeaway, no suggested move).
+- **Other developments:** the next 4 ranked signals (impact × confidence), without the top story's signals, as
+  collapsible cards (takeaway first; expand for summary, "Why JFrog cares", evidence and actions).
+- **Right rail:** pricing watch (old and new price on aligned lines), what else was published since yesterday,
+  filtered count, last pipeline run.
+
+"Executive view" shows only the tiles and the top story, remembered per browser. At phone width the sidebar becomes
+a top bar with a Menu button and the rail drops below the cards ([390 px screenshot](docs/screenshots/brief-390.png)).
 
 Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/brief?days=7&limit=5` | top signals, since yesterday, filtered count, pricing watch, last run, headline |
+| `GET /api/brief?days=7&limit=4` | stats, top story, other developments, since yesterday, filtered count, pricing watch, last run |
 | `GET /api/signals` | filters `entity` (slug, a company includes its products), `category`, `min_impact`, `relevant`, `since`, `until`, `q` (full text), `page`, `page_size` |
 | `GET /api/signals/{id}` | one signal |
 | `GET /api/entities` | tracked companies with signal counts |
@@ -404,8 +407,9 @@ http://localhost:4200. Frontend tests: `npm run test:ci` (headless Chrome).
 
 Two pipeline nodes after `score`, on the synthesis model. The pattern: **the LLM proposes, code verifies**.
 
-- **Daily brief** (once per UTC day): the top 12 signals of the last 7 days → a headline (≤ 90 chars) and 3 points
-  of at most 110 characters for "What matters today" (`daily_brief.v2`). Stored as a `reports` row (`daily_brief`).
+- **Daily brief** (once per UTC day): the top 12 signals of the last 7 days → one top story: a plain title
+  (≤ 90 chars, no claims about intent), what happened, why it matters for JFrog and a suggested move
+  (`daily_brief.v3`). Title, what happened and why are required; a suggested move that fails a check is left out. Stored as a `reports` row (`daily_brief`).
 - **Battlecards** (per competitor with signals *about* it; weekly, or when a new impact ≥ 4 signal arrives):
   positioning, strengths, weaknesses, opportunities and blind spots for JFrog, plus capability levels. Stored as a
   `reports` row (`battlecard`); accepted levels go to `capability_matrix` with their evidence signal.
@@ -534,6 +538,7 @@ Each line: what we chose – why – what we rejected.
 - **D47 Read API: one "visible" filter** – a signal is shown only if in scope, canonical and enriched; one `SignalOut` DTO without raw_text/meta/embedding (tested on every endpoint and in the OpenAPI schema); unverified quotes flagged and hidden in the UI; brief ranks verified signals by impact × confidence; "since yesterday" goes by publish date – rejected per-endpoint field filtering and fetched_at for "new".
 - **D48 Deterministic price pairs** – the pricing watch pairs `[before]`/`[after]` price lines from the stored diff only when unambiguous (same or uniquely matching section label, one price per line); otherwise it shows the summary and verified quote – rejected an LLM extraction step and fuzzy matching.
 - **D49 Design tokens + CDK** – every color/type/spacing value is a CSS custom property in `tokens.css` (lint fails on stray colors); small standalone components; Angular Material only where it saves work, themed with the tokens – rejected restyling Material defaults and Tailwind.
+- **D56 One top story on the Brief** – the home screen led with a headline, 3 points and a Top 5 that told the same story three times; now stat tiles, one top story (what happened / why it matters / suggested move, every row cited and verified) and other developments without the story's signals – rejected keeping the points under the headline.
 - **D55 Discontinued products** – `discontinued: {end_of_life, source}` in `competitors.yaml` (JFrog Pipelines, EOL 2026-05-01); prompts list them apart with a never-recommend rule and the UI doesn't highlight them – rejected deleting the entity (old signals link to it) and a full re-enrichment.
 - **D54 Battlecards + capability matrix** – one synthesis call per competitor with signals about it, weekly or on a new impact ≥ 4 signal; levels need a primary evidence signal and pass the verify model; JFrog's own levels from config with a doc link per level (unknown where no doc) – rejected LLM-written JFrog levels and levels from the model's general knowledge.
 - **D53 Synthesis with code-checked citations + a second-model check** – one invalid id drops the whole sentence; the verify model (other family) keeps only `supported` items; one brief per UTC day – rejected keeping the valid ids of a partly invalid citation, and trusting citation ids without checking the claim.
