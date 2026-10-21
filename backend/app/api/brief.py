@@ -4,12 +4,13 @@ from datetime import timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.api.deps import DbSession, Now
 from app.api.prices import price_changes
+from app.api.products import product_matcher
 from app.api.queries import (
     canonical,
     citation_refs,
@@ -35,7 +36,7 @@ from app.api.schemas import (
     SinceYesterdayItem,
 )
 from app.db.enums import FetchMethod, ReportKind, Verification
-from app.db.models import PipelineRun, Report, Signal, Source
+from app.db.models import Entity, PipelineRun, Report, Signal, Source, signal_entities
 from app.pipeline.scope import in_scope
 from app.pipeline.synthesis.inputs import display_title
 
@@ -137,6 +138,7 @@ def _headline(session: DbSession) -> dict[str, Any]:
         if isinstance(s, dict)
     ]
     refs = citation_refs(session, [*headline_ids, *(i for _, ids in sentences for i in ids)])
+    named = product_matcher(session)
 
     def cited(ids: list[int]) -> list[CitationRef] | None:
         return [refs[i] for i in ids] if ids and all(i in refs for i in ids) else None
@@ -146,7 +148,9 @@ def _headline(session: DbSession) -> dict[str, Any]:
     if not (isinstance(headline, str) and headline.strip() and headline_refs):
         headline, headline_refs = None, []
     overview = [
-        CitedSentenceOut(text=text, citations=c)
+        CitedSentenceOut(
+            text=text, citations=c, company=_company(session, ids), affects=named(text)
+        )
         for text, ids in sentences
         if isinstance(text, str) and text.strip() and (c := cited(ids))
     ]
@@ -156,6 +160,31 @@ def _headline(session: DbSession) -> dict[str, Any]:
         "overview": " ".join(o.text for o in overview) or None,
         "overview_sentences": overview,
     }
+
+
+def _company(session: DbSession, ids: list[int]) -> str | None:
+    """Most frequent company among the cited signals' primary entities (a product counts for
+    its company); JFrog itself is skipped. Ties → the first cited."""
+    parent = aliased(Entity)
+    rows = session.execute(
+        select(signal_entities.c.signal_id, func.coalesce(parent.name, Entity.name))
+        .join(Entity, Entity.id == signal_entities.c.entity_id)
+        .outerjoin(parent, parent.id == Entity.parent_id)
+        .where(
+            signal_entities.c.signal_id.in_(ids),
+            signal_entities.c.is_primary,
+            ~Entity.is_self,
+            or_(parent.id.is_(None), ~parent.is_self),
+        )
+    ).all()
+    order = {sid: i for i, sid in enumerate(ids)}
+    counts: dict[str, tuple[int, int]] = {}
+    for sid, name in rows:
+        n, first = counts.get(name, (0, len(ids)))
+        counts[name] = (n + 1, min(first, order.get(sid, len(ids))))
+    if not counts:
+        return None
+    return min(counts, key=lambda k: (-counts[k][0], counts[k][1]))
 
 
 def _ids(value: Any) -> list[int]:

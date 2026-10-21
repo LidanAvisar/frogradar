@@ -1,6 +1,6 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
-from app.db.enums import FetchMethod, ReportKind, RunStatus, RunTrigger, Verification
+from app.db.enums import FetchMethod, Relationship, ReportKind, RunStatus, RunTrigger, Verification
 from app.db.models import PipelineRun, Report
 from tests.api.conftest import NOW
 
@@ -247,3 +247,39 @@ def test_pricing_watch_ordered_by_impact_then_date(client, build):
 
     ids = [i["signal"]["id"] for i in brief(client)["pricing_watch"]]
     assert ids == [high_new.id, high_old.id, low_new.id]
+
+
+def test_overview_sentences_carry_company_and_named_jfrog_products(client, build):
+    jfrog = build.entity("jfrog", "JFrog", relationship=Relationship.SELF, is_self=True)
+    build.entity("jfrog-curation", "JFrog Curation", parent=jfrog)
+    build.entity("jfrog-xray", "JFrog Xray", parent=jfrog, aliases=["Xray"])
+    build.entity("jfrog-advanced-security", "JFrog Advanced Security", parent=jfrog)
+    build.entity(
+        "jfrog-pipelines", "JFrog Pipelines", parent=jfrog, discontinued_on=date(2026, 5, 1)
+    )
+    github = build.entity("github", "GitHub")
+    firewall = build.entity("github-firewall", "GitHub package firewall", parent=github)
+    sonatype = build.entity("sonatype", "Sonatype")
+    a, b, c = build.signal("GH firewall"), build.signal("GH license"), build.signal("Nexus")
+    build.link(a, firewall)
+    build.link(b, github)
+    build.link(c, sonatype)
+    build.link(c, jfrog, primary=True)  # JFrog itself never counts as "the company"
+    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, created_at=NOW, content={
+        "headline": "GitHub moves on gating", "headline_signal_ids": [a.id],
+        "overview_sentences": [
+            {"text": "GitHub challenges Curation and Xray license checks.",
+             "signal_ids": [a.id, b.id]},
+            {"text": "GitHub Advanced Security and JFrog Pipelines users may care.",
+             "signal_ids": [b.id]},
+            {"text": "Sonatype raised prices.", "signal_ids": [c.id]},
+        ],
+    }))  # fmt: skip
+    build.s.flush()
+
+    sentences = brief(client)["overview_sentences"]
+    assert [(s["company"], s["affects"]) for s in sentences] == [
+        ("GitHub", ["JFrog Curation", "JFrog Xray"]),
+        ("GitHub", []),  # another vendor's "Advanced Security"; discontinued product ignored
+        ("Sonatype", []),
+    ]

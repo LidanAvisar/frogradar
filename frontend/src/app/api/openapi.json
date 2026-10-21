@@ -328,12 +328,32 @@
       },
       "CitedSentenceOut": {
         "properties": {
+          "affects": {
+            "description": "JFrog products the sentence names (from config)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Affects",
+            "type": "array"
+          },
           "citations": {
             "items": {
               "$ref": "#/components/schemas/CitationRef"
             },
             "title": "Citations",
             "type": "array"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Company the cited signals are about (primary entity), if one",
+            "title": "Company"
           },
           "text": {
             "title": "Text",

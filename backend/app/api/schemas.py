@@ -146,6 +146,12 @@ class CitationRef(BaseModel):
 class CitedSentenceOut(BaseModel):
     text: str
     citations: list[CitationRef]
+    company: str | None = Field(
+        None, description="Company the cited signals are about (primary entity), if one"
+    )
+    affects: list[str] = Field(
+        default_factory=list, description="JFrog products the sentence names (from config)"
+    )
 
 
 class BriefOut(BaseModel):

@@ -264,8 +264,18 @@ export interface components {
         };
         /** CitedSentenceOut */
         CitedSentenceOut: {
+            /**
+             * Affects
+             * @description JFrog products the sentence names (from config)
+             */
+            affects?: string[];
             /** Citations */
             citations: components["schemas"]["CitationRef"][];
+            /**
+             * Company
+             * @description Company the cited signals are about (primary entity), if one
+             */
+            company?: string | null;
             /** Text */
             text: string;
         };
