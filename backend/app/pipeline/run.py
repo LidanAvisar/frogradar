@@ -1,7 +1,10 @@
 """Run pipeline steps from the command line, one pipeline_runs row per invocation.
 
-    python -m app.pipeline.run embed            # or: dedup, link; several: embed dedup link
+    python -m app.pipeline.run embed            # or: dedup, link, triage, enrich, verify, score
+    python -m app.pipeline.run enrich --force enrich   # redo despite the current prompt version
     python -m app.pipeline.run report           # dedup calibration report (no run row, no LLM)
+
+The full daily pipeline is app.pipeline.graph (make pipeline); this runs single steps.
 
 Each step is `step(session, ctx) -> counts`; counts land in pipeline_runs.counts[step].
 Steps run in order, each in its own transaction; a failing step stops the run.
@@ -24,10 +27,22 @@ from app.db.models import LLMCall, PipelineRun
 from app.pipeline.context import RunContext
 from app.pipeline.dedup import dedup_signals
 from app.pipeline.embed import embed_signals
+from app.pipeline.enrich import enrich_signals
 from app.pipeline.link import link_signals
+from app.pipeline.score import score_signals
+from app.pipeline.triage import triage_signals
+from app.pipeline.verify import verify_signals
 
 Step = Callable[[Session, RunContext], dict[str, Any]]
-STEPS: dict[str, Step] = {"embed": embed_signals, "dedup": dedup_signals, "link": link_signals}
+STEPS: dict[str, Step] = {
+    "embed": embed_signals,
+    "dedup": dedup_signals,
+    "link": link_signals,
+    "triage": triage_signals,
+    "enrich": enrich_signals,
+    "verify": verify_signals,
+    "score": score_signals,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +52,19 @@ def run_steps(
     names: list[str],
     *,
     trigger: RunTrigger = RunTrigger.MANUAL,
-    make_ctx: Callable[[int], RunContext] = RunContext.create,
+    make_ctx: Callable[[int], RunContext] | None = None,
+    force: frozenset[str] = frozenset(),
 ) -> PipelineRun:
     with factory.begin() as s:
         run = PipelineRun(trigger=trigger, counts={"steps": names})
         s.add(run)
         s.flush()
         run_id = run.id
-    ctx = make_ctx(run_id)
+    ctx = (
+        make_ctx(run_id)
+        if make_ctx
+        else RunContext.create(run_id, session_factory=factory, force=force)
+    )
     counts: dict[str, Any] = {"steps": names}
     status, error = RunStatus.SUCCEEDED, None
     with llm_context(run_id=run_id):
@@ -68,6 +88,7 @@ def run_steps(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.pipeline.run")
     parser.add_argument("steps", nargs="+", choices=[*STEPS, "report"])
+    parser.add_argument("--force", default="", help="comma list: triage,enrich,verify")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -83,7 +104,8 @@ def main(argv: list[str] | None = None) -> int:
     if "report" in args.steps:
         parser.error("run `report` on its own")
 
-    run = run_steps(factory, args.steps)
+    force = frozenset(f.strip() for f in args.force.split(",") if f.strip())
+    run = run_steps(factory, args.steps, force=force)
     for name in args.steps:
         if name in run.counts:
             print(f"{name}: {run.counts[name]}")

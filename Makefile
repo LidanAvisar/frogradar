@@ -1,5 +1,5 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
-	embed dedup link dedup-report
+	embed dedup link dedup-report pipeline pipeline-report
 
 up:
 	docker compose up -d --build
@@ -58,3 +58,12 @@ link: migrate
 # Calibration report: most similar pairs, similarity distribution, entity link counts (no LLM).
 dedup-report: migrate
 	cd backend && uv run python -m app.pipeline.run report
+
+# The daily pipeline (LangGraph): collect → embed → dedup → link → triage → enrich → verify → score.
+# Paid (LLM calls). ARGS="--skip collect" / "--force enrich,verify".
+pipeline: migrate
+	cd backend && uv run --env-file ../.env python -m app.pipeline.graph $(ARGS)
+
+# Quality report for the latest pipeline run (RUN=<id> for another). No LLM calls.
+pipeline-report: migrate
+	cd backend && uv run python -m app.pipeline.pipeline_report $(if $(RUN),--run $(RUN))
