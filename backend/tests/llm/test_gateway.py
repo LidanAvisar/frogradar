@@ -129,6 +129,19 @@ def test_gives_up_after_two_validation_retries(make_gateway, fake_litellm, llm_d
     assert _cache_rows(llm_db) == []  # failures are never cached
 
 
+def test_truncated_output_is_not_retried(make_gateway, fake_litellm, llm_db, monkeypatch):
+    """Cut off at max_tokens: retrying with the same limit only burns money."""
+    _schema_support(monkeypatch, True)
+    fake_litellm.queue(('{"answer": "thr', "length"), GOOD)
+
+    with pytest.raises(StructuredOutputError, match="truncated at max_tokens"):
+        make_gateway().complete("bulk", "enrich_signal", MSGS, Answer)
+
+    assert len(fake_litellm.calls) == 1
+    (row,) = _rows(llm_db)
+    assert not row.success and "raise max_tokens" in row.error
+
+
 # ---------- reliability ----------
 
 

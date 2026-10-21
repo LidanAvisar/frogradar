@@ -195,6 +195,15 @@ class LLMGateway:
                 _log(rec)
                 return obj
 
+            if result.finish_reason == "length":
+                # Cut off at max_tokens: a retry with the same limit fails the same way.
+                rec.error = scrub(
+                    f"truncated at max_tokens={route.max_tokens} ({result.tokens_out} tokens "
+                    f"out); raise max_tokens for task '{task}'. {error}"
+                )[:1000]
+                self._write(rec)
+                _log(rec)
+                raise StructuredOutputError(f"{operation}: {rec.error}")
             self._write(rec)
             _log(rec)
             last_error = error or ""

@@ -35,13 +35,20 @@ def llm_db(llm_engine: Engine) -> Iterator[sessionmaker[Session]]:
         conn.execute(text("TRUNCATE llm_calls, llm_cache, missions, pipeline_runs CASCADE"))
 
 
-def make_response(content: str, *, model: str, tokens_in: int = 10, tokens_out: int = 5) -> Any:
+def make_response(
+    content: str,
+    *,
+    model: str,
+    tokens_in: int = 10,
+    tokens_out: int = 5,
+    finish_reason: str = "stop",
+) -> Any:
     return litellm.ModelResponse(
         model=model,
         choices=[
             {
                 "message": {"role": "assistant", "content": content},
-                "finish_reason": "stop",
+                "finish_reason": finish_reason,
                 "index": 0,
             }
         ],
@@ -56,8 +63,8 @@ def make_response(content: str, *, model: str, tokens_in: int = 10, tokens_out: 
 class FakeLiteLLM:
     """Scripted stand-in for litellm.completion / litellm.embedding.
 
-    Each scripted item is a str (completion content), a list of vectors (embedding),
-    or an Exception to raise.
+    Each scripted item is a str (completion content), a (content, finish_reason) tuple,
+    a list of vectors (embedding), or an Exception to raise.
     """
 
     def __init__(self) -> None:
@@ -73,6 +80,9 @@ class FakeLiteLLM:
         item = self.script.pop(0)
         if isinstance(item, Exception):
             raise item
+        if isinstance(item, tuple):
+            content, finish = item
+            return make_response(content, model=kwargs["model"], finish_reason=finish)
         return make_response(item, model=kwargs["model"])
 
     def embedding(self, **kwargs: Any) -> Any:

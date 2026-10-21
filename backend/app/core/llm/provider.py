@@ -47,6 +47,7 @@ class CompletionResult:
     tokens_out: int
     latency_ms: int
     raw: Any  # litellm ModelResponse, for cost calculation
+    finish_reason: str | None = None  # "length" = cut off at max_tokens
 
 
 @dataclass
@@ -151,6 +152,7 @@ class LiteLLMProvider:
             tokens_out=getattr(usage, "completion_tokens", 0) or 0,
             latency_ms=latency_ms,
             raw=resp,
+            finish_reason=getattr(resp.choices[0], "finish_reason", None),
         )
 
     def embed(
