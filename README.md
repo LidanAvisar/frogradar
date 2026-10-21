@@ -56,7 +56,7 @@ curl localhost:8000/health
 All "what to track" settings are YAML, validated by Pydantic on load (`backend/app/core/catalog.py`):
 
 - `competitors.yaml` – companies (incl. JFrog as `self`), relationship, aliases (with optional match rules for
-  ambiguous names), segments, products, sources
+  ambiguous names), segments, products (a product can be marked `discontinued`), sources
 - `sources.yaml` – industry sources not tied to one competitor
 - `capabilities.yaml` – capability taxonomy by segment (artifact management, supply-chain security, MLOps, CI/CD, distribution)
 - `jfrog_capabilities.yaml` – JFrog's own level per capability for the battlecard matrix, each with a note and the
@@ -527,6 +527,7 @@ Each line: what we chose – why – what we rejected.
 - **D47 Read API: one "visible" filter** – a signal is shown only if in scope, canonical and enriched; one `SignalOut` DTO without raw_text/meta/embedding (tested on every endpoint and in the OpenAPI schema); unverified quotes flagged and hidden in the UI; brief ranks verified signals by impact × confidence; "since yesterday" goes by publish date – rejected per-endpoint field filtering and fetched_at for "new".
 - **D48 Deterministic price pairs** – the pricing watch pairs `[before]`/`[after]` price lines from the stored diff only when unambiguous (same or uniquely matching section label, one price per line); otherwise it shows the summary and verified quote – rejected an LLM extraction step and fuzzy matching.
 - **D49 Design tokens + CDK** – every color/type/spacing value is a CSS custom property in `tokens.css` (lint fails on stray colors); small standalone components; Angular Material only where it saves work, themed with the tokens – rejected restyling Material defaults and Tailwind.
+- **D55 Discontinued products** – `discontinued: {end_of_life, source}` in `competitors.yaml` (JFrog Pipelines, EOL 2026-05-01); prompts list them apart with a never-recommend rule and the UI doesn't highlight them – rejected deleting the entity (old signals link to it) and a full re-enrichment.
 - **D54 Battlecards + capability matrix** – one synthesis call per competitor with signals about it, weekly or on a new impact ≥ 4 signal; levels need a primary evidence signal and pass the verify model; JFrog's own levels from config with a doc link per level (unknown where no doc) – rejected LLM-written JFrog levels and levels from the model's general knowledge.
 - **D53 Synthesis with code-checked citations + a second-model check** – one invalid id drops the whole sentence; the verify model (other family) keeps only `supported` items; one brief per UTC day – rejected keeping the valid ids of a partly invalid citation, and trusting citation ids without checking the claim.
 - **D52 Takeaway, display title, verified price changes** – one-sentence takeaway (≤ 160 hard) from enrichment; diffs get a headline and model-proposed prices that code accepts only when both strings are in the right side of the same change, with the same billing unit – rejected overwriting the collected title (part of the content hash) and showing unchecked model prices.
