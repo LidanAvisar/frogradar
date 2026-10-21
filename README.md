@@ -50,7 +50,7 @@ curl localhost:8000/health
 | `make eval` | Eval pass (triage → enrich → verify + verifier thinking A/B) vs silver labels → `eval/results/` (paid for uncached items only; never writes to `signals`) |
 | `make eval-compare A=… B=…` | Headline metrics of two eval runs side by side |
 | `make api-types` | Export the OpenAPI schema and regenerate the frontend's TypeScript types (commit both) |
-| `make screenshots` | Playwright screenshots of the Morning Brief at 1440 / 390 px with the local Google Chrome (API on :8000, `ng serve` on :4200, `FRONTEND_URL` to override) |
+| `make screenshots` | Playwright screenshots of the Brief, Radar list, Radar detail, Battlecard (Sonatype) and Signals (filtered) at 1440 / 390 px with the local Google Chrome (API on :8000, `ng serve` on :4200, `FRONTEND_URL` / `API_URL` to override) |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -394,10 +394,11 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | Endpoint | Returns |
 |---|---|
 | `GET /api/brief?days=7&limit=4` | stats, top story, other developments, since yesterday, filtered count, pricing watch, last run |
-| `GET /api/signals` | filters `entity` (slug, a company includes its products), `category`, `min_impact`, `relevant`, `since`, `until`, `q` (full text), `page`, `page_size` |
+| `GET /api/signals` | filters `entity` (slug, a company includes its products), `category`, `min_impact`, `relevant`, `since`, `until`, `window` (`24h` / `7d` / `30d` / `90d`, server clock), `kind` (`article` / `page_diff`), `include_unsupported` (default false), `q` (full text), `page`, `page_size` |
 | `GET /api/signals/{id}` | one signal |
 | `GET /api/entities` | tracked companies with signal counts |
 | `GET /api/nav` | sidebar counts |
+| `GET /api/battlecards` | tracked competitors for the switcher: those with a card first, then "no card yet" |
 | `GET /api/entities/{slug}/battlecard` | latest battlecard, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
 | `GET /api/self` | JFrog and its product names (from `competitors.yaml`) for highlighting |
 
@@ -408,6 +409,38 @@ Frontend (`frontend/`, Angular 18): design tokens in `src/styles/tokens.css` (no
 `npm run lint:tokens`), shared components in `src/app/shared/`, API types generated from OpenAPI
 (`make api-types`). Run it with `make up` and `cd frontend && npm start` (proxy to :8000), then open
 http://localhost:4200. Frontend tests: `npm run test:ci` (headless Chrome).
+
+## Signals, Battlecard and Radar pages
+
+All three reuse the Brief's components and tokens; every claim links to its source signal.
+
+- **Signals (`/signals`):** search, company, category, minimum impact, date window (24 hours / 7 / 30 / 90 days)
+  and kind (articles / pricing pages). The URL query string holds every filter, so the Brief tiles open it
+  pre-filtered (`?since=24h`, `?since=24h&min_impact=4`, `?kind=page_diff&since=7d`), links can be shared and Back
+  restores the previous view. The window is computed on the server with the Brief's clock, and unsupported
+  summaries are hidden by default as in the Brief stats, so a tile's number equals the list total (tested).
+  ![Signals filtered, 1440 px](docs/screenshots/signals-filtered-1440.png)
+- **Battlecard (`/battlecards/:slug`; `/battlecards` opens the top competitor):** switcher (competitors without a
+  card are marked "no card yet"), relationship and segments, three tiles (positioning, latest move = newest
+  impact 4-5 signal, coverage), the capability matrix (JFrog level from config vs the competitor's level from
+  evidence, each a symbol and a word, evidence link per cell, "Changed recently", unknown cells offer Investigate,
+  scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
+  numbering across the card, and the strategy timeline newest first.
+  ![Sonatype battlecard, 1440 px](docs/screenshots/battlecard-sonatype-1440.png)
+- **Radar (`/radar`, `/radar/:id`):** candidates by emergence score with status / JFrog relation / kind filters
+  (in the URL), "what it is" and "why now" from the verified profile, the relation chip with the JFrog products
+  (marked "partly verified" when the ranking uses a relation statement the verifier found only partly supported –
+  that statement itself is not shown), and the score as a number, a stacked bar (decorative) and the same
+  breakdown as text. Candidates below `radar.ui.lower_relevance_below` (config/discovery.yaml, 35) or with relation
+  "none" are collapsed under "Lower relevance (N)". The detail page shows the cited profile, mentions, metrics, the
+  score explained per component, merges and other names. Watch / Track / Dismiss are optimistic (rolled back on
+  error) and announced in a snackbar; Track and Dismiss open Material dialogs themed with the tokens (full width
+  on phones). Investigate and "Send a research mission" say "Coming soon".
+  ![Radar list, 1440 px](docs/screenshots/radar-1440.png)
+
+Phone screenshots (390 px): [Radar](docs/screenshots/radar-390.png), [Radar detail](docs/screenshots/radar-detail-390.png),
+[Battlecard](docs/screenshots/battlecard-sonatype-390.png), [Signals](docs/screenshots/signals-filtered-390.png);
+desktop [Radar detail](docs/screenshots/radar-detail-1440.png).
 
 ## Synthesis: daily brief and battlecards (`backend/app/pipeline/synthesis/`)
 
@@ -489,10 +522,11 @@ statement citing an id it wasn't given. `verify_profile.v2` (verify model, other
 against the cited signals' text, the same excerpt the writer saw, with JFrog's product list as trusted context.
 Only `supported` statements are kept; if "what it is" fails, the profile is rejected.
 
-**Analyst actions** (`/api/radar`): list by score, detail (cited statements, mentions, merges), `watch`,
+**Analyst actions** (`/api/radar`): list by score (filters `status`, `relation`, `kind`), detail (cited statements, mentions, merges), `watch`,
 `approve` (creates an entity `discovered_by radar`, relationship competitor by default, aliases from merged names,
 and optionally a *disabled* GitHub releases source) and `dismiss` (reason code). Each action writes a `feedback`
-row. The Brief's right rail shows "New on the radar" (top 3, watching badge, score, sources).
+row. The Brief's right rail shows "New on the radar" (top 3, watching badge, score, sources); the Radar page is
+described under "Signals, Battlecard and Radar pages".
 
 **First run (S11, 2026-10-21)**: HN 301 stories (144 relevant), GitHub 96 repos (78 relevant, 12 dropped by the
 noise filter), CNCF 7 additions (1 relevant) → 249 observations → 159 candidates (153 via discovery sources, 5
@@ -640,6 +674,9 @@ Each line: what we chose – why – what we rejected.
 - **D59 Emergence score in code (v2: relevance first)** – relevance to JFrog 0.35 (enrich impact, then the profile's relation), credibility-weighted mentions 0.10 and sources 0.20, velocity 0.10, traction 0.10 with HN points capped, recency 0.15; weights in config, breakdown stored and shown; "none" candidates never teased – rejected v1's segment overlap (full points for 94% of candidates), an LLM "threat score" and raw star counts.
 - **D60 Checked radar profiles** – bulk writer, five cited statements, code citation check, verify model against the cited signals' text (same excerpt) with JFrog's product list as trusted context; relation "none" allowed (v2) – rejected checking against the unverified enrich summaries.
 - **D61 First write endpoints without auth** – watch / approve / dismiss with feedback rows; approve creates an entity and an optional disabled GitHub source; auth is a known limitation – rejected auto-activating sources.
+- **D62 Radar list from the API, threshold in config** – the list returns the profile's statements, the ranking relation with its JFrog products and the verifier's check (supported / partial), plus `lower_relevance_below` from config; relation and kind filters in SQL – rejected a hard-coded threshold in the UI and showing partial statements as fact.
+- **D63 Signals filters match the Brief** – `window` computed on the server clock and unsupported summaries hidden by default, so each Brief tile equals its Signals total; all filters live in the URL – rejected client-computed dates and component-only filter state.
+- **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
 ## Repository layout
 
