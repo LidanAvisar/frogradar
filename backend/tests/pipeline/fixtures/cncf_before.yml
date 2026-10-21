@@ -1,0 +1,23 @@
+landscape:
+  - category:
+    name: Provisioning
+    subcategories:
+      - subcategory:
+        name: Security & Compliance
+        items:
+          - item:
+            name: Falco
+            homepage_url: https://falco.org
+            repo_url: https://github.com/falcosecurity/falco
+          - item:
+            name: Moved Project
+            homepage_url: https://moved.example
+  - category:
+    name: Observability and Analysis
+    subcategories:
+      - subcategory:
+        name: Observability
+        items:
+          - item:
+            name: Prometheus
+            homepage_url: https://prometheus.io

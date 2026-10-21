@@ -48,8 +48,15 @@ class CollectResult:
     etag: str | None = None
     last_modified: str | None = None
     notes: list[str] = field(default_factory=list)
-    # page_diff: snapshots to insert with the items (app.pipeline.snapshots.NewSnapshot).
+    # page_diff / cncf_landscape: snapshots to insert with the items (snapshots.NewSnapshot).
     snapshots: list[Any] = field(default_factory=list)
+    # github_search: star counts to store (app.pipeline.radar.stars.StarSnapshot).
+    star_snapshots: list[Any] = field(default_factory=list)
+    # Items dropped by a code filter before storage, per reason (GitHub noise filter).
+    skipped: dict[str, int] = field(default_factory=dict)
+
+    def skip(self, reason: str) -> None:
+        self.skipped[reason] = self.skipped.get(reason, 0) + 1
 
     def see(self, published_at: datetime | None, since: datetime) -> bool:
         """Track history depth; return False if the item is older than `since`."""

@@ -1,0 +1,6 @@
+{"nbPages": 1, "hits": [
+ {"objectID": "45100001", "title": "Show HN: Pkgguard – block malicious npm packages before install", "url": "https://pkgguard.dev/blog/launch", "points": 142, "num_comments": 51, "author": "alice", "created_at_i": 1791892800, "story_text": null, "_tags": ["story", "author_alice", "story_45100001", "show_hn"]},
+ {"objectID": "45100002", "title": "Show HN: Regshield, an open-source registry firewall", "url": "https://github.com/regshield/regshield", "points": 33, "num_comments": 9, "author": "bob", "created_at_i": 1791201600, "story_text": "<p>We built a proxy that sits in front of <i>PyPI</i>.</p>", "_tags": ["story", "show_hn"]},
+ {"objectID": "45100003", "title": "Ask HN: How do you vet new dependencies?", "url": null, "points": 80, "num_comments": 120, "author": "carol", "created_at_i": 1792152000, "story_text": "<p>Curious what teams do.</p>", "_tags": ["story", "ask_hn"]},
+ {"objectID": "45000000", "title": "Old supply chain story", "url": "https://old.example/post", "points": 500, "num_comments": 10, "author": "dan", "created_at_i": 1762041600, "story_text": null, "_tags": ["story"]}
+]}

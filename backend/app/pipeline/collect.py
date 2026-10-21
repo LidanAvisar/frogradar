@@ -30,6 +30,7 @@ from app.pipeline.collectors import (
     SourceRef,
     build_collectors,
 )
+from app.pipeline.radar import stars
 from app.pipeline.store import Outcome
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,8 @@ class SourceReport:
     reached_since: bool = False
     error: str | None = None
     notes: list[str] = field(default_factory=list)
+    skipped: dict[str, int] = field(default_factory=dict)  # code filter, per reason
+    star_snapshots: int = 0
 
     @property
     def history(self) -> str:
@@ -153,12 +156,14 @@ def collect_source(
     report.reached_since = result.reached_since
     report.oldest_seen = result.oldest_seen.isoformat() if result.oldest_seen else None
     report.notes = result.notes
+    report.skipped = dict(result.skipped)
     if result.not_modified:
         report.status = "not_modified"
 
     with session_factory() as s:
         # page_diff: the new snapshot goes in the same transaction as its change signal.
         snapshot_ids = {snap.key: snapshots.insert(s, ref.id, snap).id for snap in result.snapshots}
+        report.star_snapshots = stars.store(s, result.star_snapshots, run_id)
         for item in result.items:
             if (key := item.meta.pop("after_snapshot_key", None)) is not None:
                 item.meta["after_snapshot_id"] = snapshot_ids[key]
@@ -291,6 +296,8 @@ def print_report(report: RunReport, out=sys.stdout) -> None:
             detail += f" ({r.extract_failed} article extractions failed)"
         for note in r.notes:
             detail += f"; NOTE: {note}"
+        if r.skipped:
+            detail += "; skipped: " + ", ".join(f"{k} {v}" for k, v in sorted(r.skipped.items()))
         print(
             cols.format(
                 r.source_id, r.name[:34], r.fetch_method, r.status, r.fetched, r.new,
