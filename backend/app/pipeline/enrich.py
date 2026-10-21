@@ -3,9 +3,13 @@ quote, is_claim, entity links, new-entity candidates and capabilities (bulk mode
 
 - Selection: in scope, canonical (or not clustered), relevant, and not yet enriched with the
   current prompt version (or everything with --force enrich).
-- Evidence quote: checked in code against raw_text (app.pipeline.quotes). On failure the model gets
-  the error and tries again (quote_retries); still failing → stored with
-  evidence_quote_verified=false (confidence is capped; the UI must not show it as a quote).
+- Evidence quote: checked in code against raw_text (app.pipeline.quotes). A near-miss is first
+  repaired to the real source span (one sentence or two adjacent ones, similarity and coverage
+  >= quote_repair_threshold; meta.quote_repaired, D39). Otherwise the model gets the error and
+  tries again (quote_retries); still failing → stored with evidence_quote_verified=false
+  (confidence is capped; the UI must not show it as a quote).
+- Page-diff signals (meta.kind = page_diff) use the enrich_page_diff prompt, and their quote must
+  come from the [after] text of the diff (D40).
 - Entities: the model confirms/corrects the rule-based links (slugs validated by the schema).
   Final links = the model's list + the source's own entity (always primary). Rule links the model
   didn't confirm are removed; meta.entity_review records confirmed / added / dropped.
@@ -17,7 +21,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import and_, delete, or_, select, update
+from sqlalchemy import and_, case, delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, aliased
 
@@ -27,8 +31,9 @@ from app.db.enums import Verification
 from app.db.models import Capability, Entity, Signal, Source, signal_capabilities, signal_entities
 from app.pipeline.context import RunContext
 from app.pipeline.llm_steps import canonical_or_unclustered, load_input, merge_meta, run_parallel
+from app.pipeline.page_diff import after_text, is_page_diff
 from app.pipeline.prompting import Catalog, enrich_messages
-from app.pipeline.quotes import quote_error, quote_in_text
+from app.pipeline.quotes import quote_error, quote_in_text, repair_quote
 from app.pipeline.schemas import EnrichedSignalBase, enrich_schema
 from app.pipeline.scope import in_scope
 
@@ -38,12 +43,15 @@ logger = logging.getLogger(__name__)
 def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     complete, factory = ctx.require_llm()
     version = load_prompt("enrich_signal").id
+    diff_version = load_prompt(DIFF_PROMPT).id
     cfg = ctx.config.enrich
     todo = [in_scope(), canonical_or_unclustered(), Signal.relevant.is_(True)]
     if "enrich" not in ctx.force:
+        # Each kind of signal is compared with its own prompt's current version.
+        current = case((_page_diff_sql(), diff_version), else_=version)
         todo.append(
             or_(
-                Signal.enriched_at.is_(None), Signal.enrich_prompt_version.is_distinct_from(version)
+                Signal.enriched_at.is_(None), Signal.enrich_prompt_version.is_distinct_from(current)
             )
         )
     ids = session.scalars(select(Signal.id).where(*todo).order_by(Signal.id)).all()
@@ -62,18 +70,33 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                 .outerjoin(Source, Source.id == Signal.source_id)
                 .where(Signal.id == signal_id)
             ).one()
-        prompt, messages = enrich_messages(sig, catalog, cfg.max_chars)
-        result = complete("bulk", "enrich_signal", messages, schema, prompt_version=prompt.id)
+        diff = is_page_diff(meta)
+        prompt_name = DIFF_PROMPT if diff else "enrich_signal"
+        # Where the quote may come from: the whole text, or only the [after] lines of a diff.
+        quote_source = after_text(sig.raw_text) if diff else sig.raw_text
+        prompt, messages = enrich_messages(sig, catalog, cfg.max_chars, prompt_name)
+        result = complete("bulk", prompt_name, messages, schema, prompt_version=prompt.id)
         attempts = 1
-        quote_ok = quote_in_text(result.evidence_quote, sig.raw_text)
-        while not quote_ok and attempts <= cfg.quote_retries:
-            retry = [
-                *messages,
-                *retry_messages(result.model_dump_json(), quote_error(result.evidence_quote)),
-            ]
-            result = complete("bulk", "enrich_signal", retry, schema, prompt_version=prompt.id)
+        repair: dict[str, Any] | None = None
+        quote_ok = quote_in_text(result.evidence_quote, quote_source)
+        while not quote_ok:
+            fixed = repair_quote(result.evidence_quote, quote_source, cfg.quote_repair_threshold)
+            if fixed is not None:
+                repair = {
+                    "original": result.evidence_quote,
+                    "similarity": round(fixed.similarity, 3),
+                    "coverage": round(fixed.coverage, 3),
+                }
+                result = result.model_copy(update={"evidence_quote": fixed.span})
+                quote_ok = True
+                break
+            if attempts > cfg.quote_retries:
+                break
+            error = quote_error(result.evidence_quote, diff=diff)
+            retry = [*messages, *retry_messages(result.model_dump_json(), error)]
+            result = complete("bulk", prompt_name, retry, schema, prompt_version=prompt.id)
             attempts += 1
-            quote_ok = quote_in_text(result.evidence_quote, sig.raw_text)
+            quote_ok = quote_in_text(result.evidence_quote, quote_source)
 
         with factory.begin() as s:
             review = apply_entity_links(
@@ -96,6 +119,8 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                 "capabilities": list(result.capabilities),
                 "quote_attempts": attempts,
             }
+            if repair is not None:
+                info["quote_repair"] = repair
             s.execute(
                 update(Signal)
                 .where(Signal.id == signal_id)
@@ -112,7 +137,13 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     verification=Verification.PENDING,
                     verification_notes=None,
                     confidence=None,
-                    meta=merge_meta({"enrich": info, "entity_review": review})
+                    meta=merge_meta(
+                        {
+                            "enrich": info,
+                            "entity_review": review,
+                            "quote_repaired": repair is not None,
+                        }
+                    )
                     .op("-")("enrich_error")
                     .op("-")("inherited_from"),
                 )
@@ -125,6 +156,13 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     counts["inherited"] = inherit_from_canonicals(session)
     logger.info("enrich: %s", counts)
     return counts
+
+
+DIFF_PROMPT = "enrich_page_diff"
+
+
+def _page_diff_sql() -> Any:
+    return Signal.meta["kind"].astext == "page_diff"
 
 
 def tracked_terms(session: Session) -> set[str]:

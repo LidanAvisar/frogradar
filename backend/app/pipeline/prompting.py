@@ -106,9 +106,9 @@ def triage_messages(
 
 
 def enrich_messages(
-    sig: SignalInput, catalog: Catalog, max_chars: int
+    sig: SignalInput, catalog: Catalog, max_chars: int, prompt_name: str = "enrich_signal"
 ) -> tuple[Prompt, list[dict[str, str]]]:
-    prompt = load_prompt("enrich_signal")
+    prompt = load_prompt(prompt_name)
     examples = fewshot.render(fewshot.few_shot_examples("enrich", sig))
     return prompt, prompt.messages(
         **_common(sig, max_chars),

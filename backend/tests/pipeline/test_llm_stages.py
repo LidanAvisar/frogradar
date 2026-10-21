@@ -406,3 +406,80 @@ def _minimal_enrich() -> dict:
         "impact_rationale": "r", "evidence_quote": "a quote here", "is_claim": False,
         "entities": [], "capabilities": [],
     }  # fmt: skip
+
+
+def test_near_miss_quote_is_repaired_without_a_retry(world):
+    factory, ids = world
+
+    def enrich(call):  # one word off: close enough to the real sentence
+        return {
+            **_enrich_firewall(call),
+            "evidence_quote": "It blocks malicious npm package before download.",
+        }
+
+    llm = FakeLLM(triage=_irrelevant_llm, enrich_signal=enrich)
+    _, counts = _run(factory, llm, triage_signals, enrich_signals)
+
+    sig = _get(factory, ids["firewall"])
+    assert llm.count("enrich_signal") == 1 and counts["enriched"] == 1
+    assert sig.evidence_quote == "It blocks malicious npm packages before download."
+    assert sig.evidence_quote_verified is True and sig.meta["quote_repaired"] is True
+    repair = sig.meta["enrich"]["quote_repair"]
+    assert repair["original"].startswith("It blocks malicious npm package ")
+    assert repair["similarity"] >= 0.9 and repair["coverage"] >= 0.9
+
+
+def test_stitched_quote_is_not_repaired_and_goes_to_retry(world):
+    factory, ids = world
+    stitched = "Sonatype launched Repository Firewall 2 today. Pricing starts at $10 per developer."
+
+    def enrich(call):
+        out = _enrich_firewall(call)
+        if call.attempt == 1:
+            out["evidence_quote"] = stitched  # sentences 1 + 3: not one contiguous span
+        return out
+
+    llm = FakeLLM(triage=_irrelevant_llm, enrich_signal=enrich)
+    _run(factory, llm, triage_signals, enrich_signals)
+
+    sig = _get(factory, ids["firewall"])
+    assert llm.count("enrich_signal") == 2  # the retry ran
+    assert sig.meta["quote_repaired"] is False and "quote_repair" not in sig.meta["enrich"]
+
+
+# ---------- page-diff signals ----------
+
+DIFF_TEXT = (
+    "Page: Sonatype Pricing\nURL: https://s.test/pricing\nBefore: 2026-07-14 (wayback)\n"
+    "After: 2026-10-21 (live)\nChanged lines: 1 removed, 1 added\n\n## Change 1 of 1\n"
+    "[before]\nPro Edition Starting at $1,620 / year + consumption\n"
+    "[after]\nPro Edition Starting at $1,950 / year + consumption"
+)
+
+
+def test_page_diff_signal_uses_the_diff_prompt_and_after_text_quotes(world):
+    factory, _ = world
+    with factory.begin() as s:
+        src = s.scalar(select(Source).where(Source.name == "Sonatype Blog"))
+        sid = signal(s, src, "Pricing page changed: Sonatype Pricing", text=DIFF_TEXT).id
+        s.execute(update(Signal).where(Signal.id == sid).values(meta={"kind": "page_diff"}))
+
+    def enrich(call):  # quotes the OLD price first, then the new one on retry
+        old = "Pro Edition Starting at $1,620 / year + consumption"
+        new = "Pro Edition Starting at $1,950 / year + consumption"
+        return {**_enrich_firewall(call), "evidence_quote": old if call.attempt == 1 else new}
+
+    llm = FakeLLM(triage=_irrelevant_llm, enrich_page_diff=enrich)
+    _run(factory, llm, triage_signals, enrich_signals)
+
+    sig = _get(factory, sid)
+    assert sig.enrich_prompt_version == "enrich_page_diff.v2"
+    assert llm.count("enrich_page_diff") == 2 and llm.count("enrich_signal") == 1  # other signal
+    retry = [c for c in llm.calls if c.operation == "enrich_page_diff"][1]
+    assert "[after] section" in retry.messages[-1]["content"]
+    assert sig.evidence_quote.endswith("$1,950 / year + consumption")
+    assert sig.evidence_quote_verified is True
+    # Re-run: each kind is compared with its own prompt version → nothing to redo.
+    llm2 = FakeLLM(triage=_irrelevant_llm, enrich_page_diff=enrich, enrich_signal=_enrich_firewall)
+    _run(factory, llm2, enrich_signals)
+    assert llm2.count("enrich_page_diff") == 0 and llm2.count("enrich_signal") == 0
