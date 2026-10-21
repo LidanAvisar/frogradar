@@ -2,8 +2,20 @@
   <header class="header">
     <div class="intro">
       <p class="eyebrow mono date">{{ dateLine() }}</p>
-      <h1>{{ headline() }}</h1>
-      @if (brief()?.overview; as overview) { <p class="overview">{{ overview }}</p> }
+      <h1>{{ headline() }}<ng-container *ngTemplateOutlet="citeLinks; context: { $implicit: headlineCites() }" /></h1>
+      @if (overview().length) {
+        <p class="overview">
+          @for (s of overview(); track $index) {
+            {{ s.text }}<ng-container *ngTemplateOutlet="citeLinks; context: { $implicit: s.cites }" />{{ ' ' }}
+          }
+        </p>
+      }
+      <ng-template #citeLinks let-cites>
+        @for (c of cites; track c.ref.id) {
+          <sup class="cite"><a [href]="c.ref.url" target="_blank" rel="noopener noreferrer"
+            [attr.title]="c.ref.title" [attr.aria-label]="'Source ' + c.n + ': ' + c.ref.title">{{ c.n }}</a></sup>
+        }
+      </ng-template>
       @if (brief()) {
         <p class="subline small mono">
           {{ newCount() }} new since yesterday · {{ highImpactNew() }} high impact

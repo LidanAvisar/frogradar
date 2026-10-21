@@ -32,6 +32,7 @@ import { SourceLinkComponent } from '../../shared/source-link.component';
                 @if (company(item); as name) { <fr-company-chip [name]="name" /> }
                 <span class="mono small muted">{{ date(item.signal.published_at) }}</span>
               </div>
+              <p class="headline">{{ item.signal.title }}</p>
               @if (item.changes.length) {
                 <ul class="changes">
                   @for (c of item.changes; track $index) {
@@ -73,6 +74,7 @@ import { SourceLinkComponent } from '../../shared/source-link.component';
     s { color: var(--fr-muted); }
     strong { font-weight: 500; }
     .summary { color: var(--fr-ink-2); }
+    .headline { font-weight: 500; color: var(--fr-ink); line-height: var(--fr-lh-card-title); }
     .notes { display: flex; flex-direction: column; align-items: flex-start; }
     .notes fr-source-link { margin: -10px 0 -12px; }
   `],

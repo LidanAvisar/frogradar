@@ -1,9 +1,10 @@
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
-import type { Brief } from '../../api/models';
+import type { Brief, CitationRef } from '../../api/models';
 import { ApiService } from '../../core/api.service';
 import { BriefViewService } from '../../core/brief-view.service';
 import { eyebrowDate } from '../../core/format';
@@ -15,6 +16,11 @@ import { PipelineStatusComponent } from './pipeline-status.component';
 import { PricingWatchComponent } from './pricing-watch.component';
 import { SinceYesterdayComponent } from './since-yesterday.component';
 
+interface Cite {
+  n: number;
+  ref: CitationRef;
+}
+
 type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; brief: Brief };
 
 const DEFAULT_HEADLINE = 'Your morning brief';
@@ -25,6 +31,7 @@ const DEFAULT_HEADLINE = 'Your morning brief';
   standalone: true,
   imports: [
     EmptyStateComponent,
+    NgTemplateOutlet,
     ErrorStateComponent,
     IconComponent,
     PipelineStatusComponent,
@@ -53,11 +60,28 @@ export class BriefPageComponent implements OnInit {
   });
   protected readonly dateLine = computed(() => eyebrowDate(this.brief()?.generated_at ?? new Date().toISOString()));
   protected readonly headline = computed(() => this.brief()?.headline ?? DEFAULT_HEADLINE);
+  /** Citation numbers, in order of first use across the headline and the overview sentences. */
+  private readonly citeNumbers = computed(() => {
+    const b = this.brief();
+    const order = new Map<number, number>();
+    const refs = [...(b?.headline_citations ?? []), ...(b?.overview_sentences ?? []).flatMap((s) => s.citations)];
+    for (const r of refs) if (!order.has(r.id)) order.set(r.id, order.size + 1);
+    return order;
+  });
+  protected readonly headlineCites = computed(() => this.cites(this.brief()?.headline_citations ?? []));
+  protected readonly overview = computed(() =>
+    (this.brief()?.overview_sentences ?? []).map((s) => ({ text: s.text, cites: this.cites(s.citations) })),
+  );
   protected readonly newCount = computed(() => this.brief()?.since_yesterday_total ?? 0);
   protected readonly highImpactNew = computed(() => this.brief()?.since_yesterday_high_impact ?? 0);
   protected readonly topIds = computed(() => this.brief()?.top.map((s) => s.id) ?? []);
   protected readonly allExpanded = computed(() => this.view.allExpanded(this.topIds()));
   protected readonly skeletons = [1, 2, 3];
+
+  private cites(refs: CitationRef[]): Cite[] {
+    const numbers = this.citeNumbers();
+    return refs.map((ref) => ({ n: numbers.get(ref.id) ?? 0, ref }));
+  }
 
   ngOnInit(): void {
     this.load();

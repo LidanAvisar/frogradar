@@ -60,7 +60,10 @@ export class SignalCardComponent {
     const pool = primary.length ? primary : ents;
     return pool.find((e) => e.type === 'company') ?? pool[0] ?? null;
   });
-  protected readonly takeaway = computed(() => firstSentence(this.signal().why_jfrog_cares, 400));
+  /** The enriched one-line takeaway; older signals fall back to the first sentence of "why". */
+  protected readonly takeaway = computed(
+    () => this.signal().takeaway || firstSentence(this.signal().why_jfrog_cares, 400),
+  );
   protected readonly category = computed(() => categoryLabel(this.signal().category));
   protected readonly date = computed(() => shortDate(this.signal().published_at));
   protected readonly verification = computed(() => verificationLabel(this.signal().verification));

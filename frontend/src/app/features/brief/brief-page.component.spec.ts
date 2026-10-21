@@ -74,10 +74,27 @@ describe('BriefPageComponent', () => {
     expect(Object.keys(localStorage).some((k) => k.includes('expand'))).toBeFalse();
   });
 
-  it('uses the daily brief headline when there is one', () => {
-    respond(briefFixture({ headline: 'Sonatype reprices Nexus', overview: 'Two moves matter today.' }));
+  it('uses the daily brief headline and links every sentence to its sources', () => {
+    const a = { id: 7, title: 'Nexus price rise', url: 'https://s.test/7', published_at: null };
+    const b = { id: 9, title: 'Firewall 2', url: 'https://s.test/9', published_at: null };
+    respond(
+      briefFixture({
+        headline: 'Sonatype reprices Nexus',
+        headline_citations: [a],
+        overview: 'Two moves matter today. Firewall 2 shipped.',
+        overview_sentences: [
+          { text: 'Two moves matter today.', citations: [a, b] },
+          { text: 'Firewall 2 shipped.', citations: [b] },
+        ],
+      }),
+    );
     expect(el.querySelector('h1')?.textContent).toContain('Sonatype reprices Nexus');
-    expect(el.textContent).toContain('Two moves matter today.');
+    expect(el.querySelector('h1 .cite a')?.getAttribute('href')).toBe('https://s.test/7');
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.overview .cite a'));
+    expect(links.map((l) => l.textContent?.trim())).toEqual(['1', '2', '2']);
+    expect(links[1].getAttribute('aria-label')).toBe('Source 2: Firewall 2');
+    expect(links[1].getAttribute('rel')).toContain('noopener');
+    expect(el.querySelector('.overview')?.textContent).toContain('Firewall 2 shipped.');
   });
 
   it('switches to one-line cards and remembers it', () => {

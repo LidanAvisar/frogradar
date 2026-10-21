@@ -39,7 +39,14 @@ describe('SignalCardComponent', () => {
     expect(details.hidden).toBeTrue();
   });
 
-  it('shows the first sentence of "why" as the takeaway', () => {
+  it('shows the enriched takeaway when there is one', () => {
+    render({ takeaway: 'Package firewall competes with JFrog Curation at the registry.' });
+    expect(el.querySelector('.takeaway')?.textContent?.trim()).toBe(
+      'Package firewall competes with JFrog Curation at the registry.',
+    );
+  });
+
+  it('falls back to the first sentence of "why" as the takeaway', () => {
     render();
     expect(el.querySelector('.takeaway')?.textContent?.trim()).toBe('It overlaps with JFrog Curation.');
   });

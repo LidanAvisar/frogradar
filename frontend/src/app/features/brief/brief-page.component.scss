@@ -39,6 +39,35 @@ h1 {
   color: var(--fr-ink-2);
 }
 
+// Numbered source links after each sentence of the generated headline / overview.
+.cite {
+  font-family: var(--fr-font-mono);
+  font-size: var(--fr-text-small);
+  font-weight: 500;
+  line-height: 0;
+  margin-left: 2px;
+
+  a {
+    color: var(--fr-accent);
+    text-decoration: none;
+    padding: 0 2px;
+    border-radius: var(--fr-radius-control);
+  }
+
+  a:hover {
+    color: var(--fr-accent-hover);
+    text-decoration: underline;
+  }
+
+  a:focus-visible {
+    outline: 2px solid var(--fr-focus-ring);
+  }
+}
+
+h1 .cite {
+  vertical-align: super;
+}
+
 .subline {
   color: var(--fr-muted);
 }
