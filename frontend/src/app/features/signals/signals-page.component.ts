@@ -3,12 +3,13 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, map, of, startWith, switchMap } from 'rxjs';
 
-import type { SignalPage } from '../../api/models';
+import type { Signal, SignalPage } from '../../api/models';
 import { ApiService } from '../../core/api.service';
 import { BriefViewService } from '../../core/brief-view.service';
 import { CATEGORY_LABELS, plural } from '../../core/format';
 import { IconComponent } from '../../shared/icon.component';
-import { SignalCardComponent } from '../../shared/signal-card.component';
+import { type SignalCardAction, SignalCardComponent } from '../../shared/signal-card.component';
+import { SignalActionsService, SignalOverlay } from '../review/signal-actions.service';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../shared/states.component';
 import {
   type SignalFilters,
@@ -77,7 +78,10 @@ export class SignalsPageComponent {
     const s = this.state();
     return s.status === 'ready' ? s.page : null;
   });
-  protected readonly items = computed(() => this.page()?.items ?? []);
+  private readonly actions = inject(SignalActionsService);
+  /** Analyst actions on top of the loaded page (optimistic; a rejected card disappears). */
+  private readonly overlay = new SignalOverlay();
+  protected readonly items = computed(() => this.overlay.view(this.page()?.items ?? []));
   protected readonly ids = computed(() => this.items().map((s) => s.id));
   protected readonly allExpanded = computed(() => this.view.allExpanded(this.ids()));
   protected readonly pages = computed(() => {
@@ -93,6 +97,10 @@ export class SignalsPageComponent {
     return p.total <= p.page_size ? plural(p.total, 'signal') : `${from}–${to} of ${plural(p.total, 'signal')}`;
   });
   protected readonly skeletons = [1, 2, 3, 4];
+
+  onAct(action: SignalCardAction, s: Signal): void {
+    this.actions.act(action, s, this.overlay.applier(s.id), () => this.resultsHeading()?.nativeElement ?? null);
+  }
 
   set(patch: Partial<SignalFilters>, resetPage = true): void {
     const next = { ...this.filters(), ...patch, ...(resetPage ? { page: 1 } : {}) };

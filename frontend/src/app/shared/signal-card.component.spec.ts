@@ -85,6 +85,28 @@ describe('SignalCardComponent', () => {
     expect(el.querySelector('.takeaway')?.textContent).toContain('<img src=x onerror=alert(1)>');
   });
 
+  it('shows "Edited by analyst" with the fields, or "Approved"', () => {
+    render({ review: { status: 'approved', by: 'dana', at: null, edited_fields: ['impact', 'primary_entity'] } });
+    const badge = el.querySelector('.review-badge')!;
+    expect(badge.textContent).toContain('Edited by analyst');
+    expect(badge.textContent).toContain('impact, company corrected by dana');
+    render({ review: { status: 'approved', by: 'dana', at: null, edited_fields: [] } });
+    expect(el.querySelector('.review-badge')!.textContent).toContain('Approved');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Approve')).toBeFalse();
+    render({ review: null });
+    expect(el.querySelector('.review-badge')).toBeNull();
+  });
+
+  it('emits the action clicked', () => {
+    render();
+    const seen: string[] = [];
+    fixture.componentInstance.act.subscribe((a) => seen.push(a));
+    for (const label of ['Approve', 'Correct', 'Reject']) {
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim() === label)!.click();
+    }
+    expect(seen).toEqual(['approve', 'correct', 'reject']);
+  });
+
   it('executive variant shows rank, title and takeaway only', () => {
     render({}, 'executive');
     expect(el.querySelector('.rank')?.textContent).toBe('01');

@@ -172,3 +172,32 @@ const ORIGINS: Record<string, string> = {
 export function originLabel(origin: string | null | undefined): string {
   return origin ? (ORIGINS[origin] ?? humanize(origin)) : '';
 }
+
+/** Reason codes for analyst actions on signals (backend SignalReason). */
+export const SIGNAL_REASONS: { value: string; label: string }[] = [
+  { value: 'not_relevant', label: 'Not relevant' },
+  { value: 'wrong_category', label: 'Wrong category' },
+  { value: 'impact_too_high', label: 'Impact too high' },
+  { value: 'impact_too_low', label: 'Impact too low' },
+  { value: 'wrong_entity', label: 'Wrong company' },
+  { value: 'inaccurate_summary', label: 'Inaccurate summary' },
+  { value: 'unsupported_claim', label: 'Unsupported claim' },
+  { value: 'duplicate', label: 'Duplicate' },
+  { value: 'outdated', label: 'Outdated' },
+  { value: 'other', label: 'Other' },
+];
+
+export function signalReasonLabel(reason: string | null | undefined): string {
+  return SIGNAL_REASONS.find((r) => r.value === reason)?.label ?? humanize(reason);
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  category: 'category',
+  impact: 'impact',
+  relevant: 'relevance',
+  primary_entity: 'company',
+};
+
+export function editedFieldsLabel(fields: readonly string[]): string {
+  return fields.map((f) => FIELD_LABELS[f] ?? f).join(', ');
+}

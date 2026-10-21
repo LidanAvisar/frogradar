@@ -18,9 +18,14 @@ import type {
   RadarCandidateDetail,
   RadarDismissIn,
   RadarList,
+  ReviewQueue,
+  Scorecard,
   SelfInfo,
   Signal,
+  SignalApproveIn,
+  SignalCorrectIn,
   SignalPage,
+  SignalRejectIn,
 } from '../api/models';
 import type { operations } from '../api/schema';
 
@@ -92,6 +97,26 @@ export class ApiService {
 
   dismissCandidate(id: number, body: RadarDismissIn): Observable<RadarCandidateDetail> {
     return this.http.post<RadarCandidateDetail>(`/api/radar/${id}/dismiss`, body);
+  }
+
+  approveSignal(id: number, body: SignalApproveIn): Observable<Signal> {
+    return this.http.post<Signal>(`/api/signals/${id}/approve`, body);
+  }
+
+  correctSignal(id: number, body: SignalCorrectIn): Observable<Signal> {
+    return this.http.post<Signal>(`/api/signals/${id}/correct`, body);
+  }
+
+  rejectSignal(id: number, body: SignalRejectIn): Observable<Signal> {
+    return this.http.post<Signal>(`/api/signals/${id}/reject`, body);
+  }
+
+  reviewQueue(limit = 100): Observable<ReviewQueue> {
+    return this.http.get<ReviewQueue>('/api/review', { params: { limit } });
+  }
+
+  scorecard(): Observable<Scorecard> {
+    return this.http.get<Scorecard>('/api/feedback/scorecard');
   }
 
   ask(body: AskIn): Observable<AskOut> {

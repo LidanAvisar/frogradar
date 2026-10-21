@@ -73,7 +73,8 @@
               @for (s of developments(); track s.id) {
                 <li>
                   <fr-signal-card [signal]="s" [rank]="s.rank" variant="analyst"
-                                  [expanded]="view.isExpanded(s.id)" (expandedChange)="view.set(s.id, $event)" />
+                                  [expanded]="view.isExpanded(s.id)" (expandedChange)="view.set(s.id, $event)"
+                                  (act)="onAct($event, s)" />
                 </li>
               }
             </ol>

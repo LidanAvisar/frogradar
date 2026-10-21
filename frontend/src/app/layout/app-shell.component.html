@@ -28,6 +28,12 @@
           </li>
         }
       </ul>
+      <div class="analyst fr-field">
+        <label for="analyst-name">Your name</label>
+        <input id="analyst-name" class="fr-input" maxlength="100" autocomplete="name" [value]="analystName()"
+               aria-describedby="analyst-name-hint" (change)="setName($any($event.target).value)" />
+        <span id="analyst-name-hint" class="small muted">Shown on your reviews</span>
+      </div>
       @if (onAsk() && recent().length) {
         <div class="recent">
           <p class="recent-title eyebrow" id="recent-heading">Recent questions</p>

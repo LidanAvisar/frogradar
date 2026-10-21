@@ -24,6 +24,9 @@
           @if (company(); as c) { <fr-company-chip [name]="c.name" /> }
           @if (signal().is_claim) { <fr-vendor-claim-tag /> }
           <fr-confidence-badge class="conf" [confidence]="signal().confidence" />
+          @if (reviewBadge(); as b) {
+            <span class="fr-pill tone-green review-badge" [attr.title]="b.detail">{{ b.label }}<span class="visually-hidden">: {{ b.detail }}</span></span>
+          }
         </div>
         <button type="button" class="chevron" [attr.aria-expanded]="expanded()" [attr.aria-controls]="ids().details"
                 [attr.aria-label]="toggleLabel()">
@@ -61,11 +64,13 @@
           @if (signal().sources_count > 1) { <span class="muted">{{ signal().sources_count }} sources</span> }
         </div>
         <div class="actions">
-          <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                  [attr.aria-describedby]="ids().soon">Approve</button>
-          <button type="button" class="fr-button fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                  [attr.aria-describedby]="ids().soon">Correct</button>
-          <span class="visually-hidden" [id]="ids().soon">Coming soon</span>
+          @if (actions()) {
+          @if (!signal().review) {
+            <button type="button" class="fr-button" [attr.aria-describedby]="ids().title" (click)="act.emit('approve')">Approve</button>
+          }
+          <button type="button" class="fr-button" [attr.aria-describedby]="ids().title" (click)="act.emit('correct')">Correct</button>
+          <button type="button" class="fr-button" [attr.aria-describedby]="ids().title" (click)="act.emit('reject')">Reject</button>
+          }
           <a class="fr-button" routerLink="/missions" [queryParams]="{ signal: signal().id }">
             Investigate <fr-icon name="arrow" [size]="14" />
           </a>

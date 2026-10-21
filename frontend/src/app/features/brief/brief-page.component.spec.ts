@@ -107,11 +107,13 @@ describe('BriefPageComponent', () => {
     expect(localStorage.getItem('frogradar.executiveView')).toBe('true');
   });
 
-  it('disabled actions say "Coming soon" and Investigate links to Missions', () => {
+  it('cards offer Approve / Correct / Reject and Investigate links to Missions', () => {
     respond();
-    const approve = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Approve')!;
-    expect(approve.getAttribute('aria-disabled')).toBe('true');
-    expect(approve.getAttribute('data-hint')).toBe('Coming soon');
+    const labels = Array.from(el.querySelectorAll('fr-signal-card button.fr-button')).map((b) => b.textContent?.trim());
+    expect(labels).toContain('Approve');
+    expect(labels).toContain('Correct');
+    expect(labels).toContain('Reject');
+    expect(el.textContent).not.toContain('Coming soon');
     const investigate = el.querySelector('a[href^="/missions"]');
     expect(investigate?.getAttribute('href')).toBe('/missions?signal=1');
   });

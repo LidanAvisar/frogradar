@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 import type { NavCounts } from '../api/models';
 import { AskRecentService } from '../core/ask-recent.service';
 import { NavCountsService } from '../core/nav-counts.service';
+import { PreferencesService } from '../core/preferences.service';
 import { IconComponent } from '../shared/icon.component';
 
 interface NavItem {
@@ -44,6 +45,8 @@ export class AppShellComponent {
   protected readonly onAsk = signal(false);
   protected readonly currentAsk = signal<number | null>(null);
   private readonly counts = this.nav.counts;
+  private readonly prefs = inject(PreferencesService);
+  protected readonly analystName = this.prefs.analystName;
 
   protected readonly menuOpen = signal(false);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
@@ -61,6 +64,10 @@ export class AppShellComponent {
         this.onAsk.set(url.startsWith('/ask'));
         this.currentAsk.set(Number(new URLSearchParams(url.split('?')[1] ?? '').get('c')) || null);
       });
+  }
+
+  setName(name: string): void {
+    this.prefs.setAnalystName(name);
   }
 
   toggleMenu(): void {

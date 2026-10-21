@@ -137,6 +137,15 @@
   color: var(--fr-accent);
 }
 
+.analyst {
+  margin-top: var(--fr-gap-lg);
+  padding: 0 8px;
+
+  .fr-input {
+    width: 100%;
+  }
+}
+
 .tagline {
   margin-top: auto;
   padding: 0 8px;

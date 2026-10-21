@@ -1,0 +1,28 @@
+.signal-title {
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--fr-gap-sm);
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--fr-gap-xs);
+  }
+}

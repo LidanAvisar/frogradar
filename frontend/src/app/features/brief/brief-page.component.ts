@@ -3,13 +3,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 
-import type { Brief } from '../../api/models';
+import type { Brief, Signal } from '../../api/models';
 import { ApiService } from '../../core/api.service';
 import { BriefViewService } from '../../core/brief-view.service';
 import { eyebrowDate } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
 import { IconComponent } from '../../shared/icon.component';
-import { SignalCardComponent } from '../../shared/signal-card.component';
+import { type SignalCardAction, SignalCardComponent } from '../../shared/signal-card.component';
+import { SignalActionsService, SignalOverlay } from '../review/signal-actions.service';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../shared/states.component';
 import { PipelineStatusComponent } from './pipeline-status.component';
 import { PricingWatchComponent } from './pricing-watch.component';
@@ -57,7 +58,10 @@ export class BriefPageComponent implements OnInit {
   });
   protected readonly dateLine = computed(() => eyebrowDate(this.brief()?.generated_at ?? new Date().toISOString()));
   protected readonly story = computed(() => this.brief()?.top_story ?? null);
-  protected readonly developments = computed(() => this.brief()?.developments ?? []);
+  private readonly actions = inject(SignalActionsService);
+  /** Analyst actions on top of the loaded brief (optimistic; a rejected card disappears). */
+  private readonly overlay = new SignalOverlay();
+  protected readonly developments = computed(() => this.overlay.view(this.brief()?.developments ?? []));
   protected readonly devIds = computed(() => this.developments().map((s) => s.id));
   protected readonly allExpanded = computed(() => this.view.allExpanded(this.devIds()));
   /** Stat tiles: each opens the Signals list with the matching filter. */
@@ -84,9 +88,16 @@ export class BriefPageComponent implements OnInit {
       .brief()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (brief) => this.state.set({ status: 'ready', brief }),
+        next: (brief) => {
+          this.overlay.reset();
+          this.state.set({ status: 'ready', brief });
+        },
         error: () => this.state.set({ status: 'error' }),
       });
+  }
+
+  onAct(action: SignalCardAction, s: Signal): void {
+    this.actions.act(action, s, this.overlay.applier(s.id), () => document.getElementById('main'));
   }
 
   toggleAll(): void {
