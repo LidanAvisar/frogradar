@@ -20,7 +20,9 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column("signals", sa.Column("relevant", sa.Boolean(), nullable=True))
     op.add_column("signals", sa.Column("evidence_quote_verified", sa.Boolean(), nullable=True))
-    op.add_column("signals", sa.Column("enrich_prompt_version", sa.String(length=64), nullable=True))
+    op.add_column(
+        "signals", sa.Column("enrich_prompt_version", sa.String(length=64), nullable=True)
+    )
     op.create_index(
         "ix_signals_relevant",
         "signals",
