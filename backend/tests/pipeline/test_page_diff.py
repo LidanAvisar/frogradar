@@ -28,9 +28,9 @@ CFG = load_pipeline().page_diff
 URL = "https://acme.test/pricing"
 
 
-def text(name: str, selector: str | None = None) -> str:
+def text(name: str, selector: str | None = None, sections: list | None = None) -> str:
     html = fixture(f"{name}.html").decode()
-    return pd.Normalizer.from_settings(CFG).normalize(pd.extract_text(html, selector))
+    return pd.Normalizer.from_settings(CFG).normalize(pd.extract_text(html, selector, sections))
 
 
 def at(day: str) -> datetime:
@@ -68,7 +68,8 @@ def test_selector_and_trafilatura_agree_and_cookie_nav_footer_are_gone():
     full, main = text("pricing_v1"), text("pricing_v1", selector="main")
     assert full == main
     assert "cookie" not in full.lower() and "Sign in" not in full and "©" not in full
-    assert "Team $4 per user/month" in full.splitlines()
+    lines = full.splitlines()
+    assert lines[lines.index("# Team") + 1] == "$4 per user/month"  # headings → path lines
 
 
 def test_selector_matching_nothing_is_an_extraction_error():
@@ -100,7 +101,7 @@ def test_small_wording_change_is_noise():
 
 def test_one_digit_price_change_is_never_noise():
     before = text("pricing_v1")
-    r = pd.classify(before, before.replace("Team $4", "Team $5"), CFG)
+    r = pd.classify(before, before.replace("$4 per user/month", "$5 per user/month"), CFG)
     assert r.kind == "changed" and r.creates_signal
     assert r.full_stats["changed_chars"] < CFG.min_changed_chars  # small, but a price
 
@@ -115,15 +116,14 @@ def test_real_change_price_and_feature_moved_between_tiers():
     )  # fmt: skip
     assert not truncated
     assert "Before: 2026-04-01 (wayback)\nAfter: 2026-10-01 (live)" in raw
-    assert "[before]\nTeam $4 per user/month\n[after]\nTeam $5 per user/month" in raw
+    assert "[context]\n# Team\n[before]\n$4 per user/month\n[after]\n$5 per user/month" in raw
     assert FORMAT_NOTE in raw
     assert (
         '- "Malicious package blocking for npm, PyPI and Maven": from the section headed '
-        '"Enterprise $21 per user/month" (old page) to the section headed '
-        '"Team $5 per user/month" (new page)'
+        '"Enterprise" (old page) to the section headed "Team" (new page)'
     ) in raw
     after = pd.after_text(raw)
-    assert "Team $5 per user/month" in after and "Team $4" not in after
+    assert "$5 per user/month" in after and "$4" not in after
     assert "Malicious package blocking for npm, PyPI and Maven" in after
     assert "Acme Pricing" not in after and "from the section" not in after  # not quotable
 
@@ -132,13 +132,14 @@ def test_a_multi_price_context_row_is_not_rendered_as_a_change():
     # Regression (run 15): an unchanged comparison row "Unlimited $4 ... $21 ..." near a
     # change was read as "$4 -> $21". It may appear only as [context], with the format note.
     before = text("pricing_v1").splitlines()
-    before.insert(5, "Unlimited $4 per user/month $21 per user/month")
+    i = before.index("Unlimited public repositories for open source projects")
+    before.insert(i, "Unlimited $4 per user/month $21 per user/month")
     after = list(before)
-    after[6] = "2 GB of artifact storage, now with 1 GB of package cache, for every workspace"
+    after[i + 1] = "2 GB of artifact storage, now with 1 GB of package cache, for every workspace"
     r = pd.classify("\n".join(before), "\n".join(after), CFG)
     snap = pd.SnapshotInfo(None, at("2026-10-01"), "live")
     raw, _ = pd.render_diff("A", URL, snap, snap, r, 12000)
-    assert "[context]\nUnlimited $4 per user/month $21 per user/month\n[before]" in raw
+    assert "[context]\n# Free\nUnlimited $4 per user/month $21 per user/month\n[before]" in raw
     assert "[section" not in raw and FORMAT_NOTE in raw
     assert "Unlimited $4" not in pd.after_text(raw)
 
@@ -148,8 +149,8 @@ def test_redesign_with_a_price_change_uses_the_price_lines_only():
     assert r.kind == "restructured" and r.diff_mode == "price_lines"
     assert r.full_stats["changed_line_ratio"] > CFG.restructure_ratio
     assert r.diff is not None and len(r.diff.hunks) == 1
-    assert r.diff.hunks[0].before == ["Enterprise $21 per user/month"]
-    assert r.diff.hunks[0].after == ["Enterprise $19 per user/month"]
+    assert r.diff.hunks[0].before == ["[Enterprise] $21 per user/month"]
+    assert r.diff.hunks[0].after == ["[Enterprise] $19 per user/month"]
 
 
 def test_redesign_with_the_same_prices_creates_no_signal():
@@ -160,7 +161,7 @@ def test_redesign_with_the_same_prices_creates_no_signal():
 
 def test_long_diffs_are_truncated_at_a_change_boundary():
     before = text("pricing_v1")
-    after = before.replace("Team $4", "Team $5")
+    after = before.replace("$4 per user/month", "$5 per user/month")
     r = pd.classify(before, after, CFG)
     snap = pd.SnapshotInfo(None, at("2026-10-01"), "live")
     out, truncated = pd.render_diff("A", URL, snap, snap, r, 1000)
@@ -168,6 +169,44 @@ def test_long_diffs_are_truncated_at_a_change_boundary():
     r.diff.hunks *= 30  # type: ignore[union-attr]
     out, truncated = pd.render_diff("A", URL, snap, snap, r, 1000)
     assert truncated and len(out) <= 1000 + 40 and out.endswith("further changes truncated]")
+
+
+SECTIONS = [
+    {"selector": "[data-display=repo_cloud]", "label": "Cloud"},
+    {"selector": "[data-display=repo_self]", "label": "Self-Hosted"},
+]
+
+
+def test_same_named_editions_under_different_headings_stay_apart():
+    # Like Sonatype (run 20, #1055): a tab panel (aria-labelledby) with a Cloud / Self-Hosted
+    # toggle; both sides have a "Pro Edition" card. Price lines carry their section path.
+    before = text("pricing_editions_before", sections=SECTIONS)
+    after = text("pricing_editions_after", sections=SECTIONS)
+    assert "# Acme Registry > Cloud > Pro Edition" in after.splitlines()
+    assert "# Acme Registry > Self-Hosted > Pro Edition" in after.splitlines()
+    r = pd.classify(before, after, CFG)
+    assert r.kind == "restructured" and r.diff_mode == "price_lines"
+    (hunk,) = r.diff.hunks  # type: ignore[union-attr]
+    assert hunk.before == [
+        "[Acme Registry > Community Edition] Starting at $0",
+        "[Acme Registry > Pro Edition] Starting at $1,620 / year + consumption",
+    ]
+    assert hunk.after == [
+        "[Acme Registry > Cloud > Pro Edition] Starting at $1,950 / year + consumption",
+        "[Acme Registry > Self-Hosted > Community Edition] Starting at $0",
+        "[Acme Registry > Self-Hosted > Pro Edition] Starting at $7,500 / year",
+    ]
+    # Unchanged price in another tab: not in the diff at all.
+    assert "Acme Guard" not in "\n".join(hunk.before + hunk.after)
+    # Prefixes are headings only: they never carry a price themselves.
+    assert all("$" not in ln.split("]")[0] for ln in hunk.before + hunk.after)
+
+
+def test_a_heading_that_states_a_price_stays_a_normal_line():
+    lines = pd.Normalizer.from_settings(CFG).lines(
+        "@@heading Team@@\n@@heading $4 per user/month@@\nEverything in Free, plus private repos"
+    )
+    assert lines == ["# Team", "$4 per user/month", "Everything in Free, plus private repos"]
 
 
 # ---------- live collector ----------
@@ -221,7 +260,7 @@ def test_collector_baseline_unchanged_change_and_redesign(pricing, collect_db, w
     assert sig.meta["after_snapshot_id"] == snaps[1].id
     assert sig.published_at == snaps[1].captured_at
     assert sig.canonical_url.startswith(f"{URL}#diff-")
-    assert "Team $5 per user/month" in pd.after_text(sig.raw_text)
+    assert "$5 per user/month" in pd.after_text(sig.raw_text)
 
     # Redesign with the same prices: snapshot marked, no signal.
     # (v2 raised Team to $5, so the redesign keeps $5 here: really the same prices.)
@@ -244,7 +283,7 @@ def test_collector_redesign_with_price_change_creates_price_lines_signal(
     (sig,) = _rows(collect_db, Signal, pricing)
     assert sig.meta["diff_mode"] == "price_lines" and sig.meta["page_restructured"] is True
     assert "page was redesigned" in sig.raw_text
-    assert pd.after_text(sig.raw_text) == "Enterprise $19 per user/month"
+    assert pd.after_text(sig.raw_text) == "[Enterprise] $19 per user/month"
 
 
 def test_collector_small_noise_creates_no_signal_but_accumulates(
@@ -346,7 +385,7 @@ def test_backfill_stores_snapshots_diffs_in_order_and_dates_signals(
     assert first.published_at == at("2026-07-20")  # dated to the later snapshot
     assert first.meta["before_origin"] == "wayback" and first.meta["after_origin"] == "wayback"
     assert second.published_at == NOW and second.meta["diff_mode"] == "price_lines"
-    assert pd.after_text(second.raw_text) == "Team $4 per user/month"
+    assert pd.after_text(second.raw_text) == "[Team] $4 per user/month"
     snaps = _rows(collect_db, PageSnapshot, pricing)
     assert [s.meta.get("origin") for s in snaps] == ["wayback", "wayback", "wayback", "live"]
     assert snaps[0].meta["wayback_timestamp"] == "20251020000000"
@@ -355,7 +394,7 @@ def test_backfill_stores_snapshots_diffs_in_order_and_dates_signals(
     # Re-run: archived captures reused (no fetch), no new snapshots or signals.
     fetched = web.count(CFG.wayback.snapshot_url.format(timestamp="20251020000000", url=URL))
     again = backfill_source(collect_db, client, ref, CFG, run_id=_run_id(collect_db), now=NOW)
-    assert all(s["reused"] for s in again.snapshots)
+    assert all(s["status"] == "reused" for s in again.snapshots)
     assert again.signals_new == 0 and again.signals_existing == 2
     assert len(_rows(collect_db, PageSnapshot, pricing)) == 4
     assert (
@@ -433,4 +472,61 @@ def test_quote_side_is_before_only_for_removal_only_diffs():
     r2 = pd.classify(before, text("pricing_v2"), CFG)
     raw2, _ = pd.render_diff("A", URL, snap, snap, r2, 12000)
     side, quotable = pd.quote_source(raw2)
-    assert side == "after" and "Team $5 per user/month" in quotable and "Team $4" not in quotable
+    assert side == "after" and "$5 per user/month" in quotable and "$4" not in quotable
+
+
+def _old_format_snapshot(db, source_id, page, captured, meta):
+    """A snapshot as stored before path lines existed (normalizer v1, no 'normalizer' key)."""
+    html = fixture(f"{page}.html").decode()
+    v1 = "\n".join(
+        ln for ln in text(page).splitlines() if not ln.startswith(pd.PATH_PREFIX)
+    )  # roughly what v1 stored; the point is only that it differs from v2
+    assert v1 and html
+    with db.begin() as s:
+        row = PageSnapshot(
+            source_id=source_id, content_hash=pd.text_hash(v1), text=v1,
+            captured_at=captured, meta=meta,
+        )  # fmt: skip
+        s.add(row)
+        s.flush()
+        return row.id
+
+
+def test_collector_never_diffs_across_text_format_versions(pricing, collect_db, web, make_client):
+    _old_format_snapshot(collect_db, pricing, "pricing_v1", at("2026-10-01"), {"origin": "live"})
+    report = _collect(collect_db, web, make_client, "pricing_v2")
+    assert report.new == 0 and "text format changed" in report.notes[0]
+    snaps = _rows(collect_db, PageSnapshot, pricing)
+    assert snaps[-1].meta["normalizer"] == pd.NORMALIZER_VERSION
+    assert snaps[-1].meta["diff_kind"] == "baseline"
+
+
+def test_backfill_upgrades_old_snapshots_in_place_and_only_after_limits_signals(
+    pricing, collect_db, web, make_client
+):
+    _serve_wayback(
+        web,
+        {"20260420000000": "pricing_v1", "20260720000000": "pricing_v2"},
+        today="pricing_redesign",
+    )
+    old_wb = _old_format_snapshot(
+        collect_db, pricing, "pricing_v1", at("2026-04-20"),
+        {"origin": "wayback", "wayback_timestamp": "20260420000000"},
+    )  # fmt: skip
+    old_live = _old_format_snapshot(
+        collect_db, pricing, "pricing_redesign", NOW + timedelta(hours=1), {"origin": "live"}
+    )
+    report = backfill_source(
+        collect_db, make_client(), _ref(collect_db, pricing), CFG,
+        run_id=_run_id(collect_db), now=NOW + timedelta(hours=2),
+        only_after=at("2026-10-01").date(),
+    )  # fmt: skip
+    status = {s["id"]: s["status"] for s in report.snapshots}
+    assert status[old_wb] == "upgraded" and status[old_live] == "upgraded"  # same rows, new text
+    snaps = _rows(collect_db, PageSnapshot, pricing)
+    assert len(snaps) == 3 and all(s.meta["normalizer"] == pd.NORMALIZER_VERSION for s in snaps)
+    assert any(ln.startswith(pd.PATH_PREFIX) for ln in snaps[0].text.splitlines())
+    # Apr → Jul is before --only-after: diffed and reported, but no signal written.
+    assert report.pairs[0]["signal"] == "left as is (--only-after)"
+    (sig,) = _rows(collect_db, Signal, pricing)  # only Jul → today
+    assert sig.meta["diff_mode"] == "price_lines" and sig.meta["after_snapshot_id"] == old_live

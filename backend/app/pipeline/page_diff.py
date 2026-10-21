@@ -3,9 +3,14 @@
 Used by the live page_diff collector and by the Wayback backfill (D40, D41).
 
 - Text: trafilatura main-content extraction, or the elements matching source.options.selector
-  (CSS). Normalized per line: NFKC, whitespace collapsed, noise patterns (dates, ©, "3 days ago")
-  removed, cookie/nav lines dropped, runs of very short lines joined ("$", "19", "per user" →
-  "$ 19 per user"), consecutive repeats dropped. Prices are never touched.
+  (CSS). Before extraction the HTML is annotated with the page's structure: h2-h4 headings, tab
+  panels (aria-labelledby → the tab's label) and source.options.sections ({selector, label}, e.g.
+  a Cloud / Self-Hosted toggle). Normalized per line: NFKC, whitespace collapsed, noise patterns
+  (dates, ©, "3 days ago") removed, cookie/nav lines dropped, runs of very short lines joined
+  ("$", "19", "per user" → "$ 19 per user"), consecutive repeats dropped. Prices are never touched.
+  Structure becomes path lines "# Nexus Repository > Cloud > Pro Edition" (never joined with
+  other lines), so two "Pro Edition" prices under different products stay distinguishable.
+  NORMALIZER_VERSION is stored on each snapshot; only same-version snapshots are compared.
 - Diff: line-based (difflib). Lines that appear on both sides (moved/reordered) don't count.
 - Classification of a pair of snapshots:
     no_change     identical normalized text
@@ -33,12 +38,21 @@ from app.core.catalog import PageDiffSettings
 
 _BEFORE, _AFTER, _CONTEXT = "[before]", "[after]", "[context]"
 _MARKERS = (_BEFORE, _AFTER, _CONTEXT)
+# 1 = plain text (S7 first version, no path lines); 2 = structure path lines (D40 addendum).
+NORMALIZER_VERSION = 2
+PATH_PREFIX = "# "  # a normalized line naming the page section the following lines belong to
+_SECTION_RE = re.compile(r"@@section (.+?)@@")
+_END_RE = re.compile(r"@@endsection@@")
+_HEADING_RE = re.compile(r"@@heading (.*?)@@")
+_ANY_MARKER = re.compile(r"@@(?:section .+?|endsection|heading .*?)@@")
 # Put in every diff header: both the writer and the verifier misread a context line listing two
 # plans' prices side by side ("$4 per user/month $21 per user/month") as a price change.
 FORMAT_NOTE = (
     "Format: [before] = old lines, [after] = the new lines that replaced them, [context] = "
     "unchanged neighbouring lines for orientation. Only [before] -> [after] is a change. A line "
-    "listing several prices is a comparison-table row (one price per plan), not a price change."
+    "listing several prices is a comparison-table row (one price per plan), not a price change. "
+    "A line starting with '# ' names the page section (product > option > plan) of the lines "
+    "after it; '[a > b] text' = text from that section."
 )
 
 
@@ -49,14 +63,21 @@ class ExtractionError(ValueError):
 # ---------- extraction + normalization ----------
 
 
-def extract_text(html: str, selector: str | None = None) -> str:
-    """Main text of a page: the CSS selector's elements if given, else trafilatura."""
-    if selector:
-        import lxml.html
+def extract_text(
+    html: str, selector: str | None = None, sections: list[dict[str, str]] | None = None
+) -> str:
+    """Main text of a page (the CSS selector's elements if given, else trafilatura), with
+    @@section/@@heading markers for the page structure (see annotate)."""
+    import lxml.html
 
+    try:
         doc = lxml.html.fromstring(html)
-        for bad in doc.xpath("//script|//style|//noscript"):
-            bad.drop_tree()
+    except Exception as e:  # noqa: BLE001 - empty or broken HTML
+        raise ExtractionError(f"unparseable HTML: {e}") from None
+    for bad in doc.xpath("//script|//style|//noscript"):
+        bad.drop_tree()
+    annotate(doc, sections or [])
+    if selector:
         nodes = doc.cssselect(selector)
         if not nodes:
             raise ExtractionError(f"selector {selector!r} matched nothing")
@@ -65,11 +86,48 @@ def extract_text(html: str, selector: str | None = None) -> str:
     import trafilatura  # heavy import
 
     text = trafilatura.extract(
-        html, favor_recall=True, include_tables=True, include_comments=False, deduplicate=False
+        lxml.html.tostring(doc, encoding="unicode"),
+        favor_recall=True,
+        include_tables=True,
+        include_comments=False,
+        deduplicate=False,
     )
     if not text:
-        raise ExtractionError("trafilatura found no main content")
+        raise ExtractionError("trafilatura found no main content (the page may need JavaScript)")
     return text
+
+
+def _clean(text: str) -> str:
+    return " ".join(_ANY_MARKER.sub(" ", text).split())
+
+
+def annotate(doc: Any, sections: list[dict[str, str]]) -> None:
+    """Mark the page structure in place with text markers that survive extraction:
+    h2-h4 → "@@heading <text>@@"; a tab panel (aria-labelledby) or an element matching a
+    configured section selector is wrapped in "@@section <label>@@" … "@@endsection@@"."""
+    from lxml.html import Element
+
+    def wrap(el: Any, label: str) -> None:
+        label = _clean(label)
+        if not label:
+            return
+        start, end = Element("h2"), Element("h2")
+        start.text, end.text = f"@@section {label}@@", "@@endsection@@"
+        el.insert(0, start)
+        el.append(end)
+
+    for h in doc.xpath("//h2|//h3|//h4"):  # h1 = the page title: on every path, adds nothing
+        text = _clean(h.text_content())
+        for child in list(h):
+            h.remove(child)
+        h.text = f"@@heading {text}@@"
+    for panel in doc.xpath("//*[@aria-labelledby]"):
+        ref = doc.get_element_by_id(panel.get("aria-labelledby"), None)
+        if ref is not None:
+            wrap(panel, ref.text_content())
+    for section in sections:
+        for el in doc.cssselect(section["selector"]):
+            wrap(el, section["label"])
 
 
 def _node_lines(node: Any) -> str:
@@ -91,6 +149,7 @@ class Normalizer:
     noise: list[re.Pattern[str]]
     drop: list[re.Pattern[str]]
     short_line_chars: int
+    prices: list[re.Pattern[str]] = field(default_factory=list)
 
     @classmethod
     def from_settings(cls, cfg: PageDiffSettings) -> "Normalizer":
@@ -99,24 +158,63 @@ class Normalizer:
             noise=[re.compile(p, flags) for p in cfg.noise_patterns],
             drop=[re.compile(p, flags) for p in cfg.drop_line_patterns],
             short_line_chars=cfg.short_line_chars,
+            prices=[re.compile(p, flags) for p in cfg.price_patterns],
         )
+
+    def _clean_line(self, raw: str) -> str:
+        line = raw.replace("|", " ")  # trafilatura table cell separators
+        for p in self.noise:
+            line = p.sub("", line)
+        return " ".join(line.split()).strip(" -·•#")
 
     def lines(self, text: str) -> list[str]:
         out: list[str] = []
         short_run: list[str] = []
+        # Structure: a stack of [section label, heading inside it]; index 0 = outside any section.
+        stack: list[list[str | None]] = [[None, None]]
+        emitted: str | None = None
 
         def flush() -> None:
             if short_run:
                 out.append(" ".join(short_run))
                 short_run.clear()
 
+        def path() -> str:
+            parts = [p for frame in stack for p in frame if p]
+            return " > ".join(parts)
+
+        def emit_path() -> None:
+            nonlocal emitted
+            current = path()
+            if current and current != emitted:
+                flush()
+                out.append(PATH_PREFIX + current)
+            emitted = current
+
         for raw in unicodedata.normalize("NFKC", text).splitlines():
-            line = raw.replace("|", " ")  # trafilatura table cell separators
-            for p in self.noise:
-                line = p.sub("", line)
-            line = " ".join(line.split()).strip(" -·•")
+            stripped = raw.strip()
+            if m := _SECTION_RE.fullmatch(stripped):
+                flush()
+                stack.append([self._clean_line(m.group(1)) or None, None])
+                continue
+            if _END_RE.fullmatch(stripped):
+                flush()
+                if len(stack) > 1:
+                    stack.pop()
+                continue
+            if m := _HEADING_RE.fullmatch(stripped):
+                heading = self._clean_line(m.group(1))
+                # A heading that states a price stays a normal line (prefixes carry no prices).
+                if heading and not any(p.search(heading) for p in self.prices):
+                    if not any(p.search(heading) for p in self.drop):
+                        flush()
+                        stack[-1][1] = heading
+                    continue
+                raw = heading
+            line = self._clean_line(_ANY_MARKER.sub(" ", raw))
             if not line or any(p.search(line) for p in self.drop):
                 continue
+            emit_path()
             if len(line) < self.short_line_chars:
                 short_run.append(line)
                 continue
@@ -198,17 +296,47 @@ def _edit_size(before: list[str], after: list[str]) -> int:
 
 
 def _is_price(line: str, patterns: list[re.Pattern[str]]) -> bool:
-    return any(p.search(line) for p in patterns)
+    return not line.startswith(PATH_PREFIX) and any(p.search(line) for p in patterns)
 
 
-def _sections(lines: list[str], patterns: list[re.Pattern[str]]) -> list[int]:
-    """Per line: index of the nearest price line at or above it (-1 = before any price line)."""
-    out, current = [], -1
-    for i, ln in enumerate(lines):
+def _path_before(lines: list[str], idx: int) -> str | None:
+    """The section path line in force at index idx (searching upwards)."""
+    for k in range(min(idx, len(lines)) - 1, -1, -1):
+        if lines[k].startswith(PATH_PREFIX):
+            return lines[k]
+    return None
+
+
+def _sections(lines: list[str], patterns: list[re.Pattern[str]]) -> list[str | None]:
+    """Per line: "<key>\t<name>" of the section it belongs to (None = before any section).
+
+    With structure path lines (normalizer v2) a section is its path ("Nexus Repository > Cloud >
+    Pro Edition"). Without them it is the nearest price line above (the tier heading), keyed by
+    position, so a changed price doesn't make every line of the tier look moved."""
+    out: list[str | None] = []
+    current: str | None = None
+    if any(ln.startswith(PATH_PREFIX) for ln in lines):
+        for ln in lines:
+            if ln.startswith(PATH_PREFIX):
+                name = ln[len(PATH_PREFIX) :]
+                current = f"{name}\t{name}"
+            out.append(current)
+        return out
+    n = 0
+    for ln in lines:
         if _is_price(ln, patterns):
-            current = i
+            n += 1
+            current = f"#{n}\t{ln}"
         out.append(current)
     return out
+
+
+def _key(label: str | None) -> str | None:
+    return label.split("\t", 1)[0] if label else None
+
+
+def _name(label: str | None) -> str:
+    return label.split("\t", 1)[-1] if label else ""
 
 
 def diff_lines(
@@ -221,8 +349,6 @@ def diff_lines(
     (the lines under a price line, i.e. a tier) to another: a feature changing tiers."""
     patterns = price_patterns or []
     sec_a, sec_b = _sections(a, patterns), _sections(b, patterns)
-    ord_a = {i: n for n, i in enumerate(sorted({x for x in sec_a if x >= 0}), 1)}
-    ord_b = {i: n for n, i in enumerate(sorted({x for x in sec_b if x >= 0}), 1)}
 
     ops = SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
     rem = [
@@ -233,15 +359,17 @@ def diff_lines(
     ]
     moved = Counter(ln for _, ln in rem) & Counter(ln for _, ln in add)
 
-    # Moved between two different priced sections (by section ordinal: 2nd tier → 3rd tier)?
+    # Moved from one section to another (Enterprise → Team): a feature changing tiers.
     tier_moves: list[TierMove] = []
     for ln in list(moved):
-        from_ = {ord_a.get(sec_a[i], 0) for i, x in rem if x == ln}
-        to = {ord_b.get(sec_b[j], 0) for j, x in add if x == ln}
-        if 0 not in from_ | to and from_ != to and not _is_price(ln, patterns):
+        if ln.startswith(PATH_PREFIX) or _is_price(ln, patterns):
+            continue
+        from_ = {_key(sec_a[i]) for i, x in rem if x == ln}
+        to = {_key(sec_b[j]) for j, x in add if x == ln}
+        if None not in from_ | to and from_ != to:
             i = next(i for i, x in rem if x == ln)
             j = next(j for j, x in add if x == ln)
-            tier_moves.append(TierMove(ln, a[sec_a[i]], b[sec_b[j]]))
+            tier_moves.append(TierMove(ln, _name(sec_a[i]), _name(sec_b[j])))
             del moved[ln]
 
     def keep(lines: list[str], budget: Counter[str]) -> list[str]:
@@ -261,11 +389,16 @@ def diff_lines(
         before, after = keep(a[i1:i2], budget_r), keep(b[j1:j2], budget_a)
         if not before and not after:
             continue
+        ctx_before = b[max(0, j1 - context) : j1] if context else []
+        # Which section the change is in: its path line, unless already visible.
+        where = _path_before(b, j1) if after else _path_before(a, i1)
+        if context and where and where not in ctx_before and where not in before + after:
+            ctx_before = [where, *ctx_before]
         hunks.append(
             Hunk(
                 before,
                 after,
-                context_before=b[max(0, j1 - context) : j1] if context else [],
+                context_before=ctx_before,
                 context_after=b[j2 : j2 + context] if context else [],
             )
         )
@@ -285,7 +418,14 @@ def diff_lines(
 
 
 def price_lines(lines: list[str], patterns: list[re.Pattern[str]]) -> list[str]:
-    return [ln for ln in lines if _is_price(ln, patterns)]
+    """Lines stating a price or plan limit, prefixed with "[section path] " when known."""
+    out, current = [], ""
+    for ln in lines:
+        if ln.startswith(PATH_PREFIX):
+            current = ln[len(PATH_PREFIX) :]
+        elif _is_price(ln, patterns):
+            out.append(f"[{current}] {ln}" if current else ln)
+    return out
 
 
 # ---------- classification ----------
@@ -321,7 +461,8 @@ def classify(before: str, after: str, cfg: PageDiffSettings) -> PairResult:
     if full.changed_ratio <= cfg.restructure_ratio:
         return PairResult("changed", full, "full", stats)
 
-    # Redesign: a full diff would be mostly layout churn. Compare only the price lines.
+    # Redesign: a full diff would be mostly layout churn. Compare only the price lines, each
+    # prefixed with its section path ("[Nexus Repository > Cloud > Pro Edition] Starting at …").
     pa, pb = price_lines(a, patterns), price_lines(b, patterns)
     prices = diff_lines(pa, pb, context=0)
     stats["price_lines_before"], stats["price_lines_after"] = len(pa), len(pb)

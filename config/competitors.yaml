@@ -13,7 +13,8 @@
 #               is_active: false = keep the row but don't fetch it
 #               github sources need options.repos: repos under the org whose releases we collect
 #               (each checked on 2026-10-20 to publish releases)
-#               page_diff sources may set options.selector (CSS) and options.label ("Pricing page")
+#               page_diff sources may set options.selector (CSS), options.label ("Pricing page") and
+#               options.sections: [{selector, label}] for page parts without a heading (e.g. a toggle)
 #               rss sources may set options.keep_fragment: true when feed items are #anchors on one page
 #
 # Every URL below was checked on 2026-10-20 (HTTP 200; RSS URLs return a feed; GitHub orgs exist),
@@ -61,7 +62,8 @@ companies:
     sources:
       - {name: Sonatype Blog, url: https://www.sonatype.com/blog/rss.xml, kind: official, fetch_method: rss}
       - {name: Sonatype GitHub, url: https://github.com/sonatype, kind: github, fetch_method: github, options: {repos: [nexus-public]}, is_active: false}
-      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff}
+      # The Nexus Repository tab toggles Cloud / Self-Hosted cards with the same edition names (data-display).
+      - {name: Sonatype Pricing, url: https://www.sonatype.com/products/pricing, kind: official, fetch_method: page_diff, options: {sections: [{selector: "[data-display=repo_cloud]", label: Cloud}, {selector: "[data-display=repo_self]", label: Self-Hosted}]}}
 
   - slug: github
     name: GitHub

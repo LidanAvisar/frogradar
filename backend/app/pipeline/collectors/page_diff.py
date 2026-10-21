@@ -23,7 +23,8 @@ from app.pipeline.page_diff import ExtractionError, Normalizer, SnapshotInfo, ex
 def page_text(html: str, source: SourceRef, cfg: PageDiffSettings) -> str:
     """Normalized text of a page, or ExtractionError if too little survives."""
     selector = source.options.get("selector")
-    text = Normalizer.from_settings(cfg).normalize(extract_text(html, selector))
+    sections = source.options.get("sections")
+    text = Normalizer.from_settings(cfg).normalize(extract_text(html, selector, sections))
     if len(text) < cfg.min_text_chars:
         raise ExtractionError(
             f"only {len(text)} characters of text (min {cfg.min_text_chars}): "
@@ -62,11 +63,12 @@ class PageDiffCollector:
         text = page_text(resp.text, source, self.cfg)
         captured = self.now()
         new = snapshots.NewSnapshot(
-            key="live", text=text, captured_at=captured, meta={"origin": "live"}
+            key="live", text=text, captured_at=captured, meta=snapshots.live_meta()
         )
         with self.session_factory() as s:
             last = snapshots.latest(s, source.id)
             ref = snapshots.reference(s, source.id)
+            upgraded = last is None and snapshots.has_older_versions(s, source.id)
             if last is not None and last.content_hash == new.content_hash:
                 result.notes.append("unchanged")
                 return result
@@ -76,7 +78,10 @@ class PageDiffCollector:
         result.snapshots.append(new)
         if ref_info is None or ref_text is None:
             new.meta["diff_kind"] = "baseline"
-            result.notes.append("baseline snapshot stored")
+            result.notes.append(
+                "baseline snapshot stored"
+                + (" (text format changed: older snapshots are not compared)" if upgraded else "")
+            )
             return result
 
         outcome = snapshots.compare(

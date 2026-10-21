@@ -15,6 +15,10 @@ For each source:
 4. Snapshots are stored (meta: origin=wayback, wayback_timestamp) and the source's snapshots are
    diffed in captured_at order. Changes become signals dated to the later snapshot.
 
+Snapshots stored in an older text format (normalizer version) are re-fetched and upgraded in place
+(Wayback captures; live snapshots only if taken today). --only-after limits which change signals
+are written, so a re-render can be confined to the pairs that need it.
+
 Idempotent: a capture already stored (same wayback timestamp) is reused, and change signals are
 keyed by (source, url#diff-<before>-<after>). web.archive.org gets a 5 s gap between requests
 (page_diff.wayback.host_delay_s) and its robots.txt is honoured by PoliteClient.
@@ -26,7 +30,7 @@ import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
@@ -139,7 +143,10 @@ def backfill_source(
     *,
     run_id: int,
     now: datetime,
+    only_after: date | None = None,
 ) -> SourceBackfill:
+    """only_after: write change signals only for pairs whose later snapshot is on/after this date
+    (others are diffed and reported but their signals are left as they are)."""
     report = SourceBackfill(ref.id, ref.name)
     wb = cfg.wayback
 
@@ -167,10 +174,11 @@ def backfill_source(
             seen.add(cap.timestamp)
             entry = {"target": target.date().isoformat(), "captured": cap.at.date().isoformat()}
             row = snapshots.by_wayback_timestamp(s, ref.id, cap.timestamp)
-            if row is not None:
-                reused_entry = {**entry, "id": row.id, "origin": "wayback", "reused": True}
+            if row is not None and snapshots.is_current(row):
+                reused_entry = {**entry, "id": row.id, "origin": "wayback", "status": "reused"}
                 report.snapshots.append(reused_entry)
                 continue
+            # New capture, or a stored one in an older text format: (re-)fetch the archived HTML.
             url = wb.snapshot_url.format(timestamp=cap.timestamp, url=ref.url)
             try:
                 text = page_text(client.get(url).text, ref, cfg)
@@ -180,41 +188,58 @@ def backfill_source(
             if reason := check_archived(text, today_text, cfg):
                 report.rejected.append({**entry, "reason": reason})
                 continue
-            snap = snapshots.NewSnapshot(
-                key=cap.timestamp,
-                text=text,
-                captured_at=cap.at,
-                meta={"origin": "wayback", "wayback_timestamp": cap.timestamp},
-            )
-            row = snapshots.insert(s, ref.id, snap)
+            if row is not None:
+                snapshots.upgrade(row, text)
+                status = "upgraded"
+            else:
+                snap = snapshots.NewSnapshot(
+                    key=cap.timestamp, text=text, captured_at=cap.at,
+                    meta=snapshots.wayback_meta(cap.timestamp),
+                )  # fmt: skip
+                row = snapshots.insert(s, ref.id, snap)
+                status = "new"
             report.snapshots.append(
-                {**entry, "id": row.id, "origin": "wayback", "chars": len(text), "reused": False}
+                {**entry, "id": row.id, "origin": "wayback", "chars": len(text), "status": status}
             )
 
+        # Live snapshots from today in an older text format: same page, same day → upgrade.
+        upgraded_live: set[int] = set()
+        for old in s.scalars(
+            select(PageSnapshot).where(
+                PageSnapshot.source_id == ref.id,
+                snapshots.older_version(),
+                PageSnapshot.meta["origin"].astext == "live",
+            )
+        ):
+            if old.captured_at.astimezone(UTC).date() == now.date():
+                snapshots.upgrade(old, today_text)
+                upgraded_live.add(old.id)
+        s.flush()
         # Today's snapshot: reuse the latest one if the text is the same.
         last = snapshots.latest(s, ref.id)
-        live = snapshots.NewSnapshot("live", today_text, now, {"origin": "live"})
+        live = snapshots.NewSnapshot("live", today_text, now, snapshots.live_meta())
         if last is not None and last.content_hash == live.content_hash:
             today_row = last
-            reused = True
+            status = "upgraded" if last.id in upgraded_live else "reused"
         else:
             today_row = snapshots.insert(s, ref.id, live)
-            reused = False
+            status = "new"
         report.snapshots.append(
             {
                 "captured": today_row.captured_at.date().isoformat(),
                 "id": today_row.id,
                 "origin": today_row.meta.get("origin", "live"),
                 "chars": len(today_row.text),
-                "reused": reused,
+                "status": status,
             }
         )
 
         # 4. Diff the chain in date order (only snapshots at/after the oldest one we just used).
+        # Only snapshots in the current text format are compared with each other.
         chain = list(
             s.scalars(
                 select(PageSnapshot)
-                .where(PageSnapshot.source_id == ref.id)
+                .where(PageSnapshot.source_id == ref.id, snapshots.current_version())
                 .order_by(PageSnapshot.captured_at, PageSnapshot.id)
             )
         )
@@ -231,7 +256,9 @@ def backfill_source(
             outcome = snapshots.compare(ref, before, base.text, after, snap_row.text, cfg)
             snap_row.meta = {**snap_row.meta, **outcome.after_meta}
             report.pairs.append(outcome.summary(before, after))
-            if outcome.item is not None:
+            if outcome.item is not None and only_after and after.captured_at.date() < only_after:
+                report.pairs[-1]["signal"] = "left as is (--only-after)"
+            elif outcome.item is not None:
                 with s.begin_nested():
                     result = store.save_item(s, ref, run_id, outcome.item)
                 if result is Outcome.NEW:
@@ -253,6 +280,7 @@ def run_backfill(
     source: str | None = None,
     cfg: PageDiffSettings | None = None,
     now: datetime | None = None,
+    only_after: date | None = None,
 ) -> tuple[int, RunStatus, list[SourceBackfill]]:
     cfg = cfg or load_pipeline().page_diff
     now = now or datetime.now(UTC)
@@ -271,7 +299,11 @@ def run_backfill(
     for ref in refs:
         logger.info("wayback backfill: %s", ref.name)
         try:
-            reports.append(backfill_source(factory, client, ref, cfg, run_id=run_id, now=now))
+            reports.append(
+                backfill_source(
+                    factory, client, ref, cfg, run_id=run_id, now=now, only_after=only_after
+                )
+            )
         except Exception as e:  # noqa: BLE001 - one source must not stop the others
             logger.warning("wayback backfill of %s failed: %s", ref.name, _short(e))
             reports.append(SourceBackfill(ref.id, ref.name, status="failed", error=_short(e)))
@@ -301,9 +333,9 @@ def print_report(reports: list[SourceBackfill], out=sys.stdout) -> None:
             print(f"   error: {r.error}", file=out)
         for snap in r.snapshots:
             target = f" (target {snap['target']})" if "target" in snap else ""
-            reused = ", reused" if snap.get("reused") else ""
             print(
-                f"   snapshot #{snap['id']} {snap['captured']} {snap['origin']}{target}{reused}",
+                f"   snapshot #{snap['id']} {snap['captured']} {snap['origin']}{target}, "
+                f"{snap['status']}",
                 file=out,
             )
         for m in r.missing:
@@ -317,7 +349,8 @@ def print_report(reports: list[SourceBackfill], out=sys.stdout) -> None:
                 f"   {p['before']} → {p['after']}: {p['kind']}{mode}, "
                 f"changed-line ratio {p.get('changed_line_ratio')}, "
                 f"{p.get('removed', 0)} removed / {p.get('added', 0)} added"
-                f"{', signal' if p['signal'] else ''}",
+                + (f", signal {p['signal']}" if isinstance(p["signal"], str) else "")
+                + (", signal" if p["signal"] is True else ""),
                 file=out,
             )
         print(
@@ -330,6 +363,11 @@ def print_report(reports: list[SourceBackfill], out=sys.stdout) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--source", help="source id or exact name (default: active page_diff)")
+    parser.add_argument(
+        "--only-after",
+        type=date.fromisoformat,
+        help="YYYY-MM-DD: write change signals only for pairs whose later snapshot is on/after it",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
     logging.basicConfig(
@@ -348,7 +386,9 @@ def main(argv: list[str] | None = None) -> int:
             pipeline_lock(get_engine()),  # don't race the daily run's page_diff collector
             PoliteClient(settings, host_delays={host: cfg.wayback.host_delay_s}) as client,
         ):
-            run_id, status, reports = run_backfill(factory, client, source=args.source, cfg=cfg)
+            run_id, status, reports = run_backfill(
+                factory, client, source=args.source, cfg=cfg, only_after=args.only_after
+            )
             print_report(reports)
             print(f"\nrun {run_id}: {status.value} – HTTP requests: {client.request_count}")
     except PipelineLocked as e:

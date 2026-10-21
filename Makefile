@@ -71,7 +71,7 @@ pipeline-report: migrate
 # Historical baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today,
 # diffed in date order (no LLM calls; change signals are processed by the next `make pipeline`).
 wayback-backfill: migrate
-	cd backend && uv run python -m app.pipeline.wayback $(if $(SOURCE),--source "$(SOURCE)")
+	cd backend && uv run python -m app.pipeline.wayback $(if $(SOURCE),--source "$(SOURCE)") $(if $(ONLY_AFTER),--only-after $(ONLY_AFTER))
 
 # Daily scheduler (opt-in, paid: runs `make pipeline` every day at DAILY_RUN_CRON, UTC).
 # `make up` never starts it; this does (compose profile "scheduler").

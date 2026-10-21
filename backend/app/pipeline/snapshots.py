@@ -16,7 +16,14 @@ from app.core.catalog import PageDiffSettings
 from app.db.models import PageSnapshot
 from app.pipeline.collectors.base import RawItem, SourceRef
 from app.pipeline.normalize import canonical_url
-from app.pipeline.page_diff import PairResult, SnapshotInfo, classify, render_diff, text_hash
+from app.pipeline.page_diff import (
+    NORMALIZER_VERSION,
+    PairResult,
+    SnapshotInfo,
+    classify,
+    render_diff,
+    text_hash,
+)
 
 DEFAULT_LABEL = "Pricing page"
 
@@ -35,10 +42,53 @@ class NewSnapshot:
         return text_hash(self.text)
 
 
+def current_version() -> Any:
+    """SQL: the snapshot was normalized with the current NORMALIZER_VERSION (D40 addendum).
+    Texts of different versions are never compared: the format change would look like edits."""
+    return PageSnapshot.meta["normalizer"].astext == str(NORMALIZER_VERSION)
+
+
+def older_version() -> Any:
+    """SQL: any other version, including v1 rows that have no "normalizer" key (NULL)."""
+    return PageSnapshot.meta["normalizer"].astext.is_distinct_from(str(NORMALIZER_VERSION))
+
+
+def live_meta() -> dict[str, Any]:
+    return {"origin": "live", "normalizer": NORMALIZER_VERSION}
+
+
+def wayback_meta(timestamp: str) -> dict[str, Any]:
+    return {"origin": "wayback", "wayback_timestamp": timestamp, "normalizer": NORMALIZER_VERSION}
+
+
+def has_older_versions(session: Session, source_id: int) -> bool:
+    return (
+        session.scalars(
+            select(PageSnapshot.id)
+            .where(PageSnapshot.source_id == source_id, older_version())
+            .limit(1)
+        ).first()
+        is not None
+    )
+
+
+def is_current(row: PageSnapshot) -> bool:
+    return row.meta.get("normalizer") == NORMALIZER_VERSION
+
+
+def upgrade(row: PageSnapshot, text: str) -> None:
+    """Re-normalized text of the same capture (same page, same moment) with the current version."""
+    old = row.meta.get("normalizer", 1)
+    row.text = text
+    row.content_hash = text_hash(text)
+    row.meta = {**row.meta, "normalizer": NORMALIZER_VERSION, "upgraded_from_normalizer": old}
+
+
 def latest(session: Session, source_id: int) -> PageSnapshot | None:
+    """Latest snapshot of the current normalizer version."""
     return session.scalars(
         select(PageSnapshot)
-        .where(PageSnapshot.source_id == source_id)
+        .where(PageSnapshot.source_id == source_id, current_version())
         .order_by(PageSnapshot.captured_at.desc(), PageSnapshot.id.desc())
         .limit(1)
     ).first()
@@ -50,6 +100,7 @@ def reference(session: Session, source_id: int) -> PageSnapshot | None:
         select(PageSnapshot)
         .where(
             PageSnapshot.source_id == source_id,
+            current_version(),
             PageSnapshot.meta["diff_kind"].astext.is_distinct_from("noise"),
         )
         .order_by(PageSnapshot.captured_at.desc(), PageSnapshot.id.desc())
