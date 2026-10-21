@@ -46,6 +46,39 @@
   --fr-claim-fg: #7A4F00;
   --fr-claim-bg: #FFF8E6;
 
+  /* Relationship / relation / status chips reuse the impact and confidence pairs above. */
+  --fr-chip-neutral-bg: #EEF1EF;
+
+  /* Radar score components (stacked bar; decorative, the breakdown is also text) */
+  --fr-score-relevance: #1D6B45;
+  --fr-score-sources: #1F4E8C;
+  --fr-score-mentions: #6A9FD8;
+  --fr-score-velocity: #B8741A;
+  --fr-score-traction: #8E5BB5;
+  --fr-score-recency: #9AA59F;
+  --fr-score-track: #EEF1EF;
+
+  /* Capability levels (always shown with a symbol and text, never color alone) */
+  --fr-level-full: #1D6B45;
+  --fr-level-partial: #7A5A00;
+  --fr-level-planned: #1F4E8C;
+  --fr-level-none: #3E4943;
+  --fr-level-unknown: #59645E;
+
+  /* Matrix "changed recently" row, strategy timeline rules */
+  --fr-changed-bg: #FFFBF3;
+  --fr-changed-fg: #8A3B00;
+  --fr-timeline-rule: #C9D2CC;
+  --fr-timeline-rule-strong: #E8A15C;
+
+  /* Overlays (Material dialog / snackbar) */
+  --fr-scrim: rgba(15, 26, 20, 0.45);
+  --fr-shadow-overlay: 0 12px 32px rgba(15, 26, 20, 0.18);
+  --fr-toast-bg: #0F1A14;
+  --fr-toast-fg: #FFFFFF;
+  --fr-toast-action: #9FD3B4;
+  --fr-error-fg: #9B1C13;
+
   /* Type */
   --fr-font-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --fr-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;

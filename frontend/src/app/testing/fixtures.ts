@@ -1,4 +1,4 @@
-import type { Brief, RankedSignal, TopStory } from '../api/models';
+import type { Brief, RadarCandidateDetail, RankedSignal, TopStory } from '../api/models';
 
 export function signalFixture(overrides: Partial<RankedSignal> = {}): RankedSignal {
   return {
@@ -65,6 +65,58 @@ export function storyFixture(overrides: Partial<TopStory> = {}): TopStory {
     company: 'GitHub',
     affects: ['JFrog Curation'],
     signal_ids: [7, 9],
+    ...overrides,
+  };
+}
+
+export function candidateFixture(overrides: Partial<RadarCandidateDetail> = {}): RadarCandidateDetail {
+  return {
+    id: 11,
+    name: 'Regshield',
+    kind: 'open_source_project',
+    status: 'new',
+    homepage: 'https://regshield.io',
+    repo_url: 'https://github.com/regshield/regshield',
+    score: 61.5,
+    breakdown: {
+      formula: 'radar_score.v2',
+      score: 61.5,
+      components: {
+        relevance: { value: { max_impact: 4, relation: 'threatens', basis: 'profile_relation' }, factor: 0.92, weight: 0.35, points: 32.2 },
+        source_diversity: { value: { sources: 2, weighted: 1.35 }, factor: 0.68, weight: 0.2, points: 13.5 },
+        mentions: { value: { mentions: 3, weighted: 1.2 }, factor: 0.4, weight: 0.1, points: 4 },
+        mention_velocity: { value: { recent: 1, prior: 0, recent_days: 14 }, factor: 0.33, weight: 0.1, points: 3.3 },
+        traction: { value: { stars: 800, stars_per_day: 12.5, stars_basis: 'age', hn_points_max: null, from: 'stars' }, factor: 0.2, weight: 0.1, points: 2 },
+        recency: { value: { days_since_last: 1 }, factor: 0.95, weight: 0.15, points: 6.5 },
+      },
+    },
+    sources_count: 2,
+    mentions_count: 3,
+    first_seen: '2026-10-16T08:00:00Z',
+    last_seen: '2026-10-20T08:00:00Z',
+    segments: ['supply_chain_security'],
+    line: 'Launched on HN this week.',
+    line_source: 'why_notable_now',
+    what_it_is: 'An open-source registry firewall.',
+    why_notable_now: 'Launched on HN this week.',
+    relation: 'threatens',
+    relation_products: ['JFrog Curation'],
+    relation_check: 'supported',
+    profile_status: 'ok',
+    origins: ['hn_new_entity'],
+    metrics: { mentions: 3, sources: 2, mentions_recent: 1, stars: 800, star_velocity: 12.5, star_velocity_basis: 'age', hn_points_max: null, max_impact: 4, relation: 'threatens' },
+    statements: [
+      { key: 'what_it_is', text: 'An open-source registry firewall.', citations: [{ id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: '2026-10-19T08:00:00Z' }] },
+      { key: 'why_notable_now', text: 'Launched on HN this week.', citations: [{ id: 6, title: 'Regshield 1.0', url: 'https://x.test/6', published_at: null }, { id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: null }] },
+    ],
+    dropped_statements: 1,
+    profile_generated_at: '2026-10-21T08:00:00Z',
+    mentions: [{ id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: '2026-10-19T08:00:00Z', source: 'Hacker News (discovery)', origin: 'hn_new_entity' }],
+    merges: [],
+    other_names: [],
+    dismiss_reason: null,
+    dismiss_comment: null,
+    approved_entity: null,
     ...overrides,
   };
 }

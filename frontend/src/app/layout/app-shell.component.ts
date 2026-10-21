@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { catchError, filter, of } from 'rxjs';
+import { filter } from 'rxjs';
 
 import type { NavCounts } from '../api/models';
-import { ApiService } from '../core/api.service';
+import { NavCountsService } from '../core/nav-counts.service';
 import { IconComponent } from '../shared/icon.component';
 
 interface NavItem {
@@ -12,16 +12,17 @@ interface NavItem {
   label: string;
   icon: string;
   count?: keyof NavCounts;
+  countLabel?: string;
 }
 
 const NAV: NavItem[] = [
   { path: '/', label: 'Morning Brief', icon: 'brief' },
-  { path: '/signals', label: 'Signals', icon: 'signals', count: 'signals' },
+  { path: '/signals', label: 'Signals', icon: 'signals', count: 'signals', countLabel: 'signals' },
   { path: '/battlecards', label: 'Battlecards', icon: 'battlecards' },
   { path: '/ask', label: 'Ask', icon: 'ask' },
   { path: '/missions', label: 'Missions', icon: 'missions' },
-  { path: '/radar', label: 'Radar', icon: 'radar', count: 'radar_new' },
-  { path: '/review', label: 'Review queue', icon: 'review', count: 'review_queue' },
+  { path: '/radar', label: 'Radar', icon: 'radar', count: 'radar_new', countLabel: 'new candidates' },
+  { path: '/review', label: 'Review queue', icon: 'review', count: 'review_queue', countLabel: 'waiting for review' },
 ];
 
 /**
@@ -37,15 +38,14 @@ const NAV: NavItem[] = [
   styleUrl: './app-shell.component.scss',
 })
 export class AppShellComponent {
-  private readonly counts = toSignal(
-    inject(ApiService).nav().pipe(catchError(() => of(null))),
-    { initialValue: null },
-  );
+  private readonly nav = inject(NavCountsService);
+  private readonly counts = this.nav.counts;
 
   protected readonly menuOpen = signal(false);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
 
   constructor() {
+    this.nav.refresh();
     inject(Router)
       .events.pipe(
         filter((e) => e instanceof NavigationEnd),

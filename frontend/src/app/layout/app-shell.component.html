@@ -22,7 +22,7 @@
               <fr-icon [name]="item.icon" />
               <span class="label">{{ item.label }}</span>
               @if (item.countValue !== null) {
-                <span class="count mono" [attr.aria-label]="item.countValue + ' items'">{{ item.countValue }}</span>
+                <span class="count mono" [attr.aria-label]="item.countValue + ' ' + (item.countLabel ?? 'items')">{{ item.countValue }}</span>
               }
             </a>
           </li>
