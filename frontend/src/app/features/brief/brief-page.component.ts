@@ -67,7 +67,7 @@ export class BriefPageComponent implements OnInit {
     return [
       { n: st.new_signals, label: st.new_signals === 1 ? 'new signal' : 'new signals',
         hint: 'since yesterday', params: { since: '24h' } },
-      { n: st.high_impact, label: 'high impact', hint: 'new, impact 4-5', params: { since: '24h', min_impact: 4 } },
+      { n: st.high_impact, label: 'high impact today', hint: 'new, impact 4-5', params: { since: '24h', min_impact: 4 } },
       { n: st.price_changes, label: st.price_changes === 1 ? 'price change' : 'price changes',
         hint: `last ${st.price_change_days} days`, params: { kind: 'page_diff', days: st.price_change_days } },
     ];

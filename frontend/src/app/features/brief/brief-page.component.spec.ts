@@ -42,7 +42,7 @@ describe('BriefPageComponent', () => {
     const tiles = Array.from(el.querySelectorAll<HTMLAnchorElement>('a.tile'));
     expect(tiles.map((t) => t.getAttribute('aria-label'))).toEqual([
       '3 new signals, since yesterday',
-      '2 high impact, new, impact 4-5',
+      '2 high impact today, new, impact 4-5',
       '1 price change, last 7 days',
     ]);
     expect(tiles[0].getAttribute('href')).toBe('/signals?since=24h');
