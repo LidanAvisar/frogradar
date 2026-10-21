@@ -1,5 +1,6 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
-	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs
+	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
+	eval-select eval-embed eval-pairs eval-label eval eval-compare
 
 up:
 	docker compose up -d --build
@@ -83,3 +84,30 @@ scheduler-down:
 
 scheduler-logs:
 	docker compose --profile scheduler logs -f scheduler
+
+# ---------- Evaluation (S8, README "Evaluation"). Paid steps print calls + cost first;
+# add ARGS=--estimate to print the estimate only. Results: eval/results/.
+# Eval set (40 signals, stratified) → eval/silver_labels.csv. No LLM calls.
+eval-select: migrate
+	cd backend && uv run python -m app.eval select $(ARGS)
+
+# Embed the full catalog (dedup calibration). Paid: embeddings.
+eval-embed: migrate
+	cd backend && uv run --env-file ../.env python -m app.eval embed $(ARGS)
+
+# Cross-source pairs across similarity bands → eval/dedup_pairs.csv. No LLM calls.
+eval-pairs: migrate
+	cd backend && uv run python -m app.eval pairs $(ARGS)
+
+# Silver labels (synthesis model) for the eval set and the pairs. Paid; cached.
+eval-label: migrate
+	cd backend && uv run --env-file ../.env python -m app.eval label $(ARGS)
+
+# Eval pass (triage → enrich → verify, + thinking-off verify) vs silver labels → report.
+# Never writes to signals. Paid for uncached items only.
+eval: migrate
+	cd backend && uv run --env-file ../.env python -m app.eval run $(ARGS)
+
+# Compare two runs: make eval-compare A=eval/results/x.json B=eval/results/y.json
+eval-compare:
+	cd backend && uv run python -m app.eval compare $(abspath $(A)) $(abspath $(B))

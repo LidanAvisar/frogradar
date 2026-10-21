@@ -166,6 +166,7 @@ class Call:
     messages: list[dict[str, str]]
     prompt_version: str | None
     attempt: int  # 1 = first call for this signal+operation, 2 = quote retry, ...
+    thinking: str | None = None  # per-call override (eval A/B)
 
     @property
     def title(self) -> str:
@@ -230,12 +231,14 @@ class FakeLLM:
         self.calls: list[Call] = []
         self._lock = threading.Lock()
 
-    def __call__(self, task, operation, messages, response_model, *, prompt_version=None):
+    def __call__(
+        self, task, operation, messages, response_model, *, prompt_version=None, thinking=None
+    ):
         with self._lock:
             title = _TITLE.search(messages[1]["content"])
             key = (operation, title.group(1) if title else "")
             attempt = 1 + sum(1 for c in self.calls if (c.operation, c.title) == key)
-            call = Call(task, operation, list(messages), prompt_version, attempt)
+            call = Call(task, operation, list(messages), prompt_version, attempt, thinking)
             self.calls.append(call)
         handler = self.handlers[operation]
         data = handler(call) if callable(handler) else handler
