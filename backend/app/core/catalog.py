@@ -433,6 +433,26 @@ class SynthesisSettings(_Strict):
     battlecards: BattlecardSettings = Field(default_factory=BattlecardSettings)
 
 
+class AskSettings(_Strict):
+    """Ask your intelligence (S13, D65): hybrid retrieval + checked answer."""
+
+    k: Annotated[int, Field(ge=1, le=30)] = 8  # documents given to the answer model
+    max_docs: Annotated[int, Field(ge=1, le=30)] = 12  # hard per-request cap (k is clipped to it)
+    candidates: Annotated[int, Field(ge=1, le=100)] = 20  # per ranked list before fusion
+    rrf_k: Annotated[int, Field(ge=1, le=1000)] = 60  # reciprocal rank fusion constant
+    # Vector hits below this cosine similarity are not candidates (full-text hits still are).
+    min_cosine: Annotated[float, Field(ge=-1, le=1)] = 0.25
+    history_turns: Annotated[int, Field(ge=0, le=10)] = 3  # turns given to the follow-up rewrite
+    question_max_chars: Annotated[int, Field(ge=10, le=2000)] = 500
+    doc_max_chars: Annotated[int, Field(ge=200, le=5000)] = 1200  # one document block
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        if self.k > self.max_docs:
+            raise ValueError(f"ask.k ({self.k}) must not exceed ask.max_docs ({self.max_docs})")
+        return self
+
+
 class PipelineFile(_Strict):
     embedding: EmbedSettings = Field(default_factory=EmbedSettings)
     dedup: DedupSettings = Field(default_factory=DedupSettings)
@@ -443,6 +463,7 @@ class PipelineFile(_Strict):
     score: ScoreSettings = Field(default_factory=ScoreSettings)
     page_diff: PageDiffSettings = Field(default_factory=PageDiffSettings)
     synthesis: SynthesisSettings = Field(default_factory=SynthesisSettings)
+    ask: AskSettings = Field(default_factory=AskSettings)
 
 
 # ---------- discovery.yaml (Competitor Radar) ----------

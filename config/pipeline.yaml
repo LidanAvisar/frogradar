@@ -92,3 +92,15 @@ synthesis:
     max_signals: 30         # at most this many (highest impact first)
     min_primary_signals: 1  # a company needs this many signals ABOUT it (mentions don't count)
     changed_recently_days: 14   # matrix "changed recently" flag
+
+# Ask your intelligence (S13, README "Ask"): hybrid retrieval (pgvector + full text, reciprocal rank
+# fusion) over usable signals, battlecard items and radar profiles, then a checked answer.
+ask:
+  k: 8               # documents given to the answer model
+  max_docs: 12       # hard per-request cap
+  candidates: 20     # per ranked list (vector, full text) before fusion
+  rrf_k: 60          # score = sum of 1 / (rrf_k + rank)
+  min_cosine: 0.25   # vector hits below this are not candidates (full-text hits still are)
+  history_turns: 3   # earlier turns given to the follow-up rewrite
+  question_max_chars: 500
+  doc_max_chars: 1200
