@@ -412,6 +412,11 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `POST /api/signals/{id}/approve` · `/correct` · `/reject` | analyst review: `{analyst, comment?}`; correct adds `reason_code` + only the changed `category` / `impact` / `relevant` / `primary_entity`; reject adds `reason_code`; 409 on a conflicting state → updated signal with `review` |
 | `GET /api/review` | signals waiting for review (impact × confidence) + progress `{reviewed, total}` |
 | `GET /api/feedback/scorecard` | AI vs Analyst: approved as is / corrected / rejected %, per-field correction rates (impact with mean delta), top reason codes, overall and per week |
+| `GET /api/missions/prefill` | form defaults from `signal`, `candidate`, `entity` / `entity_slug` (+ `capability` / `capability_slug`) or `turn`: brief, origin, companies, budget and step defaults |
+| `POST /api/missions`, `GET /api/missions`, `GET /api/missions/{id}` | create (the worker writes the plan); list (status, origin, cost, steps, findings to review); detail (plan, step log, verified findings with source link and quote, dropped reasons, report). Never the fetched page text |
+| `POST /api/missions/{id}/plan`, `/stop` | approve the plan (optionally edited sub-questions) → research starts; stop (queued / awaiting: at once; running: after the current step) |
+| `POST /api/missions/findings/{id}/approve`, `/reject` | approved finding → signal (or the existing FrogRadar signal it came from); reject (reason, comment) → feedback row |
+| `POST /api/missions/{id}/refresh-radar` | rebuild a radar candidate's profile from its mentions incl. approved findings; returns relation / score / profile before and after |
 
 Rules: only in-scope, canonical, enriched signals are returned; `raw_text` is never returned; a quote that was not
 found verbatim in the source comes back with `verified: false` and the UI does not show it as a quote.
@@ -436,7 +441,7 @@ All three reuse the Brief's components and tokens; every claim links to its sour
   impact 4-5 signal, coverage), the capability matrix (JFrog level from config vs the competitor's level from
   evidence, each a symbol and a word, evidence link per cell, "Changed recently"; capabilities where the
   competitor's level is unknown are folded into "N capabilities without evidence yet", each with JFrog's level and
-  "Investigate · Coming soon"; scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
+  an Investigate link that starts a research mission "Does <competitor> offer <capability>?"; scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
   numbering across the card, and the strategy timeline newest first.
   ![Sonatype battlecard, 1440 px](docs/screenshots/battlecard-sonatype-1440.png)
 - **Radar (`/radar`, `/radar/:id`):** candidates by emergence score with status / JFrog relation / kind filters
@@ -448,7 +453,7 @@ All three reuse the Brief's components and tokens; every claim links to its sour
   section (same rule, in SQL, tested against the list). The detail page shows the cited profile, mentions, metrics, the
   score explained per component, merges and other names. Watch / Track / Dismiss are optimistic (rolled back on
   error) and announced in a snackbar; Track and Dismiss open Material dialogs themed with the tokens (full width
-  on phones). Investigate and "Send a research mission" say "Coming soon".
+  on phones). Investigate (radar) and "Send a research mission" (battlecard) open the mission form pre-filled.
   ![Radar list, 1440 px](docs/screenshots/radar-1440.png)
 
 Phone screenshots (390 px): [Radar](docs/screenshots/radar-390.png), [Radar detail](docs/screenshots/radar-detail-390.png),
@@ -557,7 +562,8 @@ there is not enough evidence ([390 px](docs/screenshots/ask-390.png)).
 - **UI (`/ask`):** thread with question bubbles, answer cards with numbered citation chips (focus moves to the
   entry in the Sources rail: type, confidence, title link, source, date), follow-up chips, recent questions in the
   sidebar, `?c=<conversation>&t=<turn>` deep links, a live region announcing the answer, Helpful / Something's wrong
-  (dialog with reason codes) and "Dig deeper with a mission" (Coming soon).
+  (dialog with reason codes) and "Dig deeper with a mission" / "Send a research mission" (opens the mission form
+  pre-filled with the question and the gap).
 
 **Eval (2026-10-21, `eval/results/ask_20261021T150444Z.md`):** 12 questions written from the stored data, 2 the
 data can't answer and 2 answered from radar / battlecard documents. Retrieval tuning (embeddings only) moved mean
@@ -574,6 +580,85 @@ recall@8 from 0.65 to 0.92 (per-type cap, category / section list, radar relatio
 Known limits: a "what it means" line can still predict a competitor's behaviour ("Expect Sonatype to cite…")
 despite the prompt rule, and the verifier passed it; the corpus is small (32 signals), so recall numbers are
 about ranking, not scale; recall@k is measured against ids chosen by one person.
+
+## Research missions (`backend/app/agents/mission/`)
+
+![A mission while it runs, 1440 px](docs/screenshots/mission-running-1440.png)
+
+An analyst gives the agent a research task. The agent plans, the analyst approves the plan, the agent searches,
+reads and extracts findings, a second model checks every finding against its source, and the analyst decides which
+findings become intelligence.
+
+- **Start:** `/missions` → New mission (brief, optional companies and time window, budget default $0.30, max
+  steps default 12). Every Investigate / Send a research mission button opens the form pre-filled, and the origin
+  is stored on the mission:
+  - a signal card: "Investigate …: what changed, what is confirmed, what it means for JFrog";
+  - a radar candidate: "What does <X> sell, and how does it overlap with JFrog's products?";
+  - a battlecard cell without evidence: "Does <competitor> offer <capability>?"; the battlecard header: what changed
+    in the last 90 days;
+  - an Ask answer: the question and the gap FrogRadar couldn't answer.
+- **Plan (`mission_plan.v1`, synthesis model):** 3-5 sub-questions, each with a web search query. The mission waits
+  in `awaiting_approval`; the analyst edits, removes or adds sub-questions and approves. Nothing is searched before.
+- **Research loop (LangGraph), per sub-question:**
+  - **search:** FrogRadar's own knowledge (the Ask retrieval, signals only, scoped to the mission's companies and
+    window) and Tavily web search (4 results);
+  - **read:** the top 2 pages through the polite client (robots.txt, rate limit, SSRF guard, see Security notes),
+    text/html only, trafilatura main text; login walls, paywalls and JS-only pages (too little text) are skipped
+    and noted;
+  - **extract (`mission_extract.v1`, bulk model):** findings, each citing one source with an exact quote. The quote
+    is checked in code against the stored page text; an unknown source or a quote that isn't there drops the
+    finding before any further cost;
+  - **verify (`mission_verify.v1`, verify model, another provider):** each finding against its cited excerpt.
+    Supported → shown as Verified. Partial → shown as **Partly verified** with the checker's note, confidence at most
+    medium. Unsupported → dropped and recorded.
+- **Report (`mission_report.v2`):** summary points that cite kept findings only (a point without a valid finding
+  id is removed), plus open questions: unanswered sub-questions and what was not found. Partly verified findings
+  reach the report with the checker's note and their unconfirmed detail must not be repeated (v2, after run (a)
+  below repeated one). Absence of evidence is an open question, never a finding.
+- **Limits:** every step writes a `mission_steps` row (kind, summary, cost). Before every counted step (search,
+  read, extract, verify): the mission budget (also enforced by the gateway, `MissionBudgetExceeded`), max steps,
+  a 10-minute wall clock and the analyst's Stop. A limit jumps to the report, written without another LLM call;
+  unverified findings are dropped. Page text is always inside a hash-tagged delimiter with a never-follow rule.
+- **Runs in the background:** one in-process worker thread started with the API. On startup, missions left in
+  planning / running are marked failed ("interrupted by a server restart"); queued ones are picked up again.
+- **Findings → intelligence:** Approve turns a finding into a signal (`mission_id`, source URL, statement as title,
+  summary and takeaway, the checked quote, status approved, its verification, linked to the mission's company and
+  capability, embedded) – the Brief, Signals, Ask and battlecards read it like any other. A finding from a FrogRadar
+  signal links that signal instead of creating a copy. For a radar mission, approved findings join the candidate's
+  mentions and **Refresh radar profile** rebuilds and re-scores it. Every review writes a feedback row.
+- **UI (`/missions/:id`, docs/design Mission):** status with a live region, Stop, budget meter, steps (used /
+  planned / max), findings to review, the plan with progress per sub-question, a live log (polled every 2 s while
+  the mission runs), findings with confidence, Verified / Partly verified, vendor-claim tag, quote, source link and
+  Approve / Reject (optimistic, rolled back on error), open questions, dropped reasons.
+
+**Two paid runs (2026-10-21, $0.119 in total):**
+
+| | (a) radar: GitGuardian | (b) battlecard: "Does Sonatype offer reachability (contextual) analysis?" |
+|---|---|---|
+| plan | 4 sub-questions; analyst removed the JFrog comparison (16 steps > 12) | 4 sub-questions; analyst removed pricing / positioning |
+| steps | 12 of 12 (3 × search, read, extract, verify) + plan + report | 12 of 12 + plan + report |
+| pages read | docs.gitguardian.com ×3, blog.gitguardian.com, GitHub, Vendr | help.sonatype.com ×4, sonatype.com ×2 |
+| findings | 10 verified (5 supported, 5 partly), 0 dropped | 11 verified (9 supported, 2 partly), 0 dropped |
+| analyst | approved 6, rejected 4 (2 overstated, 2 third-party price estimates) | approved 5, rejected 6 (4 repeats across sub-questions, 1 "not found" stated as a finding, 1 overstated) |
+| mission cost | $0.0296 (plan $0.008, extract + verify $0.010, report $0.012) | $0.0298 |
+| after | radar profile refresh $0.0044 | Sonatype battlecard regenerated $0.055 |
+
+- **(a) GitGuardian before → after:** relation **none → complements** (Artifactory package-registry and container
+  registry secret scanning, partly verified), score **37.3 → 70.8**, mentions 1 → 7. The old profile said "the
+  signals don't describe its products". The new profile was rejected by its own check: the verifier marked every
+  statement partial (e.g. "developer workstations" isn't in the sources), so only "why notable now" is shown and
+  the relation counts as partly verified (the S11 verifier-strictness issue).
+- **(b) Sonatype matrix cell "Contextual / reachability analysis": unknown → full**, evidence = the approved finding
+  from help.sonatype.com (Java/JVM, JavaScript/Node.js, .NET; Reachable / Not Reachable labels). The new card also
+  lists two weaknesses (no container targets; call-path evidence only for Java) and an opportunity for JFrog.
+
+Finished mission: [1440 px](docs/screenshots/mission-finished-1440.png), [390 px](docs/screenshots/mission-finished-390.png);
+running at [390 px](docs/screenshots/mission-running-390.png); run (b): [1440 px](docs/screenshots/mission-reachability-finished-1440.png).
+
+Known limits: duplicates are removed within one sub-question only (run (b) found the same fact three times);
+"not found" can still come back as a low-confidence finding; the radar profile's verifier is strict; the worker is
+in-process (one mission at a time, no resume after a restart); the SSRF check resolves DNS separately from the
+HTTP client (a rebinding host could answer differently).
 
 ## Synthesis: daily brief and battlecards (`backend/app/pipeline/synthesis/`)
 
@@ -742,6 +827,27 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
   web.archive.org sometimes refuses connections for a minute after a burst. robots.txt unreachable means we
   fetch nothing (RFC 9309), so the backfill fails that run and is safe to re-run.
 
+## Security notes
+
+- **Secrets** live only in `.env` (gitignored); `.env.example` lists names only. Keys are scrubbed from errors and
+  never logged.
+- **Collected text** (`signals.raw_text`, mission page excerpts) is used for analysis only and never returned by the
+  API, the UI or MCP; tests check every endpoint with a sentinel string.
+- **Prompt injection:** web text is always inside a delimiter tagged with its own hash (look-alike tags defanged),
+  every prompt says never to follow instructions in it, outputs are schema-validated, and code checks (quotes found
+  verbatim, citations in the allowed set, a second model from another provider) hold even if a model obeys an
+  injection.
+- **SSRF guard for research missions** (`app/agents/mission/safe_url.py`): only http/https, no credentials in the
+  URL, ports 80/443 only; the host is resolved and every address must be public – loopback, private (RFC 1918),
+  link-local (incl. 169.254.169.254), multicast, reserved, unspecified, shared (100.64/10) and the IPv6
+  equivalents (::1, fc00::/7, fe80::/10, IPv4-mapped) are blocked. The check runs before every request: the page,
+  its robots.txt and every redirect hop (at most 3). Response size (3 MB, streamed), time (15 s) and type
+  (text/html only) are capped. A blocked URL becomes a note in the mission's step log. Limit: DNS is resolved by
+  the check and again by the HTTP client.
+- **Good citizenship:** robots.txt and per-host delays for every fetch, an identifying User-Agent, no logins, no
+  paywall bypassing, no imitation of browser fingerprints.
+- **No authentication yet:** write endpoints record the analyst name from the request (see Known limitations).
+
 ## Design decisions
 
 Each line: what we chose – why – what we rejected.
@@ -816,6 +922,9 @@ Each line: what we chose – why – what we rejected.
 - **D68 Analyst corrections override, the model's output is kept** – approve / correct / reject write feedback rows; a correction replaces the shown fields and keeps the model's values in `meta.model_output`, re-applied after every re-enrichment; rejected signals leave `visible()` (every screen, synthesis, Ask) but stay in the DB; no migration (status, meta, feedback existed) – rejected a separate corrections table and deleting rejected signals.
 - **D69 Dynamic few-shot by similarity** – the 3 nearest corrected signals (pgvector, similarity ≥ 0.4) per stage as "model said X, analyst corrected to Y, because Z"; rejections teach triage, field corrections teach enrich; length caps; examples live in the messages so the cache misses only for neighbours; never in the eval – rejected static examples, the most recent corrections, and re-enriching every signal after each correction.
 - **D70 Scorecard and gold labels from reviews** – the scorecard classifies each reviewed signal by its current state (approved as is / corrected / rejected) with per-field rates and per-week figures; `make eval-gold` exports reviews in the silver-label format and `make eval --labels` scores against them – rejected counting raw feedback rows (re-corrections would double count).
+- **D71 Research missions: plan gate, LangGraph loop, in-process worker** – the plan waits for the analyst; per sub-question search (own knowledge + Tavily) → read → extract (bulk, quote checked in code) → verify (other provider) → report citing kept findings only; budget, max steps, wall clock and Stop checked before every counted step, a limit jumps to a no-LLM report; one worker thread, interrupted missions failed on startup – rejected an autonomous tool-calling loop (unbounded cost, no plan review), a task queue service (Celery/Redis for one job type) and LangGraph checkpoints (resume not needed yet).
+- **D72 SSRF guard on every hop** – scheme, credentials, port and every resolved address checked before each request (page, robots.txt, redirects), plus size / time / redirect / content-type caps; blocked URLs are step notes – rejected a domain allow-list (missions must reach new vendors) and checking only the first URL (redirects reach internal hosts).
+- **D73 Findings become signals only when an analyst approves** – a verified finding is a candidate; approve creates a source-less signal with `mission_id` (approved, its verification, checked quote, company + capability links) or links the existing signal; partly verified stays labelled and capped at medium confidence; radar findings join the candidate's mentions – rejected auto-publishing verified findings and re-running enrichment on them.
 - **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
 ## Repository layout
