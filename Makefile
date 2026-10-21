@@ -137,7 +137,7 @@ api-types:
 	cd backend && uv run python -m app.api.openapi_export ../frontend/src/app/api/openapi.json
 	cd frontend && npx openapi-typescript src/app/api/openapi.json -o src/app/api/schema.d.ts
 
-# Playwright screenshots of the Brief (1440 / 390 px) with the local Google Chrome.
+# Playwright screenshots of Brief, Radar, Radar detail, Battlecard and Signals (1440 / 390 px), local Chrome.
 # Needs the backend on :8000 and `ng serve` on :4200 (FRONTEND_URL to override).
 screenshots:
 	cd frontend && node scripts/screenshots.mjs
