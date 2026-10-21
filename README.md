@@ -50,6 +50,7 @@ curl localhost:8000/health
 | `make eval` | Eval pass (triage → enrich → verify + verifier thinking A/B) vs silver labels → `eval/results/` (paid for uncached items only; never writes to `signals`) |
 | `make eval-ask` | Ask eval (`eval/ask_questions.yaml`): recall@k, cites-expected, not-enough-evidence, cost → `eval/results/ask_*` (paid; `ARGS="--retrieval-only"` = embeddings only; `--cap 0.60`) |
 | `make eval-compare A=… B=…` | Headline metrics of two eval runs side by side |
+| `make eval-gold` | Analyst-reviewed signals → `eval/gold_labels.csv` (eval format, no LLM); `make eval ARGS="--labels eval/gold_labels.csv"` scores the pipeline against them |
 | `make api-types` | Export the OpenAPI schema and regenerate the frontend's TypeScript types (commit both) |
 | `make screenshots` | Playwright screenshots of the Brief, Radar list, Radar detail, Battlecard (Sonatype) and Signals (filtered) at 1440 / 390 px with the local Google Chrome (API on :8000, `ng serve` on :4200, `FRONTEND_URL` / `API_URL` to override) |
 | `make lint` | ruff check + format check |
@@ -362,9 +363,12 @@ What it shows:
 - Stratified, not random. The numbers describe this mix, not the daily feed's. Dedup recall is measured only
   inside [0.60, 0.95).
 
-**Production path:** analysts' Approve / Reject / Edit actions in the UI (S13) are gold labels. Each correction is
-stored with its reason code and becomes a labeled eval item (and a few-shot example). The eval set grows from
-daily use, and `make eval` can report human-verified accuracy next to the silver agreement.
+**Gold labels from daily use:** every signal an analyst approves, corrects or rejects as not relevant (see
+"Analyst in the loop") is a gold label. `make eval-gold` writes them to `eval/gold_labels.csv` in the same
+format as the silver set (label = the analyst's value, else the model's value the analyst approved;
+`label_source = analyst:<name> approve|edit|reject`). Rejections for other reasons (duplicate, outdated) are left
+out. `make eval ARGS="--labels eval/gold_labels.csv"` runs the same pass against them, so human-verified
+accuracy sits next to the silver agreement. There is one gold label so far (the S14 demo correction).
 
 **Re-running and comparing:** `make eval-select eval-pairs eval-embed eval-label eval` rebuilds everything
 (paid steps print calls and cost first; `ARGS=--estimate` prints only). After a prompt change, `make eval` writes
@@ -405,6 +409,9 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `GET /api/battlecards` | tracked competitors for the switcher: those with a card first, then "no card yet" |
 | `GET /api/entities/{slug}/battlecard` | latest battlecard, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
 | `GET /api/self` | JFrog and its product names (from `competitors.yaml`) for highlighting |
+| `POST /api/signals/{id}/approve` · `/correct` · `/reject` | analyst review: `{analyst, comment?}`; correct adds `reason_code` + only the changed `category` / `impact` / `relevant` / `primary_entity`; reject adds `reason_code`; 409 on a conflicting state → updated signal with `review` |
+| `GET /api/review` | signals waiting for review (impact × confidence) + progress `{reviewed, total}` |
+| `GET /api/feedback/scorecard` | AI vs Analyst: approved as is / corrected / rejected %, per-field correction rates (impact with mean delta), top reason codes, overall and per week |
 
 Rules: only in-scope, canonical, enriched signals are returned; `raw_text` is never returned; a quote that was not
 found verbatim in the source comes back with `verified: false` and the UI does not show it as a quote.
@@ -447,6 +454,67 @@ All three reuse the Brief's components and tokens; every claim links to its sour
 Phone screenshots (390 px): [Radar](docs/screenshots/radar-390.png), [Radar detail](docs/screenshots/radar-detail-390.png),
 [Battlecard](docs/screenshots/battlecard-sonatype-390.png), [Signals](docs/screenshots/signals-filtered-390.png);
 desktop [Radar detail](docs/screenshots/radar-detail-1440.png).
+
+## Analyst in the loop: review, corrections, few-shot (`backend/app/api/review.py`, `app/pipeline/fewshot.py`)
+
+Analysts judge what the AI produced. Their corrections change what everyone sees, teach the pipeline, and
+measure how often analysts and the AI agree.
+
+- **Actions** (Brief cards, Signals list, review queue): **Approve**, **Correct** and **Reject**.
+  - Correct opens a dialog with category, impact 1-5, relevant yes / no, primary company, a reason code and an
+    optional comment. Only changed fields are sent, and the reason is suggested from the change (impact down →
+    "impact too high").
+  - The correction replaces the shown values. The model's own values are kept in `meta.model_output`.
+    Re-enrichment (e.g. a prompt bump) refreshes `model_output` and puts the analyst's values back, so nothing
+    is lost either way.
+  - Reject, or relevant = no, sets status rejected: the signal leaves the Brief, the lists, synthesis inputs and
+    Ask (one filter in `scope.visible()`), and stays in the DB.
+  - Every action writes a `feedback` row (target, action approve / edit / reject, `{field: {from, to}}`, reason,
+    comment, analyst).
+  - Cards show "Edited by analyst" (the fields in a tooltip and for screen readers) or "Approved".
+  - The UI is optimistic: the card changes at once and rolls back on error, with snackbar announcements, the same
+    pattern as the Radar.
+  - No auth: the analyst name comes from the "Your name" field in the sidebar (stored per browser, default
+    "analyst").
+- **Review queue (`/review`):** signals with status new, sorted by impact × confidence, one in focus (takeaway,
+  summary, why, verified quote, source link). Shortcuts: **A** approve, **C** correct, **R** reject, **J / K**
+  next / previous. They are ignored while typing in a field, while a dialog is open, or with a modifier key.
+  Progress shows "N of M reviewed", and the nav pill counts the waiting signals.
+- **Learning from corrections (dynamic few-shot):**
+  - For triage and enrich, the 3 most similar corrected signals are picked by pgvector cosine on the stored
+    embeddings, with similarity ≥ 0.4.
+  - Each is rendered into the prompt's `$examples` slot as "Model said: impact 2 / Analyst corrected to:
+    impact 1 / Because: impact too high: <comment>".
+  - Rejections as not relevant teach triage; category / impact / company corrections teach enrich.
+  - Examples are capped per example (600 chars) and in total (1,800), and titles / excerpts are defanged
+    (delimiter look-alikes, newlines).
+  - The examples are part of the messages, so the LLM cache misses for the neighbours of a new correction and
+    nothing else.
+  - The eval runner never adds examples. Config: `config/pipeline.yaml` `fewshot:`.
+- **AI vs Analyst scorecard:** a compact panel on top of `/review` (`GET /api/feedback/scorecard`). It shows
+  reviewed count, approved as is / corrected / rejected %, correction rate per field (impact with the mean
+  delta), top reason codes, and the same per ISO week.
+
+**Demo (S14, paid $0.0020, dev DB).**
+- Correction through the API: #80 "Xcode 27 runner image generally available", impact 2 → 1, reason
+  impact_too_high, comment "routine runner image updates don't affect JFrog products".
+- Re-enrich of its nearest neighbour #78 "CodeQL changes for macOS 27, Xcode 27, and Swift 6.4" (similarity
+  0.63) with few-shot on, not stored. The examples section held exactly that correction.
+
+| #78 | before (stored, no examples) | after (few-shot on) |
+|---|---|---|
+| impact | 2 | **1** |
+| impact rationale | "A tangential toolchain compatibility change in a partner's SAST tool with limited direct effect on JFrog's products." | "Routine toolchain compatibility change in a competitor-coopetition tool with no effect on JFrog products." |
+| category | feature_update | feature_update |
+| primary entity | github | github-advanced-security |
+
+The bulk model is not deterministic (temperature is dropped for haiku-5-5), so one run shows the effect but does
+not prove it.
+
+![Review queue, 1440 px](docs/screenshots/review-1440.png)
+
+Phone: [Review queue](docs/screenshots/review-390.png), [card "Edited by analyst"](docs/screenshots/signal-edited-390.png);
+desktop [edited card](docs/screenshots/signal-edited-1440.png).
 
 ## Ask your intelligence (`backend/app/rag/`)
 
@@ -604,7 +672,8 @@ Still open: the verifier marks many segment / stage statements partial; players 
 mid-table until more evidence arrives.
 
 ### Known limitations
-- No authentication: the radar's write endpoints are open and record the analyst as "anonymous".
+- No authentication: the radar's write endpoints are open and record the analyst as "anonymous" (signal reviews
+  use the name typed in the sidebar).
 - GitHub without `GITHUB_TOKEN`: 10 searches/minute (requests are spaced 6.5 s); the CNCF history uses 3 core-API
   calls (60/hour unauthenticated).
 - Star velocity is an average over the repo's age until a second daily snapshot exists.
@@ -739,6 +808,9 @@ Each line: what we chose – why – what we rejected.
 - **D65 Hybrid retrieval for Ask** – pgvector + full text (OR of lexemes, cast to tsquery so stems aren't re-stemmed) + a category / battlecard-section list, merged with reciprocal rank fusion; company and time filters inferred in code and applied in SQL; at most 3 battlecard items / radar profiles in the top 8 – rejected letting the model choose filters, vector-only search, and a re-ranking model call.
 - **D66 Checked answers or "not enough evidence"** – ask.v1 cites document ids; invalid citation → item dropped; verify_ask.v1 (other provider) keeps only supported items; no point left or no documents → not enough evidence with the gap and what to track; dropped items stored, never shown – rejected showing partly supported points with a warning.
 - **D67 Conversations and per-turn cost** – ask_conversations / ask_turns, follow-ups rewritten from the last 3 turns by the bulk model, `llm_calls.ask_turn_id` for the cost of each turn, the gateway cache answers repeated questions over the same documents – rejected an answer-level cache keyed by question text (stale when documents change).
+- **D68 Analyst corrections override, the model's output is kept** – approve / correct / reject write feedback rows; a correction replaces the shown fields and keeps the model's values in `meta.model_output`, re-applied after every re-enrichment; rejected signals leave `visible()` (every screen, synthesis, Ask) but stay in the DB; no migration (status, meta, feedback existed) – rejected a separate corrections table and deleting rejected signals.
+- **D69 Dynamic few-shot by similarity** – the 3 nearest corrected signals (pgvector, similarity ≥ 0.4) per stage as "model said X, analyst corrected to Y, because Z"; rejections teach triage, field corrections teach enrich; length caps; examples live in the messages so the cache misses only for neighbours; never in the eval – rejected static examples, the most recent corrections, and re-enriching every signal after each correction.
+- **D70 Scorecard and gold labels from reviews** – the scorecard classifies each reviewed signal by its current state (approved as is / corrected / rejected) with per-field rates and per-week figures; `make eval-gold` exports reviews in the silver-label format and `make eval --labels` scores against them – rejected counting raw feedback rows (re-corrections would double count).
 - **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
 ## Repository layout

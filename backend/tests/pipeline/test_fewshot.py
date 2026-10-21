@@ -143,7 +143,9 @@ def test_stages_put_examples_in_prompt(collect_db):
     triage = next(
         x for x in llm.calls if x.operation == "triage" and x.title.startswith("Runner images")
     )
-    enrich = next(x for x in llm.calls if x.operation == "enrich_signal")
+    enrich = next(
+        x for x in llm.calls if x.operation == "enrich_signal" and x.title.startswith("Runner images")
+    )
     system_t = triage.messages[0]["content"]
     system_e = enrich.messages[0]["content"]
     assert "Hobby clone" in system_t and "Runner image refresh" not in system_t
