@@ -281,6 +281,11 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
   ("$4 per user/month $21 per user/month") shown next to a diff was reported as "$4 → $21" by the writer *and*
   accepted by the verifier. Diff text now carries a format note, context lines are labelled as unchanged, and
   the prompt says only `[before]` → `[after]` is a change.
+- **Page-structure selectors break silently on redesigns.** `options.sections` (e.g. Sonatype's
+  `[data-display=repo_cloud]`) targets a vendor's current markup. After a redesign the selectors can match nothing:
+  extraction still works, but the Cloud / Self-Hosted labels disappear from the section paths and same-named
+  editions are mixed up again. Check the section paths after a page redesign (a health check that fails the source
+  is planned).
 - **Hidden reasoning can eat the whole output budget.** GPT-5.4-mini with thinking "low" spent all 1,024
   `max_tokens` on reasoning for the largest diff and returned nothing; verify now has 4,096 (a cap, not a cost).
 - **A near-miss quote fix can change its meaning.** "Starting at $1,620 / year" against a source line saying
