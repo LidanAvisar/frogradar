@@ -1,6 +1,6 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
-	eval-select eval-embed eval-pairs eval-label eval eval-compare
+	eval-select eval-embed eval-pairs eval-label eval eval-compare api-types screenshots
 
 up:
 	docker compose up -d --build
@@ -111,3 +111,13 @@ eval: migrate
 # Compare two runs: make eval-compare A=eval/results/x.json B=eval/results/y.json
 eval-compare:
 	cd backend && uv run python -m app.eval compare $(abspath $(A)) $(abspath $(B))
+
+# OpenAPI schema from the FastAPI app (no server needed) → generated TypeScript types for the frontend.
+api-types:
+	cd backend && uv run python -m app.api.openapi_export ../frontend/src/app/api/openapi.json
+	cd frontend && npx openapi-typescript src/app/api/openapi.json -o src/app/api/schema.d.ts
+
+# Playwright screenshots of the Brief (1440 / 390 px) with the local Google Chrome.
+# Needs the backend on :8000 and `ng serve` on :4200 (FRONTEND_URL to override).
+screenshots:
+	cd frontend && node scripts/screenshots.mjs

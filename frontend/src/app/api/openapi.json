@@ -1,0 +1,1365 @@
+{
+  "components": {
+    "schemas": {
+      "BriefOut": {
+        "properties": {
+          "filtered_not_relevant": {
+            "title": "Filtered Not Relevant",
+            "type": "integer"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the latest daily_brief report, if any",
+            "title": "Headline"
+          },
+          "overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the latest daily_brief report, if any",
+            "title": "Overview"
+          },
+          "pipeline": {
+            "$ref": "#/components/schemas/PipelineInfo"
+          },
+          "pricing_watch": {
+            "items": {
+              "$ref": "#/components/schemas/PricingItem"
+            },
+            "title": "Pricing Watch",
+            "type": "array"
+          },
+          "since_yesterday": {
+            "items": {
+              "$ref": "#/components/schemas/SinceYesterdayItem"
+            },
+            "title": "Since Yesterday",
+            "type": "array"
+          },
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/RankedSignalOut"
+            },
+            "title": "Top",
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/BriefWindow"
+          }
+        },
+        "required": [
+          "generated_at",
+          "window",
+          "top",
+          "since_yesterday",
+          "filtered_not_relevant",
+          "pricing_watch",
+          "pipeline"
+        ],
+        "title": "BriefOut",
+        "type": "object"
+      },
+      "BriefWindow": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          }
+        },
+        "required": [
+          "days",
+          "since"
+        ],
+        "title": "BriefWindow",
+        "type": "object"
+      },
+      "ConfidenceOut": {
+        "properties": {
+          "band": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Band",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "band"
+        ],
+        "title": "ConfidenceOut",
+        "type": "object"
+      },
+      "EntityOut": {
+        "properties": {
+          "is_self": {
+            "title": "Is Self",
+            "type": "boolean"
+          },
+          "last_signal_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Signal At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/Relationship"
+          },
+          "signal_count": {
+            "title": "Signal Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EntityType"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "type",
+          "relationship",
+          "is_self",
+          "signal_count",
+          "last_signal_at"
+        ],
+        "title": "EntityOut",
+        "type": "object"
+      },
+      "EntityRef": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary": {
+            "title": "Primary",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EntityType"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "type",
+          "primary"
+        ],
+        "title": "EntityRef",
+        "type": "object"
+      },
+      "EntityType": {
+        "enum": [
+          "company",
+          "product"
+        ],
+        "title": "EntityType",
+        "type": "string"
+      },
+      "EvidenceOut": {
+        "properties": {
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Page section path of the quote (page diffs)",
+            "title": "Section"
+          },
+          "side": {
+            "description": "Page diffs: 'before' = the quoted text was removed from the page.",
+            "enum": [
+              "after",
+              "before"
+            ],
+            "title": "Side",
+            "type": "string"
+          },
+          "verified": {
+            "description": "True = found verbatim in the source; unverified quotes are not shown as quotes",
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "quote",
+          "verified",
+          "side"
+        ],
+        "title": "EvidenceOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "app": {
+            "title": "App",
+            "type": "string"
+          },
+          "db": {
+            "enum": [
+              "connected",
+              "disconnected"
+            ],
+            "title": "Db",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "app",
+          "db"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "LastRun": {
+        "properties": {
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "finished_at",
+          "status"
+        ],
+        "title": "LastRun",
+        "type": "object"
+      },
+      "NavCounts": {
+        "properties": {
+          "review_queue": {
+            "title": "Review Queue",
+            "type": "integer"
+          },
+          "signals": {
+            "title": "Signals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "signals",
+          "review_queue"
+        ],
+        "title": "NavCounts",
+        "type": "object"
+      },
+      "PageDiffOut": {
+        "properties": {
+          "after_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Captured At"
+          },
+          "before_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Captured At"
+          },
+          "before_origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wayback",
+                  "live"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Origin"
+          }
+        },
+        "required": [
+          "before_captured_at",
+          "before_origin",
+          "after_captured_at"
+        ],
+        "title": "PageDiffOut",
+        "type": "object"
+      },
+      "PipelineInfo": {
+        "properties": {
+          "active_feeds": {
+            "title": "Active Feeds",
+            "type": "integer"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "watched_pages": {
+            "title": "Watched Pages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "last_run",
+          "active_feeds",
+          "watched_pages"
+        ],
+        "title": "PipelineInfo",
+        "type": "object"
+      },
+      "PriceChange": {
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "label": {
+            "description": "Plan / section the price belongs to",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "before",
+          "after"
+        ],
+        "title": "PriceChange",
+        "type": "object"
+      },
+      "PricingItem": {
+        "properties": {
+          "changes": {
+            "description": "Deterministic before \u2192 after price pairs from the diff; empty = none found",
+            "items": {
+              "$ref": "#/components/schemas/PriceChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/SignalOut"
+          }
+        },
+        "required": [
+          "signal",
+          "changes"
+        ],
+        "title": "PricingItem",
+        "type": "object"
+      },
+      "RankedSignalOut": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfidenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityRef"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "is_claim": {
+            "title": "Is Claim",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "article",
+              "page_diff"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "page_diff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageDiffOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sources_count": {
+            "description": "Sources reporting this story (dedup cluster size)",
+            "title": "Sources Count",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/Verification"
+          },
+          "why_jfrog_cares": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why Jfrog Cares"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "kind",
+          "source",
+          "published_at",
+          "category",
+          "impact",
+          "is_claim",
+          "summary",
+          "why_jfrog_cares",
+          "evidence",
+          "verification",
+          "confidence",
+          "entities",
+          "sources_count",
+          "rank"
+        ],
+        "title": "RankedSignalOut",
+        "type": "object"
+      },
+      "Relationship": {
+        "enum": [
+          "self",
+          "competitor",
+          "partner",
+          "coopetition"
+        ],
+        "title": "Relationship",
+        "type": "string"
+      },
+      "RunStatus": {
+        "enum": [
+          "running",
+          "succeeded",
+          "partial",
+          "failed"
+        ],
+        "title": "RunStatus",
+        "type": "string"
+      },
+      "SignalCategory": {
+        "enum": [
+          "product_launch",
+          "feature_update",
+          "pricing_change",
+          "partnership",
+          "acquisition",
+          "funding",
+          "security_incident",
+          "leadership_change",
+          "customer_win",
+          "open_source",
+          "event",
+          "analyst_report",
+          "other"
+        ],
+        "title": "SignalCategory",
+        "type": "string"
+      },
+      "SignalOut": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfidenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityRef"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "is_claim": {
+            "title": "Is Claim",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "article",
+              "page_diff"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "page_diff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageDiffOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sources_count": {
+            "description": "Sources reporting this story (dedup cluster size)",
+            "title": "Sources Count",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/Verification"
+          },
+          "why_jfrog_cares": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why Jfrog Cares"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "kind",
+          "source",
+          "published_at",
+          "category",
+          "impact",
+          "is_claim",
+          "summary",
+          "why_jfrog_cares",
+          "evidence",
+          "verification",
+          "confidence",
+          "entities",
+          "sources_count"
+        ],
+        "title": "SignalOut",
+        "type": "object"
+      },
+      "SignalPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SignalOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "SignalPage",
+        "type": "object"
+      },
+      "SinceYesterdayItem": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityRef"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "impact": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "impact",
+          "category",
+          "entities",
+          "published_at"
+        ],
+        "title": "SinceYesterdayItem",
+        "type": "object"
+      },
+      "SourceKind": {
+        "enum": [
+          "official",
+          "press",
+          "community",
+          "github"
+        ],
+        "title": "SourceKind",
+        "type": "string"
+      },
+      "SourceOut": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "trust": {
+            "description": "Source trust score, 0-1",
+            "title": "Trust",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "trust"
+        ],
+        "title": "SourceOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "Verification": {
+        "enum": [
+          "pending",
+          "supported",
+          "partial",
+          "unsupported"
+        ],
+        "title": "Verification",
+        "type": "string"
+      }
+    }
+  },
+  "info": {
+    "title": "FrogRadar",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/brief": {
+      "get": {
+        "operationId": "get_brief_api_brief_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Brief",
+        "tags": [
+          "brief"
+        ]
+      }
+    },
+    "/api/entities": {
+      "get": {
+        "operationId": "list_entities_api_entities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EntityOut"
+                  },
+                  "title": "Response List Entities Api Entities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Entities",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/nav": {
+      "get": {
+        "operationId": "nav_counts_api_nav_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavCounts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Nav Counts",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/signals": {
+      "get": {
+        "operationId": "list_signals_api_signals_get",
+        "parameters": [
+          {
+            "description": "Entity slug (a company includes its products)",
+            "in": "query",
+            "name": "entity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Entity slug (a company includes its products)",
+              "title": "Entity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SignalCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_impact",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Impact"
+            }
+          },
+          {
+            "in": "query",
+            "name": "relevant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": true,
+              "title": "Relevant"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "description": "Full-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Full-text search",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Signals",
+        "tags": [
+          "signals"
+        ]
+      }
+    },
+    "/api/signals/{signal_id}": {
+      "get": {
+        "operationId": "get_signal_api_signals__signal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Signal",
+        "tags": [
+          "signals"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}
