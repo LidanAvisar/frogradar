@@ -1,0 +1,100 @@
+"""Pydantic output schemas for the LLM stages (triage, enrich, verify).
+
+Every LLM call returns one of these, validated by the gateway (with retries on validation errors).
+The enrich schema is built per run from the DB, so entity and capability slugs are enforced by
+validation: a slug the model invents fails validation instead of reaching the DB.
+"""
+
+from typing import Annotated, Literal, Self
+
+from pydantic import BaseModel, ConfigDict, Field, create_model, model_validator
+
+from app.db.enums import Segment, SignalCategory
+
+Short = Annotated[str, Field(max_length=300)]
+
+
+class _Out(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+# ---------- triage ----------
+
+
+class TriageResult(_Out):
+    relevant: bool = Field(description="Does this touch JFrog's market? If unsure: true.")
+    reason: Short = Field(description="One sentence: why (not) relevant.")
+    segments: list[Segment] = Field(
+        default_factory=list, max_length=5, description="JFrog segments touched; [] if irrelevant."
+    )
+
+    @model_validator(mode="after")
+    def _segments_when_relevant(self) -> Self:
+        if self.relevant and not self.segments:
+            raise ValueError("relevant signals need at least one segment")
+        return self
+
+
+# ---------- enrich ----------
+
+
+class NewEntity(_Out):
+    """A company/product in the text that we don't track yet (for the Competitor Radar)."""
+
+    name: Annotated[str, Field(min_length=2, max_length=100)]
+    kind: Literal["company", "product"]
+    context: Annotated[str, Field(max_length=200)] = Field(
+        description="Why it matters to JFrog, from the text."
+    )
+
+
+class EnrichedSignalBase(_Out):
+    """Fields shared by every run's enrich schema (entities/capabilities are added per run)."""
+
+    category: SignalCategory
+    summary: Annotated[str, Field(min_length=40, max_length=600)] = Field(
+        description="2-3 sentences, facts from the source only."
+    )
+    why_jfrog_cares: Annotated[str, Field(min_length=40, max_length=600)] = Field(
+        description="Specific to JFrog's products and competitive position."
+    )
+    impact: Annotated[int, Field(ge=1, le=5)]
+    impact_rationale: Short = Field(description="Which rubric level applies and why.")
+    evidence_quote: Annotated[str, Field(min_length=10, max_length=400)] = Field(
+        description="1-2 sentences copied exactly from the source text."
+    )
+    is_claim: bool = Field(
+        description="True if the core statement is the vendor's own marketing claim."
+    )
+    new_entities: list[NewEntity] = Field(default_factory=list, max_length=5)
+
+
+def enrich_schema(entity_slugs: list[str], capability_slugs: list[str]) -> type[EnrichedSignalBase]:
+    """EnrichedSignal with entity/capability slugs restricted to the given lists."""
+    if not entity_slugs or not capability_slugs:
+        raise ValueError("enrich_schema needs at least one entity and one capability slug")
+    entity_slug = Literal[tuple(sorted(entity_slugs))]
+    capability_slug = Literal[tuple(sorted(capability_slugs))]
+    entity_ref = create_model(
+        "EntityRef",
+        __base__=_Out,
+        slug=(entity_slug, ...),
+        role=(Literal["primary", "mention"], Field(description="primary = the news is about it")),
+    )
+    return create_model(
+        "EnrichedSignal",
+        __base__=EnrichedSignalBase,
+        entities=(list[entity_ref], Field(default_factory=list, max_length=10)),
+        capabilities=(list[capability_slug], Field(default_factory=list, max_length=6)),
+    )
+
+
+# ---------- verify ----------
+
+
+class VerifyResult(_Out):
+    verdict: Literal["supported", "partial", "unsupported"]
+    notes: Annotated[str, Field(max_length=400)] = Field(description="1-2 sentences.")
+    unsupported_claims: list[Annotated[str, Field(max_length=200)]] = Field(
+        default_factory=list, max_length=5
+    )
