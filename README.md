@@ -13,7 +13,7 @@ Requirements: Docker, [uv](https://docs.astral.sh/uv/), Node 20 (frontend).
 
 ```bash
 cp .env.example .env        # fill in API keys (never commit .env)
-make up                     # Postgres + backend + daily scheduler; the backend applies migrations on start
+make up                     # Postgres + backend (no paid runs); the backend applies migrations on start
 make seed                   # load competitors, sources and capabilities from config/
 curl localhost:8000/health
 ```
@@ -22,7 +22,7 @@ curl localhost:8000/health
 
 | Command | What it does |
 |---|---|
-| `make up` / `make down` | Start / stop everything with docker compose |
+| `make up` / `make down` | Start Postgres + backend (never the scheduler) / stop everything incl. the scheduler |
 | `make db-up` | Start only Postgres and wait until healthy |
 | `make migrate` | Apply Alembic migrations (`backend/app/db/migrations`) |
 | `make seed` | Upsert entities, sources, capabilities from `config/` (safe to re-run) |
@@ -38,7 +38,8 @@ curl localhost:8000/health
 | `make pipeline` | The daily pipeline (LangGraph), paid: `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
 | `make pipeline-report` | Quality report of the latest run (`RUN=<id>`): triage, distributions, cost per model, samples |
 | `make wayback-backfill` | Baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today, diffed in date order (no LLM calls; `SOURCE=` for one) |
-| `make scheduler-logs` | Follow the `scheduler` service (daily run at `DAILY_RUN_CRON`, UTC) |
+| `make scheduler-up` / `make scheduler-down` | Opt in / out of the daily paid run (`scheduler` compose profile, `DAILY_RUN_CRON`, UTC) |
+| `make scheduler-logs` | Follow the scheduler's log |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -139,7 +140,8 @@ Pricing pages don't publish a feed, so FrogRadar keeps snapshots and reports wha
   changed sections only (`[before]`, `[after]`, `[context]` lines, a format note, and a list of features that moved
   between plans). It goes through triage → enrich → verify like any other signal, with its own prompt
   (`enrich_page_diff`: price, tier, limit or feature moved) and an evidence quote that must come from the
-  `[after]` text, i.e. the current page.
+  `[after]` text, i.e. the current page. A change that only removed lines has no new text, so its quote comes
+  from the removed `[before]` text (`meta.quote_side = "before"`, shown in the UI as "Removed: '…'").
 - **Baseline:** `make wayback-backfill` takes the Wayback Machine capture closest to ~12, 6 and 3 months ago
   (within ±31 days; one CDX query, then the raw archived HTML via `id_` URLs, 5 s between requests). A capture whose
   text is under half of today's, or has no price lines while today's page has some, is reported as rendered
@@ -159,7 +161,9 @@ Pricing pages don't publish a feed, so FrogRadar keeps snapshots and reports wha
 ## Daily scheduler
 
 The `scheduler` compose service (`backend/app/scheduler.py`, APScheduler) runs the whole graph once a day at
-`DAILY_RUN_CRON` (UTC, default `0 6 * * *`). Missed runs collapse into one. Only one pipeline run happens at a time:
+`DAILY_RUN_CRON` (UTC, default `0 6 * * *`). **It is opt-in**, because every run makes paid LLM calls: it sits in
+the compose profile `scheduler` and starts only with `make scheduler-up` (= `docker compose --profile scheduler
+up -d scheduler`). Plain `make up` / `docker compose up` never starts it; `make scheduler-down` stops it. Missed runs collapse into one. Only one pipeline run happens at a time:
 `make pipeline`, the scheduler and the Wayback backfill all take the same Postgres advisory lock, and a second run
 exits without starting. If the process dies, the lock is released with its connection. The daily LLM budget
 (`LLM_DAILY_BUDGET_USD`) still applies: once it is reached, the remaining LLM stages are skipped and the run is
@@ -321,7 +325,7 @@ Each line: what we chose – why – what we rejected.
 - **D39 Quote repair before retry** – a near-miss evidence quote is replaced by the real source span (one sentence or two adjacent ones) when similarity and coverage are both ≥ 0.9 and the numbers are identical; `meta.quote_repaired` – rejected similarity alone (a stitched quote would be "repaired" to its longest part) and repairing to any matching text (changes what the quote proves).
 - **D40 Page diffs: normalized line diff with a price rule and redesign mode** – snapshot only on a new hash; noise threshold except for price lines; moves ignored unless between plan sections; > 50% changed lines = redesign → price-lines-only diff or no signal; diff text with a format note; own prompt; quote from `[after]` only – rejected raw-HTML or visual diffs, a whole-page LLM comparison, and character thresholds that drop `$4 → $5`.
 - **D41 Wayback baseline** – closest CDX capture to ~12/6/3 months (±31 days), raw `id_` HTML, 5 s per request, captures that render differently (length < 50% of today's, or no price lines) reported and skipped; idempotent by capture timestamp – rejected archive.org's availability API (one capture per call, more requests) and diffing every capture.
-- **D42 Scheduler + advisory lock** – APScheduler service in compose, cron from `DAILY_RUN_CRON` (UTC), one Postgres advisory lock for pipeline, scheduler and backfill (released if the process dies), budget enforced by the gateway – rejected a `pipeline_runs` "running" check (stale after a crash), cron in the host, and Celery (a queue for one daily job).
+- **D42 Scheduler + advisory lock** – opt-in APScheduler service (compose profile `scheduler`, `make scheduler-up`; `make up` never starts paid runs), cron from `DAILY_RUN_CRON` (UTC), one Postgres advisory lock for pipeline, scheduler and backfill (released if the process dies), budget enforced by the gateway – rejected a `pipeline_runs` "running" check (stale after a crash), cron in the host, and Celery (a queue for one daily job).
 
 ## Repository layout
 

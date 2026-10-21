@@ -1,11 +1,11 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
-	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-logs
+	embed dedup link dedup-report pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs
 
 up:
 	docker compose up -d --build
 
 down:
-	docker compose down
+	docker compose --profile scheduler down
 
 logs:
 	docker compose logs -f
@@ -73,6 +73,13 @@ pipeline-report: migrate
 wayback-backfill: migrate
 	cd backend && uv run python -m app.pipeline.wayback $(if $(SOURCE),--source "$(SOURCE)")
 
-# The daily scheduler runs as the `scheduler` compose service (make up); follow its log.
+# Daily scheduler (opt-in, paid: runs `make pipeline` every day at DAILY_RUN_CRON, UTC).
+# `make up` never starts it; this does (compose profile "scheduler").
+scheduler-up:
+	docker compose --profile scheduler up -d --build scheduler
+
+scheduler-down:
+	docker compose --profile scheduler stop scheduler
+
 scheduler-logs:
-	docker compose logs -f scheduler
+	docker compose --profile scheduler logs -f scheduler

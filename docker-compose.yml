@@ -37,7 +37,10 @@ services:
 
   # Daily pipeline run (APScheduler, cron from DAILY_RUN_CRON in .env, UTC). Same image as the
   # backend; the backend container applies migrations on start. One run at a time (advisory lock).
+  # OPT-IN: it makes paid LLM calls every day, so it only starts with the "scheduler" profile:
+  #   docker compose --profile scheduler up -d   (make scheduler-up). Plain `make up` never starts it.
   scheduler:
+    profiles: ["scheduler"]
     build:
       context: .
       dockerfile: backend/Dockerfile
