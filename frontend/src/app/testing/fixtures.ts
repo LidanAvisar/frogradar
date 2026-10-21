@@ -38,6 +38,10 @@ export function briefFixture(overrides: Partial<Brief> = {}): Brief {
     ],
     filtered_not_relevant: 30,
     pricing_watch: [],
+    radar: [
+      { id: 11, name: 'Regshield', status: 'new', score: 61.5, sources_count: 3, line: 'Presented on Hacker News this week as a registry firewall.' },
+      { id: 12, name: 'Pkgguard', status: 'watching', score: 40.2, sources_count: 1, line: null },
+    ],
     pipeline: {
       last_run: { id: 30, started_at: '2026-10-21T09:09:05Z', finished_at: '2026-10-21T09:09:46Z', status: 'succeeded' },
       active_feeds: 3,

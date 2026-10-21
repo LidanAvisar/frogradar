@@ -13,6 +13,7 @@ import { SignalCardComponent } from '../../shared/signal-card.component';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../shared/states.component';
 import { PipelineStatusComponent } from './pipeline-status.component';
 import { PricingWatchComponent } from './pricing-watch.component';
+import { RadarTeaserComponent } from './radar-teaser.component';
 import { SinceYesterdayComponent } from './since-yesterday.component';
 import { TopStoryComponent } from './top-story.component';
 
@@ -32,6 +33,7 @@ type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; br
     PipelineStatusComponent,
     PricingWatchComponent,
     SignalCardComponent,
+    RadarTeaserComponent,
     SinceYesterdayComponent,
     SkeletonComponent,
   ],

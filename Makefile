@@ -1,6 +1,7 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
-	eval-select eval-embed eval-pairs eval-label eval eval-compare api-types screenshots
+	eval-select eval-embed eval-pairs eval-label eval eval-compare api-types screenshots \
+	radar radar-backfill
 
 up:
 	docker compose up -d --build
@@ -47,6 +48,17 @@ backfill: migrate
 # Embed in-scope signals that have no embedding (or one from another model). Paid: embedding API.
 embed: migrate
 	cd backend && uv run --env-file ../.env python -m app.pipeline.run embed
+
+# Competitor Radar discovery backfill (no LLM): Hacker News + GitHub search for the last 90 days,
+# CNCF landscape copies at -90/-60/-30 days (config/discovery.yaml).
+radar-backfill: seed
+	cd backend && for s in "Hacker News (discovery)" "GitHub new repos (discovery)" "CNCF Landscape (discovery)"; do \
+		uv run python -m app.pipeline.collect --backfill --since $(or $(SINCE),90d) --source "$$s" || exit 1; done
+
+# Radar step: candidates, emergence score, profiles of the top candidates (paid: bulk + verify).
+# ARGS="--force radar" regenerates profiles.
+radar: migrate
+	cd backend && uv run --env-file ../.env python -m app.pipeline.run radar $(ARGS)
 
 # Semantic dedup of embedded signals (no LLM calls).
 dedup: migrate

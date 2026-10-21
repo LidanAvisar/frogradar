@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { path: '/battlecards', label: 'Battlecards', icon: 'battlecards' },
   { path: '/ask', label: 'Ask', icon: 'ask' },
   { path: '/missions', label: 'Missions', icon: 'missions' },
+  { path: '/radar', label: 'Radar', icon: 'radar', count: 'radar_new' },
   { path: '/review', label: 'Review queue', icon: 'review', count: 'review_queue' },
 ];
 

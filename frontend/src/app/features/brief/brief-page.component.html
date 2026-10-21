@@ -85,6 +85,7 @@
     <aside class="rail" aria-label="Brief details">
       @if (brief(); as b) {
         <fr-pricing-watch [items]="b.pricing_watch" />
+        <fr-radar-teaser [items]="b.radar ?? []" />
         <fr-since-yesterday [items]="b.since_yesterday">
           <p class="filtered small muted">
             <span class="mono">{{ b.filtered_not_relevant }}</span>
