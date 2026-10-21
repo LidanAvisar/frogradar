@@ -6,9 +6,14 @@ LiteLLM reads these at import time, and every app module imports this package fi
   found by walking up from the working directory.
 - LITELLM_LOCAL_MODEL_COST_MAP=True: use the price table bundled with the pinned LiteLLM version
   instead of downloading it from GitHub on every import (no network at import, reproducible costs).
+
+LangGraph pulls in LangSmith: tracing stays off unless explicitly enabled, so no pipeline data
+(which includes collected article text) is sent to a third-party tracing service.
 """
 
 import os
 
 os.environ.setdefault("LITELLM_MODE", "PRODUCTION")
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+os.environ.setdefault("LANGSMITH_TRACING", "false")
+os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")

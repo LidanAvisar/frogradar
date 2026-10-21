@@ -7,6 +7,7 @@ dependencies = [
     "fastapi>=0.152.0",
     "feedparser>=6.0.14",
     "httpx>=0.28.1",
+    "langgraph>=1.0,<2",
     "litellm>=1.106.0,!=1.82.7,!=1.82.8",
     "pgvector>=0.5.1",
     "psycopg[binary]>=3.3.6",
@@ -47,3 +48,8 @@ filterwarnings = [
     # Noise from LiteLLM's own types on import.
     "ignore:Item .* is using the `ReadOnly` qualifier:UserWarning",
 ]
+
+[tool.uv]
+# Supply-chain cooldown (D33): packages added for LangGraph resolve only to releases at least
+# 14 days old at the time they were added. Move the date forward deliberately when upgrading.
+exclude-newer-package = { langgraph = "2026-10-07", langgraph-sdk = "2026-10-07", langgraph-checkpoint = "2026-10-07", langgraph-prebuilt = "2026-10-07", langchain-core = "2026-10-07", langchain-protocol = "2026-10-07", langsmith = "2026-10-07", orjson = "2026-10-07", ormsgpack = "2026-10-07", xxhash = "2026-10-07", zstandard = "2026-10-07", uuid-utils = "2026-10-07", jsonpatch = "2026-10-07", jsonpointer = "2026-10-07", tenacity = "2026-10-07", requests-toolbelt = "2026-10-07" }
