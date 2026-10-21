@@ -35,5 +35,7 @@ def test_report_sections(db_session):
     text = out.getvalue()
     assert "Top 20 cross-source pairs" in text and "Top 10 same-source pairs" in text
     assert " 0.985  yes" in text  # the merged cross-source pair
-    assert "Nearest cross-source neighbour" in text and "← cross-source threshold" in text
+    assert "Nearest cross-source neighbour" in text
+    marked = [line for line in text.splitlines() if "← cross-source threshold" in line]
+    assert len(marked) == 1 and "0.85–0.90" in marked[0]
     assert "snyk" in text and "Top 10 signals by entity links" in text

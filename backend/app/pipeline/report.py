@@ -153,8 +153,9 @@ def print_report(session: Session, ctx: RunContext, out: TextIO = sys.stdout) ->
 
     p(f"\nNearest cross-source neighbour per signal ({len(nearest_cross)} signals)")
     for name, n in buckets(nearest_cross):
-        lo = float(name.split("–")[0]) if "–" in name else 0.0
-        mark = "  ← cross-source threshold" if lo <= cfg.cross_source_threshold < lo + 0.05 else ""
+        lo, hi = (float(x) for x in name.split("–")) if "–" in name else (0.0, 0.5)
+        thr = round(cfg.cross_source_threshold, 4)
+        mark = "  ← cross-source threshold" if lo <= thr < hi or (hi >= 1 and thr >= lo) else ""
         p(f"  {name:>11}  {n:3d}  {'█' * n}{mark}")
 
     sizes: dict[int, int] = {}
