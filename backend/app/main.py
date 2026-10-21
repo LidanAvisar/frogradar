@@ -5,7 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.brief import router as brief_router
+from app.api.entities import router as entities_router
 from app.api.health import router as health_router
+from app.api.signals import router as signals_router
 from app.core.config import get_settings
 from app.db.checks import EmbeddingDimMismatch, assert_embedding_dim_matches_db
 from app.db.session import get_engine
@@ -29,6 +32,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
     app.include_router(health_router)
+    app.include_router(brief_router)
+    app.include_router(signals_router)
+    app.include_router(entities_router)
     return app
 
 
