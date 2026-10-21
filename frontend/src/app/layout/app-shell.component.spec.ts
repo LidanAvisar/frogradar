@@ -4,6 +4,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
+import { AskRecentService } from '../core/ask-recent.service';
 import { AppShellComponent } from './app-shell.component';
 
 @Component({ standalone: true, template: '' })
@@ -48,5 +49,31 @@ describe('AppShellComponent menu', () => {
     fixture.detectChanges();
     expect(button.getAttribute('aria-expanded')).toBe('false');
     el.remove();
+  });
+});
+
+describe('AppShellComponent recent questions', () => {
+  it('lists recent Ask conversations on /ask only', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '', component: BlankComponent }, { path: 'ask', component: BlankComponent }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    TestBed.inject(AskRecentService).items.set([
+      { id: 3, title: 'Who launched a package firewall?', turns: 2, updated_at: '2026-10-21T08:00:00Z' },
+    ]);
+    const fixture = TestBed.createComponent(AppShellComponent);
+    const el: HTMLElement = fixture.nativeElement;
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    fixture.detectChanges();
+    expect(el.querySelector('.recent')).toBeNull();
+    await router.navigateByUrl('/ask');
+    fixture.detectChanges();
+    const link = el.querySelector<HTMLAnchorElement>('.recent-link')!;
+    expect(link.textContent?.trim()).toBe('Who launched a package firewall?');
+    expect(link.getAttribute('href')).toBe('/ask?c=3');
   });
 });

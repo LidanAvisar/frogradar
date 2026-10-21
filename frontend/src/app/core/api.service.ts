@@ -3,6 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import type {
+  AskConversation,
+  AskConversationDetail,
+  AskFeedbackIn,
+  AskIn,
+  AskOut,
   Battlecard,
   BattlecardListItem,
   Brief,
@@ -87,5 +92,21 @@ export class ApiService {
 
   dismissCandidate(id: number, body: RadarDismissIn): Observable<RadarCandidateDetail> {
     return this.http.post<RadarCandidateDetail>(`/api/radar/${id}/dismiss`, body);
+  }
+
+  ask(body: AskIn): Observable<AskOut> {
+    return this.http.post<AskOut>('/api/ask', body);
+  }
+
+  askConversations(limit = 5): Observable<AskConversation[]> {
+    return this.http.get<AskConversation[]>('/api/ask/conversations', { params: { limit } });
+  }
+
+  askConversation(id: number): Observable<AskConversationDetail> {
+    return this.http.get<AskConversationDetail>(`/api/ask/conversations/${id}`);
+  }
+
+  askFeedback(turnId: number, body: AskFeedbackIn): Observable<unknown> {
+    return this.http.post(`/api/ask/turns/${turnId}/feedback`, body);
   }
 }

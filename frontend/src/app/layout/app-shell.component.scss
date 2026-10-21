@@ -189,3 +189,34 @@
     display: none;
   }
 }
+
+/* Recent Ask questions (on /ask only). */
+.recent {
+  margin-top: var(--fr-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recent-title {
+  padding: 0 12px;
+}
+
+.recent-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: var(--fr-radius-control);
+  color: var(--fr-ink-3);
+  text-decoration: none;
+  font-size: var(--fr-text-small);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+
+  &:hover {
+    background: var(--fr-page);
+    color: var(--fr-ink);
+  }
+}

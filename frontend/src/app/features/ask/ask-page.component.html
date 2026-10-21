@@ -1,0 +1,87 @@
+<div class="fr-page ask">
+  <div class="layout">
+    <section class="thread-col" aria-labelledby="ask-title">
+      <div class="title-row">
+        <h1 id="ask-title" class="title">Ask your intelligence</h1>
+        @if (turns().length) {
+          <button type="button" class="fr-button" (click)="newConversation()">New conversation</button>
+        }
+      </div>
+
+      <p class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</p>
+
+      @if (loadingConversation()) {
+        <div class="fr-panel" aria-busy="true" aria-label="Loading conversation"><fr-skeleton [lines]="['50%', '90%', '80%']" /></div>
+      } @else if (loadError()) {
+        <div class="fr-panel"><fr-error-state title="Conversation not available" (retry)="load(conversationId()!)" /></div>
+      }
+
+      @if (!turns().length && !pending() && !loadingConversation()) {
+        <div class="intro fr-panel">
+          <p>Ask in plain language. Answers come only from FrogRadar's stored signals, battlecards and Competitor Radar profiles; every point cites its sources, or the answer says there is not enough evidence.</p>
+          <div class="chips">
+            @for (s of starters; track s) {
+              <button type="button" class="chip-btn" (click)="submit(null, s)">{{ s }}</button>
+            }
+          </div>
+        </div>
+      }
+
+      <ol class="thread">
+        @for (t of turns(); track t.turn_id) {
+          <li class="turn">
+            <p class="bubble"><span class="visually-hidden">You asked: </span>{{ t.question }}</p>
+            @if (t.standalone_question !== t.question) {
+              <p class="small muted rewritten">Searched for: {{ t.standalone_question }}</p>
+            }
+            <fr-answer-card [answer]="t" [feedback]="feedback()[t.turn_id] ?? null"
+                            (cite)="showSource(t.turn_id, $event)" (rate)="rate(t, $event)" />
+          </li>
+        }
+        @if (pending(); as q) {
+          <li class="turn">
+            <p class="bubble"><span class="visually-hidden">You asked: </span>{{ q }}</p>
+            <div class="fr-panel" aria-busy="true" aria-label="Searching your intelligence">
+              <p class="small muted searching">Searching your intelligence and checking every point…</p>
+              <fr-skeleton [lines]="['35%', '95%', '85%', '60%']" />
+            </div>
+          </li>
+        }
+      </ol>
+
+      @if (followups().length) {
+        <div class="chips" role="group" aria-label="Suggested follow-up questions">
+          @for (f of followups(); track f) {
+            <button type="button" class="chip-btn" (click)="submit(null, f)">{{ f }}</button>
+          }
+        </div>
+      }
+
+      <form class="ask-form" (submit)="submit($event)">
+        <label for="ask-input" class="visually-hidden">Ask a question</label>
+        <input #question id="ask-input" type="text" maxlength="500" autocomplete="off"
+               placeholder="Ask about competitors, pricing, launches…" [value]="draft()"
+               (input)="draft.set($any($event.target).value)"
+               [attr.aria-invalid]="error() ? 'true' : null" [attr.aria-describedby]="error() ? 'ask-error' : null" />
+        <button type="submit" class="fr-button fr-button--primary" [attr.aria-disabled]="pending() ? 'true' : null">
+          {{ pending() ? 'Asking…' : 'Ask' }}
+        </button>
+      </form>
+      @if (error()) { <p id="ask-error" class="error small" role="alert">{{ error() }}</p> }
+      <p class="small muted mcp">Coming next: the same knowledge in Claude and Cursor through the FrogRadar MCP server
+        (<span class="mono">search_intel · get_battlecard · whats_new · ask</span>).</p>
+    </section>
+
+    <aside class="rail" aria-label="Sources">
+      @if (selected(); as s) {
+        @if (turns().length > 1) {
+          <p class="small muted">Sources of: <span class="rail-q">{{ s.question }}</span></p>
+        }
+        <fr-sources-rail [sources]="s.sources" [turnId]="s.turn_id" />
+      } @else {
+        <h2 class="rail-title">Sources</h2>
+        <p class="small muted">The documents an answer cites appear here, with their source and confidence.</p>
+      }
+    </aside>
+  </div>
+</div>

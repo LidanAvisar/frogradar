@@ -1,0 +1,159 @@
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fr-gap-lg);
+  align-items: flex-start;
+}
+
+.thread-col {
+  flex: 999 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-md);
+}
+
+.rail {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-sm);
+  position: sticky;
+  top: var(--fr-gap-lg);
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fr-gap-sm);
+}
+
+.title {
+  font-size: var(--fr-text-headline);
+  letter-spacing: var(--fr-ls-h1);
+  font-weight: 700;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-sm);
+  color: var(--fr-ink-2);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-lg);
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-gap-sm);
+}
+
+.bubble {
+  align-self: flex-end;
+  max-width: 80%;
+  padding: 12px 16px;
+  background: var(--fr-ink);
+  color: var(--fr-on-accent);
+  border-radius: 14px 14px 4px 14px;
+}
+
+.rewritten {
+  align-self: flex-end;
+}
+
+.searching {
+  margin-bottom: var(--fr-gap-sm);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fr-gap-xs);
+}
+
+.chip-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--fr-control-border);
+  border-radius: var(--fr-radius-pill);
+  background: var(--fr-surface);
+  color: var(--fr-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--fr-accent);
+    color: var(--fr-accent-hover);
+  }
+}
+
+.ask-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  background: var(--fr-surface);
+  border: 1px solid var(--fr-control-border);
+  border-radius: var(--fr-radius-card);
+
+  &:focus-within {
+    border-color: var(--fr-accent);
+    box-shadow: var(--fr-focus-ring);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--fr-ink);
+
+    &:focus-visible {
+      box-shadow: none;
+    }
+
+    &::placeholder {
+      color: var(--fr-muted);
+    }
+  }
+}
+
+.error {
+  color: var(--fr-error-fg);
+  font-weight: 600;
+}
+
+.rail-title {
+  font-size: var(--fr-text-body);
+  font-weight: 700;
+}
+
+.rail-q {
+  color: var(--fr-ink-2);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .rail {
+    position: static;
+  }
+
+  .bubble {
+    max-width: 92%;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+}

@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 
 import type { NavCounts } from '../api/models';
+import { AskRecentService } from '../core/ask-recent.service';
 import { NavCountsService } from '../core/nav-counts.service';
 import { IconComponent } from '../shared/icon.component';
 
@@ -39,6 +40,8 @@ const NAV: NavItem[] = [
 })
 export class AppShellComponent {
   private readonly nav = inject(NavCountsService);
+  protected readonly recent = inject(AskRecentService).items;
+  protected readonly onAsk = signal(false);
   private readonly counts = this.nav.counts;
 
   protected readonly menuOpen = signal(false);
@@ -51,7 +54,10 @@ export class AppShellComponent {
         filter((e) => e instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.menuOpen.set(false));
+      .subscribe((e) => {
+        this.menuOpen.set(false);
+        this.onAsk.set((e as NavigationEnd).urlAfterRedirects.startsWith('/ask'));
+      });
   }
 
   toggleMenu(): void {

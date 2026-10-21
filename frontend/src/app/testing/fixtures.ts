@@ -1,4 +1,4 @@
-import type { Brief, RadarCandidateDetail, RankedSignal, TopStory } from '../api/models';
+import type { AskOut, Brief, RadarCandidateDetail, RankedSignal, TopStory } from '../api/models';
 
 export function signalFixture(overrides: Partial<RankedSignal> = {}): RankedSignal {
   return {
@@ -117,6 +117,37 @@ export function candidateFixture(overrides: Partial<RadarCandidateDetail> = {}):
     dismiss_reason: null,
     dismiss_comment: null,
     approved_entity: null,
+    ...overrides,
+  };
+}
+
+export function askFixture(overrides: Partial<AskOut> = {}): AskOut {
+  return {
+    conversation_id: 3,
+    turn_id: 21,
+    position: 1,
+    question: 'Who launched a package firewall?',
+    standalone_question: 'Who launched a package firewall?',
+    filters: { company: null, company_slug: null, window: null },
+    not_enough_evidence: false,
+    intro: 'Two vendors moved security into the registry.',
+    points: [
+      { lead: 'GitHub firewall preview', text: 'GitHub launched a package firewall in public preview.', citations: [1] },
+      { lead: 'Sonatype blocks at entry', text: 'Nexus Pro+ blocks malicious packages.', citations: [2, 1] },
+    ],
+    meaning_for_jfrog: { text: 'Lead with Curation’s multi-format coverage.', citations: [3] },
+    gap: null,
+    suggestions: [],
+    suggested_followups: ['Compare the two firewalls', 'What does Curation cover?', 'Pricing?'],
+    sources: [
+      { n: 1, id: 'sig:1046', type: 'article', title: 'GitHub package firewall in public preview', source: 'GitHub Changelog', source_kind: 'official', date: '2026-10-20T10:00:00Z', url: 'https://github.blog/changelog/1', confidence: 0.825, confidence_band: 'high' },
+      { n: 2, id: 'sig:52', type: 'article', title: 'Trust What Ships', source: 'Sonatype Blog', source_kind: 'official', date: '2026-10-14T10:00:00Z', url: 'https://x.test/52', confidence: 0.825, confidence_band: 'high' },
+      { n: 3, id: 'bc:sonatype:weaknesses:3', type: 'battlecard', title: 'Sonatype battlecard · Weakness', source: 'FrogRadar battlecard', source_kind: null, date: '2026-10-21T08:00:00Z', url: '/battlecards/sonatype', confidence: null, confidence_band: null },
+    ],
+    retrieved: 8,
+    cost_usd: 0.021,
+    cached: false,
+    created_at: '2026-10-21T08:00:00Z',
     ...overrides,
   };
 }

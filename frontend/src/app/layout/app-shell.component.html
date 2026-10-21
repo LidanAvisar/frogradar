@@ -28,6 +28,16 @@
           </li>
         }
       </ul>
+      @if (onAsk() && recent().length) {
+        <div class="recent">
+          <p class="recent-title eyebrow" id="recent-heading">Recent questions</p>
+          <ul aria-labelledby="recent-heading">
+            @for (c of recent(); track c.id) {
+              <li><a class="recent-link" routerLink="/ask" [queryParams]="{ c: c.id }">{{ c.title }}</a></li>
+            }
+          </ul>
+        </div>
+      }
     </nav>
     <p class="tagline small">Competitive intelligence for JFrog</p>
     </div>

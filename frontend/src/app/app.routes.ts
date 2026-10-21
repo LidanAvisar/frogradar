@@ -18,7 +18,7 @@ export const routes: Routes = [
   { path: 'battlecards/:slug', loadComponent: () => import('./features/battlecards/battlecard-page.component').then((m) => m.BattlecardPageComponent), title: 'Battlecard · FrogRadar' },
   { path: 'radar', loadComponent: () => import('./features/radar/radar-page.component').then((m) => m.RadarPageComponent), title: 'Competitor Radar · FrogRadar' },
   { path: 'radar/:id', loadComponent: () => import('./features/radar/radar-detail-page.component').then((m) => m.RadarDetailPageComponent), title: 'Radar candidate · FrogRadar' },
-  soon('ask', 'Ask', 'ask', 'Ask questions about the market and get answers that cite their sources.'),
+  { path: 'ask', loadComponent: () => import('./features/ask/ask-page.component').then((m) => m.AskPageComponent), title: 'Ask · FrogRadar' },
   soon('missions', 'Missions', 'missions', 'Give a research agent a task and follow its steps until the report is ready.'),
   soon('review', 'Review queue', 'review', 'Approve, reject or correct new insights; corrections teach the pipeline.'),
   { path: '**', redirectTo: '' },
