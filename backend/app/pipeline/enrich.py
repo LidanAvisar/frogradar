@@ -50,6 +50,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     catalog = Catalog.load(session)
     schema = enrich_schema(catalog.entity_slugs, catalog.capability_slugs)
     entity_ids = dict(session.execute(select(Entity.slug, Entity.id)).all())
+    tracked = tracked_terms(session)
     capability_ids = dict(session.execute(select(Capability.slug, Capability.id)).all())
 
     def worker(signal_id: int) -> str:
@@ -91,7 +92,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
             info = {
                 "prompt_version": prompt.id,
                 "impact_rationale": result.impact_rationale,
-                "new_entities": [e.model_dump() for e in result.new_entities],
+                "new_entities": untracked(result.new_entities, tracked),
                 "capabilities": list(result.capabilities),
                 "quote_attempts": attempts,
             }
@@ -124,6 +125,24 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     counts["inherited"] = inherit_from_canonicals(session)
     logger.info("enrich: %s", counts)
     return counts
+
+
+def tracked_terms(session: Session) -> set[str]:
+    """Case-folded names and aliases of every entity we know (any review status)."""
+    terms: set[str] = set()
+    for name, aliases in session.execute(select(Entity.name, Entity.aliases)):
+        terms.update(t.casefold() for t in (name, *(aliases or [])))
+    return terms
+
+
+def untracked(new_entities: list[Any], tracked: set[str]) -> list[dict[str, Any]]:
+    """Drop "new" entities we already track (the model sometimes lists them anyway)."""
+    out = []
+    for e in new_entities:
+        data = e if isinstance(e, dict) else e.model_dump()
+        if data["name"].strip().casefold() not in tracked:
+            out.append(data)
+    return out
 
 
 def apply_entity_links(

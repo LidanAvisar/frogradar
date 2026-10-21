@@ -5,6 +5,7 @@ A worker exception is recorded on the signal (meta.<stage>_error) and counted; i
 run. BudgetExceeded stops the stage: queued work is cancelled and the stage reports `stopped`.
 """
 
+import contextvars
 import logging
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
@@ -98,7 +99,11 @@ def run_parallel(
         return counts
     stopped = False
     with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix=stage) as pool:
-        futures: dict[Future[str], int] = {pool.submit(worker, i): i for i in ids}
+        # Each task runs in a copy of the caller's context, so llm_context(run_id=...) reaches the
+        # gateway from worker threads (threads don't inherit contextvars by themselves).
+        futures: dict[Future[str], int] = {
+            pool.submit(contextvars.copy_context().run, worker, i): i for i in ids
+        }
         for fut in as_completed(futures):
             signal_id = futures[fut]
             if fut.cancelled():

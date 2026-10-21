@@ -120,7 +120,10 @@ def _enrich_firewall(call):
             {"slug": "sonatype-firewall", "role": "primary"},
             {"slug": "jfrog-curation", "role": "mention"},
         ],
-        new_entities=[{"name": "Acme Scan", "kind": "product", "context": "new scanner"}],
+        new_entities=[
+            {"name": "Acme Scan", "kind": "product", "context": "new scanner"},
+            {"name": "snyk", "kind": "company", "context": "already tracked: must be dropped"},
+        ],
         capabilities=["malicious-package-detection"],
     )
     return out
@@ -152,7 +155,7 @@ def test_enrich_writes_fields_links_and_capabilities(world):
     assert sig.meta["entity_review"] == {
         "confirmed": [], "added": ["jfrog-curation", "sonatype-firewall"], "dropped": ["snyk"],
     }  # fmt: skip
-    assert sig.meta["enrich"]["new_entities"][0]["name"] == "Acme Scan"
+    assert [e["name"] for e in sig.meta["enrich"]["new_entities"]] == ["Acme Scan"]
     with factory() as s:
         n_caps = s.scalar(
             select(signal_capabilities.c.capability_id)
@@ -341,3 +344,19 @@ def test_budget_exhaustion_stops_the_stage(world):
 
     counts, = _run(factory, FakeLLM(triage=broke), triage_signals)  # fmt: skip
     assert counts["stopped"].startswith("budget") and counts["failed"] == 0
+
+
+def test_workers_see_the_run_context(world):
+    """llm_calls.run_id comes from a contextvar; worker threads must carry it."""
+    from app.core.llm import current_context, llm_context
+
+    factory, _ = world
+    seen: list[int | None] = []
+
+    def triage(call):
+        seen.append(current_context().run_id)
+        return {"relevant": False, "reason": "x", "segments": []}
+
+    with llm_context(run_id=4242):
+        _run(factory, FakeLLM(triage=triage), triage_signals)
+    assert seen and set(seen) == {4242}
