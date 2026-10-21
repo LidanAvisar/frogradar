@@ -77,13 +77,26 @@ describe('BattlecardPageComponent', () => {
 
   it('shows levels as symbol + text, evidence links and Investigate for unknown cells', async () => {
     const el = await render(card());
-    const rows = el.querySelectorAll('fr-capability-matrix tbody tr');
-    expect(rows[0].classList).toContain('changed');
-    expect(rows[0].textContent).toContain('Changed recently');
-    expect(rows[0].querySelectorAll('fr-level-badge')[1].textContent?.trim()).toBe('◐ Partial');
-    expect(rows[0].querySelector('.evidence a')?.getAttribute('href')).toBe('https://x.test/2');
-    expect(rows[1].querySelector('.investigate')?.getAttribute('aria-disabled')).toBe('true');
-    expect(el.querySelector('fr-capability-matrix [role=region]')?.getAttribute('tabindex')).toBe('0');
+    const matrix = el.querySelector('fr-capability-matrix')!;
+    // Shown by default: the capability with an evidenced competitor level.
+    const shown = matrix.querySelectorAll(':scope > .scroll tbody tr');
+    expect(shown.length).toBe(1);
+    expect(shown[0].classList).toContain('changed');
+    expect(shown[0].textContent).toContain('Changed recently');
+    expect(shown[0].querySelectorAll('fr-level-badge')[1].textContent?.trim()).toBe('◐ Partial');
+    expect(shown[0].querySelector('.evidence a')?.getAttribute('href')).toBe('https://x.test/2');
+    expect(matrix.querySelector(':scope > .scroll')?.getAttribute('tabindex')).toBe('0');
+    // Folded: unknown competitor level, in a closed disclosure, with JFrog's level and Investigate.
+    const rest = matrix.querySelector<HTMLDetailsElement>('details.rest')!;
+    expect(rest.open).toBeFalse();
+    expect(rest.querySelector('summary')?.textContent).toContain('1 capability without evidence yet');
+    const folded = rest.querySelectorAll('tbody tr');
+    expect(folded.length).toBe(1);
+    expect(folded[0].querySelector('th')?.textContent?.trim()).toBe('SBOM');
+    expect(folded[0].querySelectorAll('fr-level-badge')[0].textContent?.trim()).toBe('● Full');
+    const investigate = folded[0].querySelector('.investigate')!;
+    expect(investigate.getAttribute('aria-disabled')).toBe('true');
+    expect(investigate.textContent?.replace(/\s+/g, ' ').trim()).toBe('Investigate · Coming soon');
   });
 
   it('shows an empty state for a competitor without a card', async () => {

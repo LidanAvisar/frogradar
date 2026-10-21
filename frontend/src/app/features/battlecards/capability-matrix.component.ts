@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import type { MatrixRow } from '../../api/models';
@@ -12,61 +13,79 @@ interface Group {
 
 /**
  * JFrog vs competitor per capability, grouped by segment. Levels are symbol + word; each competitor
- * level links to its evidence signal; unknown cells offer "Investigate" (Coming soon). The table
- * scrolls horizontally inside its own box on narrow screens (focusable, labelled region).
+ * level links to its evidence signal. Capabilities where the competitor's level is unknown are folded
+ * into a "without evidence yet" disclosure (JFrog's level and "Investigate · Coming soon" per row).
+ * Tables scroll horizontally inside their own box on narrow screens (focusable, labelled region).
  */
 @Component({
   selector: 'fr-capability-matrix',
   standalone: true,
-  imports: [LevelBadgeComponent],
+  imports: [LevelBadgeComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="scroll" role="region" tabindex="0" [attr.aria-label]="'Capability matrix, JFrog vs ' + competitor() + ' (scrolls sideways)'">
-      <table>
-        <caption class="visually-hidden">Capability levels of JFrog and {{ competitor() }}, with evidence</caption>
-        <thead>
-          <tr>
-            <th scope="col">Capability</th>
-            <th scope="col">JFrog</th>
-            <th scope="col">{{ competitor() }}</th>
-            <th scope="col">Evidence</th>
-          </tr>
-        </thead>
-        @for (g of groups(); track g.segment) {
-          <tbody>
-            @if (groups().length > 1) {
-              <tr class="segment"><th scope="colgroup" colspan="4">{{ g.label }}</th></tr>
-            }
-            @for (r of g.rows; track r.capability.slug) {
-              <tr [class.changed]="r.changed_recently">
-                <th scope="row" class="cap">
-                  {{ r.capability.name }}
-                  @if (r.changed_recently) { <span class="changed-tag">Changed recently</span> }
-                </th>
-                <td>
-                  <fr-level-badge [level]="r.jfrog.level" />
-                  @if (r.jfrog.note && r.jfrog.level !== 'unknown') {
-                    <span class="note" [attr.title]="r.jfrog.note">{{ short(r.jfrog.note) }}</span>
-                  }
-                </td>
-                <td>
-                  <fr-level-badge [level]="r.competitor.level" />
-                  @if (r.competitor.note) { <span class="note" [attr.title]="r.competitor.note">{{ short(r.competitor.note) }}</span> }
-                </td>
-                <td class="evidence">
-                  @if (r.competitor.evidence; as ev) {
-                    <a [href]="ev.url" target="_blank" rel="noopener noreferrer" [attr.title]="ev.title">{{ evidenceText(ev.title, ev.published_at) }}</a>
-                  } @else {
-                    <button type="button" class="investigate fr-hint-host" aria-disabled="true" data-hint="Coming soon"
-                            [attr.aria-label]="'Investigate ' + r.capability.name + ' (coming soon)'">Investigate →</button>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        }
-      </table>
-    </div>
+    @if (known().length) {
+      <ng-container *ngTemplateOutlet="table; context: { $implicit: groupsOf(known()), caption: 'with evidence', label: '' }" />
+    } @else {
+      <p class="small muted none-known">No {{ competitor() }} capability has evidence yet.</p>
+    }
+    @if (unknown().length) {
+      <details class="rest">
+        <summary>
+          <span class="rest-title">{{ unknown().length }} {{ unknown().length === 1 ? 'capability' : 'capabilities' }} without evidence yet</span>
+          <span class="small muted">{{ competitor() }}'s level is unknown; JFrog's level is shown</span>
+        </summary>
+        <ng-container *ngTemplateOutlet="table; context: { $implicit: groupsOf(unknown()), caption: 'without evidence yet', label: ' without evidence' }" />
+      </details>
+    }
+
+    <ng-template #table let-groups let-caption="caption" let-label="label">
+      <div class="scroll" role="region" tabindex="0" [attr.aria-label]="'Capability matrix' + label + ', JFrog vs ' + competitor() + ' (scrolls sideways)'">
+        <table>
+          <caption class="visually-hidden">Capability levels of JFrog and {{ competitor() }}, {{ caption }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Capability</th>
+              <th scope="col">JFrog</th>
+              <th scope="col">{{ competitor() }}</th>
+              <th scope="col">Evidence</th>
+            </tr>
+          </thead>
+          @for (g of groups; track g.segment) {
+            <tbody>
+              @if (groups.length > 1) {
+                <tr class="segment"><th scope="colgroup" colspan="4">{{ g.label }}</th></tr>
+              }
+              @for (r of g.rows; track r.capability.slug) {
+                <tr [class.changed]="r.changed_recently">
+                  <th scope="row" class="cap">
+                    {{ r.capability.name }}
+                    @if (r.changed_recently) { <span class="changed-tag">Changed recently</span> }
+                  </th>
+                  <td>
+                    <fr-level-badge [level]="r.jfrog.level" />
+                    @if (r.jfrog.note && r.jfrog.level !== 'unknown') {
+                      <span class="note" [attr.title]="r.jfrog.note">{{ short(r.jfrog.note) }}</span>
+                    }
+                  </td>
+                  <td>
+                    <fr-level-badge [level]="r.competitor.level" />
+                    @if (r.competitor.note) { <span class="note" [attr.title]="r.competitor.note">{{ short(r.competitor.note) }}</span> }
+                  </td>
+                  <td class="evidence">
+                    @if (r.competitor.evidence; as ev) {
+                      <a [href]="ev.url" target="_blank" rel="noopener noreferrer" [attr.title]="ev.title">{{ evidenceText(ev.title, ev.published_at) }}</a>
+                    } @else {
+                      <button type="button" class="investigate fr-hint-host" aria-disabled="true" data-hint="Coming soon"
+                              [attr.aria-label]="'Investigate ' + r.capability.name + ' (coming soon)'">Investigate · <span class="soon">Coming soon</span></button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+    </ng-template>
   `,
   styles: [`
     .scroll { overflow-x: auto; margin-top: var(--fr-gap-sm); border-radius: var(--fr-radius-control); }
@@ -87,6 +106,17 @@ interface Group {
     .changed-tag { display: block; font-size: 12px; font-weight: 600; color: var(--fr-changed-fg); }
     .note { display: block; font-size: var(--fr-text-small); color: var(--fr-muted); line-height: 1.4; margin-top: 2px; }
     .evidence a { font-size: var(--fr-text-small); }
+    .none-known { margin-top: var(--fr-gap-sm); }
+    .rest { margin-top: var(--fr-gap); }
+    .rest summary {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--fr-gap-sm);
+      min-height: var(--fr-touch); padding: 10px 12px; cursor: pointer;
+      border: 1px solid var(--fr-border); border-radius: var(--fr-radius-control); background: var(--fr-page);
+    }
+    .rest summary::before { content: '▸'; color: var(--fr-muted); }
+    .rest[open] summary::before { content: '▾'; }
+    .rest-title { font-weight: 600; color: var(--fr-ink); }
+    .soon { font-weight: 500; }
     .investigate {
       border: 0; background: none; padding: 0; min-height: 32px; cursor: not-allowed;
       font-size: var(--fr-text-small); font-weight: 600; color: var(--fr-muted);
@@ -97,9 +127,13 @@ export class CapabilityMatrixComponent {
   readonly rows = input.required<MatrixRow[]>();
   readonly competitor = input.required<string>();
 
-  protected readonly groups = computed<Group[]>(() => {
+  /** Rows with an evidenced competitor level are shown; the rest are folded. */
+  protected readonly known = computed(() => this.rows().filter((r) => r.competitor.level !== 'unknown'));
+  protected readonly unknown = computed(() => this.rows().filter((r) => r.competitor.level === 'unknown'));
+
+  protected groupsOf(rows: MatrixRow[]): Group[] {
     const out: Group[] = [];
-    for (const r of this.rows()) {
+    for (const r of rows) {
       let g = out.find((x) => x.segment === r.capability.segment);
       if (!g) {
         g = { segment: r.capability.segment, label: segmentLabel(r.capability.segment), rows: [] };
@@ -108,7 +142,7 @@ export class CapabilityMatrixComponent {
       g.rows.push(r);
     }
     return out;
-  });
+  }
 
   protected short(note: string): string {
     // Short label; the full note is the cell's tooltip.
