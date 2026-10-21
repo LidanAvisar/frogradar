@@ -52,6 +52,20 @@ signal_entities = Table(
     Column("is_primary", Boolean, nullable=False, server_default=text("false")),
 )
 
+# Capabilities a signal touches (set by enrichment; feeds battlecards / the capability matrix).
+signal_capabilities = Table(
+    "signal_capabilities",
+    Base.metadata,
+    Column("signal_id", BigInteger, ForeignKey("signals.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "capability_id",
+        BigInteger,
+        ForeignKey("capabilities.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    ),
+)
+
 insight_signals = Table(
     "insight_signals",
     Base.metadata,
@@ -83,6 +97,7 @@ class Signal(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
         Index("ix_signals_search_tsv", "search_tsv", postgresql_using="gin"),
+        Index("ix_signals_relevant", "relevant", postgresql_where=text("relevant IS NOT NULL")),
         # Identity within a source is the URL; content_hash catches copies across sources.
         Index("uq_signals_source_id_canonical_url", "source_id", "canonical_url", unique=True),
     )
@@ -107,6 +122,8 @@ class Signal(Base):
     fetched_at: Mapped[datetime] = created_at()
     # Collector details: repo, tag, prerelease, text_source, revisions, last_changed_at.
     meta: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
+    # Triage gate: NULL = not triaged yet, False = kept but outside JFrog's market (not enriched).
+    relevant: Mapped[bool | None]
     category: Mapped[SignalCategory | None] = mapped_column(
         enum_type(SignalCategory, "signal_category")
     )
@@ -115,6 +132,8 @@ class Signal(Base):
     impact: Mapped[int | None] = mapped_column(SmallInteger)
     confidence: Mapped[float | None]
     evidence_quote: Mapped[str | None]
+    # True = the quote was found verbatim (whitespace/quote normalized) in raw_text.
+    evidence_quote_verified: Mapped[bool | None]
     verification: Mapped[Verification] = mapped_column(
         enum_type(Verification, "verification"), server_default=Verification.PENDING.value
     )
@@ -131,6 +150,8 @@ class Signal(Base):
         enum_type(ReviewStatus, "status"), server_default=ReviewStatus.NEW.value, index=True
     )
     enriched_at: Mapped[datetime | None]
+    # Prompt file id used for enrichment, e.g. "enrich_signal.v1" (new version → re-enrich).
+    enrich_prompt_version: Mapped[str | None] = mapped_column(String(64))
     search_tsv: Mapped[Any] = mapped_column(
         TSVECTOR,
         Computed(

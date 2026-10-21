@@ -10,6 +10,7 @@ from app.db.models.intel import (
     Report,
     Signal,
     insight_signals,
+    signal_capabilities,
     signal_entities,
 )
 from app.db.models.ops import LLMCache, LLMCall, Mission, MissionStep, PipelineRun, WatchTopic
@@ -33,5 +34,6 @@ __all__ = [
     "Source",
     "WatchTopic",
     "insight_signals",
+    "signal_capabilities",
     "signal_entities",
 ]

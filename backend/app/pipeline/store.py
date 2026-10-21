@@ -83,6 +83,10 @@ def save_item(session: Session, source: SourceRef, run_id: int | None, item: Raw
                 meta=meta,
                 enriched_at=None,
                 verification=Verification.PENDING,
+                # New text: triage, quote check and confidence must be redone too.
+                relevant=None,
+                evidence_quote_verified=None,
+                confidence=None,
             )
         )
         return Outcome.UPDATED
