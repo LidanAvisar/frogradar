@@ -1,3 +1,5 @@
+from datetime import date
+
 from app.db.enums import EntityType, Relationship, ReviewStatus, SignalCategory, Verification
 
 
@@ -145,6 +147,10 @@ def test_self_product_terms(client, build):
     build.entity("jfrog-xray", "JFrog Xray", parent=jfrog, aliases=["Xray"])
     build.entity("jfrog-advanced-security", "JFrog Advanced Security", parent=jfrog)
     build.entity("jfrog-ml", "JFrog ML", parent=jfrog, aliases=["Qwak"])
+    # Discontinued: not highlighted as ours.
+    build.entity(
+        "jfrog-pipelines", "JFrog Pipelines", parent=jfrog, discontinued_on=date(2026, 5, 1)
+    )
     other = build.entity("github", "GitHub")
     build.entity("github-actions", "GitHub Actions", parent=other)
 

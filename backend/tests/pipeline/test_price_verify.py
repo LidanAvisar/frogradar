@@ -59,9 +59,7 @@ def test_rejects_before_not_in_before_and_after_only_in_context():
 
 
 def test_rejects_pairs_across_hunks_and_ignores_the_moved_list():
-    ok, dropped = verify_price_changes(
-        [_pc("2,000", "$21"), _pc("$4", "$21")], UNLABELED
-    )
+    ok, dropped = verify_price_changes([_pc("2,000", "$21"), _pc("$4", "$21")], UNLABELED)
     assert ok == []
     assert [d["reason"] for d in dropped] == ["after_not_in_same_hunk", "before_not_in_before"]
 

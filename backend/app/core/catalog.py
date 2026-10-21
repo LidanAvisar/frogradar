@@ -4,6 +4,7 @@ Each file maps to a Pydantic model with extra="forbid", so typos fail loudly at 
 """
 
 import re
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
@@ -95,6 +96,13 @@ class AliasConfig(MatchRule):
     alias: Annotated[str, Field(min_length=2)]
 
 
+class Discontinued(_Strict):
+    """End of life of a product: no longer sold or supported."""
+
+    end_of_life: date
+    source: Url
+
+
 class ProductConfig(_Strict):
     slug: Slug
     name: str
@@ -104,6 +112,7 @@ class ProductConfig(_Strict):
     segments: list[Segment] = Field(default_factory=list)
     website: Url | None = None
     description: str | None = None
+    discontinued: Discontinued | None = None
     sources: list[SourceConfig] = Field(default_factory=list)
 
     @model_validator(mode="after")

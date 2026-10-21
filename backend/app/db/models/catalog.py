@@ -1,6 +1,6 @@
 """Who we track and where we look: entities, sources, the capability taxonomy and matrix."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -51,6 +51,8 @@ class Entity(Base):
     segments: Mapped[list[str]] = mapped_column(ARRAY(String(32)), server_default="{}")
     website: Mapped[str | None]
     description: Mapped[str | None]
+    # End of life (product no longer sold or supported): prompts must never recommend it.
+    discontinued_on: Mapped[date | None]
     relationship: Mapped[Relationship] = mapped_column(
         enum_type(Relationship, "relationship"), server_default=Relationship.COMPETITOR.value
     )

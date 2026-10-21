@@ -1,7 +1,8 @@
 # JFrog's own capability levels for the battlecard matrix (JFrog vs competitor). Not from the LLM.
 # Validated by app/core/catalog.py (SelfCapabilitiesFile): every slug in capabilities.yaml is listed.
 # Conservative: a level is set only where a public JFrog doc or product page clearly states it
-# (source = that page); otherwise "unknown". Pages checked 2026-10-21. Review before relying on it.
+# (source = that page); otherwise "unknown". Pages checked 2026-10-21. hosted-pipelines,
+# self-hosted-runners, ai-gateway and p2p-download corrected by the user against JFrog docs (2026-10-21).
 # level: full | partial | planned | none | unknown
 
 capabilities:
@@ -36,16 +37,16 @@ capabilities:
   model-scanning: {level: full, note: "JFrog Security docs: detecting malicious AI models.", source: "https://docs.jfrog.com/security/docs/detect-malicious-ai-models.md"}
   ai-bom: {level: unknown, note: "No public JFrog doc found for an AI-BOM."}
   model-serving: {level: full, note: "JFrog ML product page: 'Train and Deploy Any Model'.", source: "https://jfrog.com/jfrog-ml/"}
-  ai-gateway: {level: unknown, note: "No public JFrog doc found for an LLM gateway."}
+  ai-gateway: {level: partial, note: "JFrog AI Catalog routes AI consumption through an AI Gateway and blocks non-compliant models/APIs (Nov 2025); the JFrog MCP Registry is GA.", source: "https://jfrog.com/blog/jfrog-ai-catalog-evolves-to-detect-shadow-ai-govern-mcps"}
   # cicd
-  hosted-pipelines: {level: unknown, note: "Not checked against current docs (JFrog Pipelines status unclear)."}
-  self-hosted-runners: {level: unknown, note: "Not checked against current docs."}
+  hosted-pipelines: {level: none, note: "JFrog Pipelines reached end of life on 2026-05-01 (feature freeze 2024-11-01), SaaS and self-managed.", source: "https://docs.jfrog.com/releases/docs/pipeline-deprecation-end-of-life"}
+  self-hosted-runners: {level: none, note: "JFrog Pipelines, including its runners, reached end of life on 2026-05-01.", source: "https://docs.jfrog.com/releases/docs/pipeline-deprecation-end-of-life"}
   release-lifecycle: {level: full, note: "Governance docs: Release Lifecycle Management.", source: "https://docs.jfrog.com/governance/docs/release-lifecycle-management.md"}
   cli-api-automation: {level: full, note: "JFrog CLI download page and REST API docs.", source: "https://jfrog.com/getcli/"}
   ide-integration: {level: full, note: "JFrog Security docs: JetBrains IDE plugin.", source: "https://docs.jfrog.com/security/docs/jetbrains.md"}
   # distribution
   edge-distribution: {level: full, note: "Distribution product page: edge nodes and CDN.", source: "https://jfrog.com/distribution/"}
-  p2p-download: {level: unknown, note: "Not found in the current public docs."}
+  p2p-download: {level: none, note: "JFrog's PDN / P2P distribution is not available for public sale.", source: "https://jfrog.com/blog/p2p-distribution-combats-latency-to-speed-delivery"}
   air-gapped-transfer: {level: full, note: "Governance docs: distributing Release Bundle v2 versions in an air gap environment.", source: "https://docs.jfrog.com/governance/docs/distribute-release-bundle-v2-versions-in-an-air-gap-environment.md"}
   signed-release-bundles: {level: full, note: "Distribution product page: GPG-signed, immutable Release Bundles.", source: "https://jfrog.com/distribution/"}
   iot-ota-updates: {level: full, note: "JFrog Connect product page: OTA device updates for IoT fleets.", source: "https://jfrog.com/connect/"}

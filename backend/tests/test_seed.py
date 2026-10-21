@@ -174,3 +174,15 @@ def test_jfrog_capabilities_must_list_every_capability(config_copy):
     catalog.clear_cache()
     with pytest.raises(catalog.ConfigError, match="missing slugs \\['sbom'\\]"):
         catalog.load_self_capabilities(config_copy)
+
+
+def test_discontinued_products_are_listed_apart_in_prompts(db_session):
+    from app.pipeline.prompting import Catalog
+
+    seed(db_session)
+    pipelines = db_session.scalar(select(Entity).where(Entity.slug == "jfrog-pipelines"))
+    assert pipelines.discontinued_on is not None
+    portfolio = Catalog.load(db_session).jfrog_portfolio
+    active, _, ended = portfolio.partition("Discontinued JFrog products")
+    assert "JFrog Pipelines" not in active and "JFrog Artifactory" in active
+    assert "never recommend" in ended and "JFrog Pipelines (end of life 2026-05-01)" in ended

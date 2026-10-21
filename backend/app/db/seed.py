@@ -103,6 +103,9 @@ def _entity_row(
         "segments": [s.value for s in item.segments],
         "website": item.website,
         "description": item.description,
+        "discontinued_on": item.discontinued.end_of_life
+        if getattr(item, "discontinued", None)
+        else None,
         "relationship": relationship,
         # Only the JFrog company row is "self"; its products keep relationship=self.
         "is_self": type_ is EntityType.COMPANY and relationship is Relationship.SELF,
@@ -116,7 +119,7 @@ def _entity_row(
 
 ENTITY_UPDATE_COLS = (
     "type", "name", "aliases", "match_rules", "segments", "website", "description",
-    "relationship", "is_self", "parent_id",
+    "discontinued_on", "relationship", "is_self", "parent_id",
 )  # fmt: skip
 SOURCE_UPDATE_COLS = (
     "entity_id",

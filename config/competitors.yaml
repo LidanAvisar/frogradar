@@ -43,7 +43,9 @@ companies:
       - {slug: jfrog-ml, name: JFrog ML, aliases: [Qwak], segments: [mlops], description: "Model registry and MLOps platform (ex-Qwak): build, deploy and govern ML models and Hugging Face models as artifacts."}
       - {slug: jfrog-distribution, name: JFrog Distribution, segments: [distribution], description: "Signed release bundles distributed to edge nodes and remote sites."}
       - {slug: jfrog-connect, name: JFrog Connect, segments: [distribution], description: "Fleet management and OTA software updates for IoT / edge devices."}
-      - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd], description: "CI/CD orchestration integrated with the JFrog Platform; JFrog also integrates with GitHub Actions, GitLab CI and Jenkins via the JFrog CLI."}
+      # Discontinued: end of life 2026-05-01 (feature freeze 2024-11-01), SaaS and self-managed. Kept so
+      # old signals still link; prompts list it as discontinued and never recommend it.
+      - {slug: jfrog-pipelines, name: JFrog Pipelines, segments: [cicd], description: "Discontinued CI/CD orchestration product (end of life 2026-05-01).", discontinued: {end_of_life: 2026-05-01, source: "https://docs.jfrog.com/releases/docs/pipeline-deprecation-end-of-life"}}
     sources:
       - {name: JFrog Blog, url: https://jfrog.com/blog/feed/, kind: official, fetch_method: rss, is_active: false}
       - {name: JFrog GitHub, url: https://github.com/jfrog, kind: github, fetch_method: github, options: {repos: [jfrog-cli, frogbot, jfrog-cli-security]}, is_active: false}

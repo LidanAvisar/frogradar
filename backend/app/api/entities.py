@@ -74,7 +74,10 @@ def get_self(session: DbSession) -> SelfOut:
     )
     if company is None:
         raise HTTPException(status_code=404, detail="No self entity configured")
-    products = session.scalars(select(Entity).where(Entity.parent_id == company.id)).all()
+    # Discontinued products are not highlighted as ours.
+    products = session.scalars(
+        select(Entity).where(Entity.parent_id == company.id, Entity.discontinued_on.is_(None))
+    ).all()
     prefix = f"{company.name} "
     terms: set[str] = set()
     bare: set[str] = set()

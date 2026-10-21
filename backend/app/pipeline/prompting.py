@@ -63,12 +63,21 @@ class Catalog:
             .order_by(Entity.slug)
         ).all()
         by_id = {e.id: e for e in entities}
-        lines, portfolio = [], []
+        lines, portfolio, ended = [], [], []
         for e in entities:
             parent = by_id[e.parent_id].slug if e.parent_id in by_id else "-"
             lines.append(f"{e.slug} | {e.name} | {e.type} | {parent} | {e.relationship}")
             if e.relationship == Relationship.SELF and e.parent_id is not None:
-                portfolio.append(f"- {e.name}: {e.description or '(no description)'}")
+                if e.discontinued_on is not None:
+                    ended.append(f"- {e.name} (end of life {e.discontinued_on.isoformat()})")
+                else:
+                    portfolio.append(f"- {e.name}: {e.description or '(no description)'}")
+        if ended:
+            portfolio += [
+                "Discontinued JFrog products: never recommend them, never name them as an affected "
+                "JFrog product, an option for customers or a way to compete:",
+                *ended,
+            ]
         caps = session.scalars(select(Capability).order_by(Capability.segment, Capability.slug))
         caps = caps.all()
         companies = sorted(e.name for e in entities if e.parent_id is None and not e.is_self)
