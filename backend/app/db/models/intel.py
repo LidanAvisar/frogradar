@@ -192,11 +192,17 @@ class Insight(Base):
 
 
 class PageSnapshot(Base):
-    """Latest-known text of a watched page (pricing, features) for the diff watcher."""
+    """Normalized text of a watched page (pricing, features) at one point in time.
+
+    A row is stored only when the text differs from the latest one (live fetches) or for a dated
+    archive capture (Wayback). captured_at = when the page looked like this; fetched_at = when we
+    stored it. meta: origin (live / wayback), wayback_timestamp, extractor, restructured_from.
+    """
 
     __tablename__ = "page_snapshots"
     __table_args__ = (
         Index("ix_page_snapshots_source_fetched", "source_id", text("fetched_at DESC")),
+        Index("ix_page_snapshots_source_captured", "source_id", text("captured_at DESC")),
     )
 
     id: Mapped[int] = pk()
@@ -204,6 +210,8 @@ class PageSnapshot(Base):
     content_hash: Mapped[str] = mapped_column(CHAR(64))
     text: Mapped[str]
     fetched_at: Mapped[datetime] = created_at()
+    captured_at: Mapped[datetime]
+    meta: Mapped[dict[str, Any]] = mapped_column(server_default="{}")
 
 
 class Feedback(Base):
