@@ -16,7 +16,7 @@ import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession
@@ -152,6 +152,20 @@ def _ordered(statuses: list[str], *conds: Any) -> Any:
     )
 
 
+def lower_relevance_below() -> float:
+    return load_discovery().radar.ui.lower_relevance_below
+
+
+def top_section() -> Any:
+    """The Radar page's top section (not "Lower relevance"): score at or above the config threshold
+    and a JFrog relation other than "none". The UI applies the same rule to the list; the nav count
+    uses this condition."""
+    return and_(
+        RadarCandidate.score >= lower_relevance_below(),
+        func.coalesce(RadarCandidate.metrics["relation"].astext, "") != "none",
+    )
+
+
 RELATIONS = ("threatens", "both", "complements", "none", "unknown")
 KINDS = tuple(k.value for k in RadarKind)
 
@@ -204,7 +218,7 @@ def list_candidates(
     return RadarListOut(
         items=[to_out(c, names) for c in rows],
         total=total or 0,
-        lower_relevance_below=load_discovery().radar.ui.lower_relevance_below,
+        lower_relevance_below=lower_relevance_below(),
     )
 
 

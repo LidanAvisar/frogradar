@@ -564,7 +564,7 @@ export interface components {
         NavCounts: {
             /**
              * Radar New
-             * @description Radar candidates waiting for a decision (status new)
+             * @description New radar candidates in the page's top section (score >= the lower-relevance threshold, relation not none)
              * @default 0
              */
             radar_new: number;

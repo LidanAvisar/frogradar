@@ -274,7 +274,8 @@ def test_brief_teaser_and_nav(client, radar):
     assert [t["name"] for t in brief["radar"]] == ["Regshield", "Pkgguard", "Tinytool"]
     assert brief["radar"][0]["line"] == "Launched on HN this week."
     assert brief["radar"][1]["status"] == "watching"
-    assert client.get("/api/nav").json()["radar_new"] == 2
+    # Tinytool (12 points) is in "Lower relevance": not counted.
+    assert client.get("/api/nav").json()["radar_new"] == 1
 
 
 def test_discovery_signals_stay_out_of_the_brief(client, radar):
@@ -339,3 +340,23 @@ def test_relation_products_from_a_partial_statement_are_flagged(client, radar, d
     assert item["relation_products"] == ["JFrog Curation"] and item["relation_check"] == "partial"
     detail = client.get(f"/api/radar/{top.id}").json()
     assert "jfrog_relation" not in [s["key"] for s in detail["statements"]]  # not shown as fact
+
+
+def test_nav_count_matches_the_pages_top_section(client, radar, db_session):
+    """Nav pill = new candidates the Radar page lists above "Lower relevance" (same rule)."""
+    radar["top"].metrics = {**radar["top"].metrics, "relation": "threatens"}  # 61.5 → top
+    radar["low"].score = 12.0  # below 35 → lower
+    none = _candidate(db_session, "Nooverlap", score=80.0)
+    none.metrics = {**none.metrics, "relation": "none"}  # relation none → lower
+    _candidate(db_session, "Unprofiled", score=36.0)  # no relation yet, above threshold → top
+    db_session.flush()
+
+    data = client.get("/api/radar", params={"status": "new"}).json()
+    threshold = data["lower_relevance_below"]
+    top = [
+        c["name"]
+        for c in data["items"]
+        if (c["score"] or 0) >= threshold and c["relation"] != "none"
+    ]
+    assert sorted(top) == ["Regshield", "Unprofiled"]
+    assert client.get("/api/nav").json()["radar_new"] == len(top)

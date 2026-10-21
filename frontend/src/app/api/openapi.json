@@ -857,7 +857,7 @@
         "properties": {
           "radar_new": {
             "default": 0,
-            "description": "Radar candidates waiting for a decision (status new)",
+            "description": "New radar candidates in the page's top section (score >= the lower-relevance threshold, relation not none)",
             "title": "Radar New",
             "type": "integer"
           },

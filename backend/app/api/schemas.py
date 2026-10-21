@@ -224,7 +224,11 @@ class SelfOut(BaseModel):
 class NavCounts(BaseModel):
     signals: int
     review_queue: int
-    radar_new: int = Field(0, description="Radar candidates waiting for a decision (status new)")
+    radar_new: int = Field(
+        0,
+        description="New radar candidates in the page's top section (score >= the lower-relevance "
+        "threshold, relation not none)",
+    )
 
 
 # ---------- battlecards ----------

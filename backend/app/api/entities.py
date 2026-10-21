@@ -6,6 +6,7 @@ from sqlalchemy.orm import aliased
 
 from app.api.deps import DbSession
 from app.api.queries import event_time, visible
+from app.api.radar import top_section
 from app.api.schemas import EntityOut, NavCounts, SelfOut
 from app.db.enums import EntityReviewStatus, EntityType, RadarStatus, ReviewStatus, Verification
 from app.db.models import Entity, RadarCandidate, Signal, signal_entities
@@ -65,7 +66,9 @@ def nav_counts(session: DbSession) -> NavCounts:
             select(func.count())
             .select_from(RadarCandidate)
             .where(
-                RadarCandidate.merged_into_id.is_(None), RadarCandidate.status == RadarStatus.NEW
+                RadarCandidate.merged_into_id.is_(None),
+                RadarCandidate.status == RadarStatus.NEW,
+                top_section(),
             )
         )
         or 0,
