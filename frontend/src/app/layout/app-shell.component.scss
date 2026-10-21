@@ -163,6 +163,9 @@
 @media (max-width: 720px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
+    // Short pages: extra height goes to the content, not to the top bar's row.
+    grid-template-rows: auto 1fr;
+    align-content: start;
   }
 
   .sidebar {

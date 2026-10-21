@@ -28,6 +28,10 @@ const pages = [
   { name: 'battlecard-sonatype', path: '/battlecards/sonatype', ready: 'fr-capability-matrix, fr-empty-state, fr-error-state' },
   { name: 'signals-filtered', path: '/signals?since=7d&min_impact=4', ready: 'fr-signal-card, fr-empty-state, fr-error-state' },
   ...(askId ? [{ name: 'ask', path: `/ask?c=${askId}`, ready: 'fr-answer-card' }] : []),
+  { name: 'review', path: '/review', ready: 'fr-signal-card, fr-empty-state, fr-error-state' },
+  // A card an analyst corrected ("Edited by analyst"); EDITED_Q = its search text.
+  { name: 'signal-edited', path: `/signals?q=${encodeURIComponent(process.env.EDITED_Q ?? 'Xcode runner')}`,
+    ready: '.review-badge, fr-empty-state, fr-error-state' },
 ];
 const shots = pages.flatMap((p) => [
   { ...p, file: `${p.name}-1440.png`, width: 1440, height: 900, executive: false },

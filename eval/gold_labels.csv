@@ -1,0 +1,2 @@
+id,title,source,date,url,in_scope,stratum,relevant,category,impact,primary_entity,label_source,label_reason
+80,Xcode 27 runner image generally available,GitHub Changelog,2026-10-16,https://github.blog/changelog/2026-10-15-xcode-27-runner-image-generally-available,y,gold:edit,y,feature_update,1,github,analyst:analyst edit,impact_too_high; routine runner image updates don't affect JFrog products
