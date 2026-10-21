@@ -32,7 +32,7 @@ from app.db.enums import Verification
 from app.db.models import Capability, Entity, Signal, Source, signal_capabilities, signal_entities
 from app.pipeline.context import RunContext
 from app.pipeline.llm_steps import canonical_or_unclustered, load_input, merge_meta, run_parallel
-from app.pipeline.page_diff import is_page_diff
+from app.pipeline.page_diff import is_page_diff, split_section
 from app.pipeline.page_diff import quote_source as page_quote_source
 from app.pipeline.prompting import Catalog, enrich_messages
 from app.pipeline.quotes import quote_error, quote_in_text, repair_quote
@@ -101,6 +101,12 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
             attempts += 1
             quote_ok = quote_in_text(result.evidence_quote, quote_source)
 
+        # Price-lines diffs prefix lines with "[section path] ": keep the page text as the quote
+        # and the section next to it (meta.quote_section).
+        section, page_quote = split_section(result.evidence_quote) if diff else (None, "")
+        if section is not None and quote_in_text(page_quote, quote_source):
+            result = result.model_copy(update={"evidence_quote": page_quote})
+
         with factory.begin() as s:
             review = apply_entity_links(
                 s, signal_id, result, entity_ids, source_entity_id, meta or {}
@@ -146,6 +152,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                             "entity_review": review,
                             "quote_repaired": repair is not None,
                             **({"quote_side": side} if side else {}),
+                            **({"quote_section": section} if section else {}),
                         }
                     )
                     .op("-")("enrich_error")

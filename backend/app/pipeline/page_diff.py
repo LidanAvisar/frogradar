@@ -565,5 +565,15 @@ def quote_source(raw_text: str) -> tuple[str, str]:
     return side, after_text(raw_text) if side == "after" else before_text(raw_text)
 
 
+_SECTION_PREFIX = re.compile(r"^\[([^\[\]]+)\] (.+)$", re.DOTALL)
+
+
+def split_section(quote: str) -> tuple[str | None, str]:
+    """ "[Nexus Repository > Cloud > Pro Edition] Starting at $1,950" → (section, page text).
+    The bracketed path is our annotation, not page text: the stored quote must be verbatim."""
+    m = _SECTION_PREFIX.match(quote.strip())
+    return (m.group(1), m.group(2)) if m else (None, quote)
+
+
 def is_page_diff(meta: dict[str, Any] | None) -> bool:
     return bool(meta) and meta.get("kind") == "page_diff"

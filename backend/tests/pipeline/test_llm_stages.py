@@ -536,3 +536,31 @@ def test_diff_with_added_text_still_rejects_a_before_quote(world):
     sig = _get(factory, sid)
     assert sig.evidence_quote_verified is False and sig.meta["quote_side"] == "after"
     assert sig.meta["quote_repaired"] is False  # the $1,950 line is close, but numbers differ
+
+
+PRICE_LINES_DIFF = (
+    "Page: Sonatype Pricing\nURL: https://s.test/pricing\nBefore: 2026-07-29 (wayback)\n"
+    "After: 2026-10-21 (live)\nChanged lines: 1 removed, 2 added\n\n## Change 1 of 1\n[before]\n"
+    "[Nexus Repository > Pro Edition] Starting at $1,620 / year + consumption\n[after]\n"
+    "[Nexus Repository > Cloud > Pro Edition] Starting at $1,950 / year + consumption\n"
+    "[Nexus Repository > Self-Hosted > Pro Edition] Starting at $7,500 / year"
+)
+
+
+def test_section_prefix_is_split_off_the_stored_quote(world):
+    factory, _ = world
+    with factory.begin() as s:
+        src = s.scalar(select(Source).where(Source.name == "Sonatype Blog"))
+        sid = signal(s, src, "Pricing page changed: Sonatype Pricing", text=PRICE_LINES_DIFF).id
+        s.execute(update(Signal).where(Signal.id == sid).values(meta={"kind": "page_diff"}))
+    quote = "[Nexus Repository > Self-Hosted > Pro Edition] Starting at $7,500 / year"
+
+    llm = FakeLLM(
+        triage=_irrelevant_llm,
+        enrich_page_diff=lambda call: {**_enrich_firewall(call), "evidence_quote": quote},
+    )
+    _run(factory, llm, triage_signals, enrich_signals)
+
+    sig = _get(factory, sid)
+    assert sig.evidence_quote == "Starting at $7,500 / year" and sig.evidence_quote_verified
+    assert sig.meta["quote_section"] == "Nexus Repository > Self-Hosted > Pro Edition"
