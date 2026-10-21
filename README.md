@@ -215,15 +215,16 @@ on (status `partial`); running out of LLM budget skips the remaining LLM stages.
 - **Triage** (`triage.v1`, cheap model): is this about JFrog's market (artifact management, supply-chain
   security, MLOps, CI/CD, distribution)? When unsure the answer is yes, because a missed signal costs more than
   an extra enrichment. Irrelevant signals are kept but hidden (`signals.relevant = false`), each with a reason.
-- **Enrich** (`enrich_signal.v1`, cheap model): category, 2–3 sentence summary, *why JFrog cares* (naming
+- **Enrich** (`enrich_signal.v2`, cheap model): category (each with a one-line definition), 2–3 sentence summary, *why JFrog cares* (naming
   JFrog products; when the news is JFrog's own, framed as positioning against competitors), impact 1–5 against a
   written rubric, an evidence quote, vendor-claim flag, entities, new companies for the Competitor Radar, and
   capabilities. The evidence quote must appear verbatim in the article; this is checked in code. A near miss
   (a typo, a dropped word) is replaced by the real sentence it came from, but only for one sentence or two adjacent
   ones, at ≥ 90% similarity and ≥ 90% coverage, with the same numbers (`meta.quote_repaired`). Anything else is
   retried once, then flagged.
-- **Verify** (`verify_signal.v1`, a model from a *different provider*, thinking off – see
-  [Evaluation](#evaluation)): is the summary supported by the source? `supported` / `partial` / `unsupported`,
+- **Verify** (`verify_signal.v2`, a model from a *different provider*, thinking off – see
+  [Evaluation](#evaluation)): are the summary and the facts behind *why JFrog cares* supported by the source?
+  The JFrog-side analysis itself is not judged. Verdict: `supported` / `partial` / `unsupported`,
   with notes.
 - **Score**: confidence is computed in code, never by a model.
 
@@ -254,7 +255,8 @@ follows injected text, and a test proves it.
 ## Evaluation
 
 `make eval` measures the pipeline against reference labels and writes a report per run to `eval/results/`
-(latest: [`2026-10-21_…verify_signal.v1.md`](eval/results/2026-10-21_triage.v1_enrich_signal.v1_enrich_page_diff.v2_verify_signal.v1.md)).
+(v1: [`…enrich_signal.v1…verify_signal.v1.md`](eval/results/2026-10-21_triage.v1_enrich_signal.v1_enrich_page_diff.v2_verify_signal.v1.md),
+latest: [`…enrich_signal.v2…verify_signal.v2.md`](eval/results/2026-10-21_triage.v1_enrich_signal.v2_enrich_page_diff.v3_verify_signal.v2.md)).
 
 > **These are agreement scores with a stronger model, not human-verified accuracy.** The reference ("silver")
 > labels come from the synthesis model (Claude Sonnet 5.5), which is stronger than the bulk model (Claude Haiku 5.5)
@@ -279,7 +281,8 @@ follows injected text, and a test proves it.
   model-written reasons only. The labeler and the eval read `raw_text` from the database at run time (the
   [raw_text rule](#design-decisions), D25).
 
-**Results** (run 2026-10-21; prompts triage.v1, enrich_signal.v1, enrich_page_diff.v2, verify_signal.v1)
+**Results, first run** (prompts triage.v1, enrich_signal.v1, enrich_page_diff.v2, verify_signal.v1; see
+[Prompt iteration](#prompt-iteration-v1--v2) for v2)
 
 | Metric | Value | Notes |
 |---|---|---|
@@ -303,6 +306,41 @@ follows injected text, and a test proves it.
   recall rises to 78%, but the pair at 0.81 is two different vendors' VS Code scanner launches (Endor Labs vs
   Socket). Merging them would hide one competitor's launch, so a missed merge (a duplicate shown twice) is the
   cheaper error.
+
+#### Prompt iteration (v1 → v2)
+
+The first run led to three prompt changes. Two of them address findings from the first run:
+- **enrich_signal.v2 / enrich_page_diff.v3:** a one-line definition per category, e.g. product_launch = a new
+  product or edition, feature_update = a change to an existing one. v1 listed names only.
+- **verify_signal.v2:** JFrog-side analysis is explicitly out of scope, and each unsupported claim names its
+  field.
+
+Then the 32 in-scope signals were re-enriched and re-verified (run 30, $0.09) and `make eval` ran again
+($0.18; unchanged calls cached). Same 40 items, same silver labels:
+
+| Metric | v1 | v2 |
+|---|---|---|
+| Category agreement | 68% | 68% |
+| Impact exact / within ±1 | 59% / 100% | 64% / 100% |
+| Impact mean signed error | +0.23 | +0.27 |
+| Primary entity strict / product ↔ company | 96% / 100% | 86% / 100% |
+| Evidence quote verbatim | 100% | 97% (1 of 35 unverified, #105) |
+| Verifier partial, thinking off (configured) | 9% | 11% (4 partials, all about the summary) |
+| Verifier partial, thinking low | 51% | 23% |
+| Partials only about JFrog-side analysis (low) | 10 of 18 | 4 of 8 |
+
+What it shows:
+- **verify_signal.v2 works where it was needed.** With thinking "low", partials caused by judging the analysis
+  fell from 10 to 4. With "off" they were already gone, and they stay gone.
+- **The category definitions changed *which* items disagree, not how many.** Some v2 "misses" follow the new
+  definitions on purpose (#280: a routine release of an existing open-source tool is now feature_update), while
+  the silver labels were made from category names only. Re-labeling with the definitions would make this
+  comparison fair (about $0.50). feature_update vs product_launch on "Announcing …" posts (#227, #244) remains
+  a judgment call.
+- **Entity strict dropped** because v2 more often marks the company rather than the product as primary. At the
+  company level both versions agree with the labels 100% of the time.
+- One run per version on 40 items: one item moves a metric by 2.5–4.5 points, so only the verifier change is
+  clearly larger than noise.
 
 **Limits**
 - Small: 40 items, 40 pairs, 10 same-story pairs. One item is worth 2.5 points.
@@ -423,6 +461,7 @@ Each line: what we chose – why – what we rejected.
 - **D43 Silver-label evaluation** – a stronger model (synthesis tier) labels a stratified 40-signal set and 40 dedup pairs, using the pipeline prompts' own rubric text and never seeing pipeline output; the eval runs the pipeline's per-signal functions (cached, never writes `signals`) and reports agreement, clearly labeled as not human accuracy; analyst feedback becomes gold labels in S13; no article text in committed eval files – rejected human labeling for this time box, having the bulk model grade itself, and committing excerpts.
 - **D44 Dedup cross-source threshold 0.85, calibrated** – lowest threshold with precision ≥ 90% on band-weighted silver pairs (precision 100%, recall ~33%); 0.80 merged two vendors' different launches – rejected 0.80 (better F1, but a false merge hides a story) and an unweighted top-40 sample (no data below 0.85).
 - **D45 Verifier thinking off** – on 35 items "low" gave 18 partials vs 3, mostly by judging the JFrog-side analysis it is told to skip, caught no factual error that "off" missed, and cost +56% at 2× latency – rejected keeping "low" and a verify prompt bump first (it would re-verify every signal for a problem the setting already removes).
+- **D46 Prompt v2 from the eval** – enrich_signal.v2 / enrich_page_diff.v3 add one-line category definitions (identical in both, tested); verify_signal.v2 puts JFrog-side analysis out of scope and labels each claim's field; the v1 → v2 effect is reported side by side on the same silver set – rejected tuning definitions to the individual eval items and re-labeling the silver set mid-comparison.
 
 ## Repository layout
 
