@@ -45,6 +45,8 @@ curl localhost:8000/health
 | `make eval-label` | Silver labels from the synthesis model for the eval set and the pairs (paid, ~$0.70, cached) |
 | `make eval` | Eval pass (triage → enrich → verify + verifier thinking A/B) vs silver labels → `eval/results/` (paid for uncached items only; never writes to `signals`) |
 | `make eval-compare A=… B=…` | Headline metrics of two eval runs side by side |
+| `make api-types` | Export the OpenAPI schema and regenerate the frontend's TypeScript types (commit both) |
+| `make screenshots` | Playwright screenshots of the Morning Brief at 1440 / 390 px with the local Google Chrome (API on :8000, `ng serve` on :4200, `FRONTEND_URL` to override) |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
@@ -358,6 +360,35 @@ daily use, and `make eval` can report human-verified accuracy next to the silver
 a new file named after the prompt versions; `make eval-compare A=old.json B=new.json` puts the headline metrics
 side by side.
 
+## Morning Brief and the read API
+
+![Morning Brief at 1440 px](docs/screenshots/brief-1440.png)
+
+The first screen (`/`): the top 5 developments of the last 7 days, ranked by impact × confidence, each with the
+summary, a "Why JFrog cares" panel, the verbatim evidence quote and a link to the original. The right rail shows
+the pricing watch (latest change per watched pricing page, compared with a Wayback Machine capture), what was
+published since yesterday, how many items were filtered as not relevant, and the last pipeline run. "Executive
+view" switches every card to one line and is remembered per browser. At phone width the sidebar stacks above the
+content and the rail drops below the cards ([390 px screenshot](docs/screenshots/brief-390.png)).
+
+Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/brief?days=7&limit=5` | top signals, since yesterday, filtered count, pricing watch, last run, headline |
+| `GET /api/signals` | filters `entity` (slug, a company includes its products), `category`, `min_impact`, `relevant`, `since`, `until`, `q` (full text), `page`, `page_size` |
+| `GET /api/signals/{id}` | one signal |
+| `GET /api/entities` | tracked companies with signal counts |
+| `GET /api/nav` | sidebar counts |
+
+Rules: only in-scope, canonical, enriched signals are returned; `raw_text` is never returned; a quote that was not
+found verbatim in the source comes back with `verified: false` and the UI does not show it as a quote.
+
+Frontend (`frontend/`, Angular 18): design tokens in `src/styles/tokens.css` (no other color literals,
+`npm run lint:tokens`), shared components in `src/app/shared/`, API types generated from OpenAPI
+(`make api-types`). Run it with `make up` and `cd frontend && npm start` (proxy to :8000), then open
+http://localhost:4200. Frontend tests: `npm run test:ci` (headless Chrome).
+
 ## LLM gateway (`backend/app/core/llm/`)
 
 Every LLM and embedding call goes through one module (LiteLLM underneath):
@@ -462,6 +493,10 @@ Each line: what we chose – why – what we rejected.
 - **D44 Dedup cross-source threshold 0.85, calibrated** – lowest threshold with precision ≥ 90% on band-weighted silver pairs (precision 100%, recall ~33%); 0.80 merged two vendors' different launches – rejected 0.80 (better F1, but a false merge hides a story) and an unweighted top-40 sample (no data below 0.85).
 - **D45 Verifier thinking off** – on 35 items "low" gave 18 partials vs 3, mostly by judging the JFrog-side analysis it is told to skip, caught no factual error that "off" missed, and cost +56% at 2× latency – rejected keeping "low" and a verify prompt bump first (it would re-verify every signal for a problem the setting already removes).
 - **D46 Prompt v2 from the eval** – enrich_signal.v2 / enrich_page_diff.v3 add one-line category definitions (identical in both, tested); verify_signal.v2 puts JFrog-side analysis out of scope and labels each claim's field; the v1 → v2 effect is reported side by side on the same silver set – rejected tuning definitions to the individual eval items and re-labeling the silver set mid-comparison.
+- **D47 Read API: one "visible" filter** – a signal is shown only if in scope, canonical and enriched; one `SignalOut` DTO without raw_text/meta/embedding (tested on every endpoint and in the OpenAPI schema); unverified quotes flagged and hidden in the UI; brief ranks verified signals by impact × confidence; "since yesterday" goes by publish date – rejected per-endpoint field filtering and fetched_at for "new".
+- **D48 Deterministic price pairs** – the pricing watch pairs `[before]`/`[after]` price lines from the stored diff only when unambiguous (same or uniquely matching section label, one price per line); otherwise it shows the summary and verified quote – rejected an LLM extraction step and fuzzy matching.
+- **D49 Design tokens + CDK** – every color/type/spacing value is a CSS custom property in `tokens.css` (lint fails on stray colors); small standalone components; Angular Material only where it saves work, themed with the tokens – rejected restyling Material defaults and Tailwind.
+- **D50 Generated API types** – `make api-types` turns FastAPI's OpenAPI into TypeScript types (committed; a test fails when they are stale) – rejected hand-written interfaces.
 
 ## Repository layout
 
