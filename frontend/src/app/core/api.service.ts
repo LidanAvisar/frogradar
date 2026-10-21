@@ -12,7 +12,7 @@ export type SignalQuery = NonNullable<operations['list_signals_api_signals_get']
 export class ApiService {
   private readonly http = inject(HttpClient);
 
-  brief(days = 7, limit = 5): Observable<Brief> {
+  brief(days = 7, limit = 4): Observable<Brief> {
     return this.http.get<Brief>('/api/brief', { params: { days, limit } });
   }
 

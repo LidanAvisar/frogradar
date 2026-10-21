@@ -1,13 +1,15 @@
-"""Brief node: one daily_brief report per day – headline + 2-3 sentence overview, every sentence
-citing the signals it relies on (synthesis model), checked in code and by a second model.
+"""Brief node: one daily_brief report per day – the top story (title, what happened, why it matters
+for JFrog, suggested move), every row citing the signals it relies on (synthesis model), checked in
+code and by a second model.
 
 - Input: the top `max_signals` usable signals of the last `window_days` (scope.ranked, the same
   ranking as the Brief's Top 5). None → skipped, no call.
 - Idempotent per UTC day: a daily_brief whose period_end falls on today → skipped (--force brief
   regenerates).
 - Checks: citations (any id outside the input drops the sentence), then the verify model
-  (partial / unsupported drops it). Headline dropped or fewer than 2 overview sentences left → no
-  report is stored (counts.rejected); the API keeps its fallback title.
+  (partial / unsupported drops it). Title, what happened or why it matters dropped → no report is
+  stored (counts.rejected) and the API falls back to the top-ranked signal; a dropped suggested
+  move is just left out.
 """
 
 import logging
@@ -23,16 +25,16 @@ from app.core.llm import load_prompt
 from app.db.enums import ReportKind
 from app.db.models import Report
 from app.pipeline.context import RunContext
+from app.pipeline.prompting import Catalog
 from app.pipeline.scope import ranked
 from app.pipeline.synthesis.check import verify_claims
 from app.pipeline.synthesis.citations import Claim, check_citations
 from app.pipeline.synthesis.inputs import facts, signals_block
-from app.pipeline.synthesis.schemas import DailyBrief
+from app.pipeline.synthesis.schemas import REQUIRED_STORY_KEYS, STORY_KEYS, DailyBrief
 
 logger = logging.getLogger(__name__)
 
 PROMPT = "daily_brief"
-MIN_OVERVIEW = 2
 
 
 def brief_exists_today(session: Session, ctx: RunContext) -> bool:
@@ -67,12 +69,15 @@ def brief_step(session: Session, ctx: RunContext) -> dict[str, Any]:
         today=ctx.now.date().isoformat(),
         window_days=cfg.window_days,
         count=len(items),
+        jfrog_portfolio=Catalog.load(session).jfrog_portfolio,
         **signals_block(items),
     )
     out: DailyBrief = complete("synthesis", PROMPT, messages, DailyBrief, prompt_version=prompt.id)
 
-    claims = [Claim("headline", out.headline.text, tuple(out.headline.signal_ids))] + [
-        Claim(f"overview.{i}", s.text, tuple(s.signal_ids)) for i, s in enumerate(out.overview, 1)
+    story = out.top_story
+    claims = [
+        Claim(key, getattr(story, key).text, tuple(getattr(story, key).signal_ids))
+        for key in STORY_KEYS
     ]
     cited = check_citations(session, claims, by_id)
     dropped = list(cited.dropped)
@@ -92,8 +97,7 @@ def brief_step(session: Session, ctx: RunContext) -> dict[str, Any]:
         logger.warning("brief rejected: %s", reasons)
         return {**counts, "rejected": 1, "reasons": reasons[:10]}
 
-    headline = next(c for c in kept if c.key == "headline")
-    overview = [c for c in kept if c.key.startswith("overview.")]
+    rows = {c.key: c for c in kept}
     cited_ids = sorted({i for c in kept for i in c.signal_ids})
     session.add(
         Report(
@@ -104,12 +108,13 @@ def brief_step(session: Session, ctx: RunContext) -> dict[str, Any]:
             run_id=ctx.run_id,
             model=load_llm_routing().tasks.synthesis.model,
             content={
-                "headline": headline.text,
-                "headline_signal_ids": list(headline.signal_ids),
-                "overview": " ".join(c.text for c in overview),
-                "overview_sentences": [
-                    {"text": c.text, "signal_ids": list(c.signal_ids)} for c in overview
-                ],
+                "top_story": {
+                    key: {"text": rows[key].text, "signal_ids": list(rows[key].signal_ids)}
+                    for key in STORY_KEYS
+                    if key in rows
+                },
+                "headline": rows["title"].text,
+                "headline_signal_ids": list(rows["title"].signal_ids),
                 "input_ids": [f.id for f in items],
                 "dropped": dropped,
                 "prompt_version": prompt.id,
@@ -122,5 +127,5 @@ def brief_step(session: Session, ctx: RunContext) -> dict[str, Any]:
 
 
 def _complete_enough(claims: list[Claim]) -> bool:
-    keys = [c.key for c in claims]
-    return "headline" in keys and sum(k.startswith("overview.") for k in keys) >= MIN_OVERVIEW
+    keys = {c.key for c in claims}
+    return all(k in keys for k in REQUIRED_STORY_KEYS)

@@ -12,7 +12,7 @@ from app.db.enums import Relationship, ReportKind, Verification
 from app.db.models import CapabilityMatrix, Entity, Report, Signal, signal_entities
 from app.pipeline.synthesis.battlecards import battlecards_step
 from app.pipeline.synthesis.brief import brief_step
-from app.pipeline.synthesis.schemas import check_schema
+from app.pipeline.synthesis.schemas import STORY_KEYS, check_schema
 from tests.pipeline.factories import (
     T0,
     FakeLLM,
@@ -21,8 +21,8 @@ from tests.pipeline.factories import (
     ensure_capability,
     entity,
     signal,
-    signal_ids_in,
     source,
+    story,
 )
 
 pytestmark = pytest.mark.db
@@ -122,10 +122,14 @@ def test_brief_stored_once_per_day_and_force_regenerates(world):
     counts = _step(factory, brief_step, llm)
     assert counts["stored"] == 1 and counts["dropped"] == 0
     (report,) = _reports(factory, ReportKind.DAILY_BRIEF)
-    assert report.content["headline"] and len(report.content["overview_sentences"]) == 3
+    story_rows = report.content["top_story"]
+    assert set(story_rows) == set(STORY_KEYS)  # JSONB does not keep key order
+    assert report.content["headline"] == story_rows["title"]["text"]
     assert ids["hidden"] not in report.content["input_ids"]
     assert set(report.signal_ids) <= set(report.content["input_ids"])
     assert llm.count("daily_brief") == 1 and llm.count("verify_synthesis") == 1
+    prompt = [c for c in llm.calls if c.operation == "daily_brief"][0].messages[0]["content"]
+    assert "JFrog's portfolio:" in prompt and "$jfrog_portfolio" not in prompt
 
     assert _step(factory, brief_step, llm) == {"skipped": "brief exists for today"}
     assert llm.count("daily_brief") == 1
@@ -133,51 +137,27 @@ def test_brief_stored_once_per_day_and_force_regenerates(world):
     assert len(_reports(factory, ReportKind.DAILY_BRIEF)) == 2
 
 
-def test_sentence_with_one_invalid_id_is_dropped_whole(world):
+def test_row_with_one_invalid_id_is_dropped_whole(world):
     factory, ids = world
-
-    def brief(call):
-        good = signal_ids_in(call)
-        return {
-            "headline": {"text": "Sonatype ships Firewall 2", "signal_ids": [ids["fw"]]},
-            "overview": [
-                {"text": "Sonatype launched Firewall 2 today.", "signal_ids": [ids["fw"]]},
-                {"text": "GitHub changed secret scanning.", "signal_ids": [good[-1]]},
-                # one valid id + one invented id: the whole sentence goes
-                {"text": "Both vendors raised prices.", "signal_ids": [ids["fw"], 999999]},
-            ],
-        }
-
+    # suggested move cites one valid id + one invented id: the whole row goes, the story stays
+    brief = story([ids["fw"]], move_ids=[ids["fw"], 999999])
     counts = _step(factory, brief_step, FakeLLM(daily_brief=brief))
     (report,) = _reports(factory, ReportKind.DAILY_BRIEF)
-    assert counts["dropped"] == 1
-    texts = [s["text"] for s in report.content["overview_sentences"]]
-    assert "Both vendors raised prices." not in texts and len(texts) == 2
+    assert counts["dropped"] == 1 and "suggested_move" not in report.content["top_story"]
     (drop,) = report.content["dropped"]
     assert drop["reason"] == "invalid_citation" and drop["invalid_ids"] == {"999999": "unknown"}
 
 
-def test_hidden_signal_id_counts_as_invalid(world):
+def test_hidden_signal_id_in_a_required_row_rejects_the_brief(world):
     factory, ids = world
-
-    def brief(call):
-        return {
-            "headline": {"text": "Sonatype ships Firewall 2", "signal_ids": [ids["hidden"]]},
-            "overview": [
-                {"text": "Sonatype launched Firewall 2 today.", "signal_ids": [ids["fw"]]},
-                {"text": "GitHub changed secret scanning.", "signal_ids": [ids["gh"]]},
-                {"text": "Sonatype added SBOM import.", "signal_ids": [ids["sbom"]]},
-            ],
-        }
-
-    llm = FakeLLM(daily_brief=brief)
+    llm = FakeLLM(daily_brief=story([ids["fw"]], what_ids=[ids["hidden"]]))
     counts = _step(factory, brief_step, llm)
     assert counts["rejected"] == 1 and _reports(factory, ReportKind.DAILY_BRIEF) == []
     assert llm.count("verify_synthesis") == 0  # nothing to save: no paid check
-    assert any("headline: invalid_citation" in r for r in counts["reasons"])
+    assert any("what_happened: invalid_citation" in r for r in counts["reasons"])
 
 
-def test_verifier_partial_drops_the_sentence_and_can_reject_the_brief(world):
+def test_verifier_partial_on_a_required_row_rejects_the_brief(world):
     factory, _ = world
 
     def check(call):
@@ -185,16 +165,16 @@ def test_verifier_partial_drops_the_sentence_and_can_reject_the_brief(world):
             "items": [
                 {
                     "key": k,
-                    "verdict": "partial" if k in ("overview.1", "overview.2") else "supported",
-                    "note": "The price is not in the cited signal.",
+                    "verdict": "partial" if k == "why_it_matters_for_jfrog" else "supported",
+                    "note": "The overlap is not in the cited signal.",
                 }
                 for k in claim_keys_in(call)
             ]
         }
 
     counts = _step(factory, brief_step, FakeLLM(verify_synthesis=check))
-    assert counts["rejected"] == 1  # only one point left
-    assert any("overview.1: verifier_partial" in r for r in counts["reasons"])
+    assert counts["rejected"] == 1
+    assert any("why_it_matters_for_jfrog: verifier_partial" in r for r in counts["reasons"])
 
 
 def test_check_schema_requires_every_key_once():
@@ -351,20 +331,18 @@ def test_cards_are_not_redone_until_due(world):
     assert n == 3
 
 
-def test_points_longer_than_110_chars_fail_validation():
+def test_top_story_limits():
     from pydantic import ValidationError
 
     from app.pipeline.synthesis.schemas import DailyBrief
 
-    point = {"text": "Short point about Sonatype.", "signal_ids": [1]}
-    brief = {"headline": {"text": "Sonatype moves", "signal_ids": [1]}, "overview": [point] * 3}
-    DailyBrief.model_validate(brief)
-    with pytest.raises(ValidationError, match="110"):
-        DailyBrief.model_validate(
-            {**brief, "overview": [point, point, {**point, "text": "x" * 111}]}
-        )
-    with pytest.raises(ValidationError):
-        DailyBrief.model_validate({**brief, "overview": [point, point]})  # exactly 3
+    DailyBrief.model_validate(story([1]))
+    with pytest.raises(ValidationError, match="90"):
+        DailyBrief.model_validate(story([1], title="t" * 91))
+    no_move = story([1])
+    del no_move["top_story"]["suggested_move"]
+    with pytest.raises(ValidationError, match="suggested_move"):
+        DailyBrief.model_validate(no_move)
 
 
 def test_verifier_gets_jfrog_levels_as_trusted_context(world):

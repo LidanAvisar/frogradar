@@ -1,4 +1,4 @@
-import type { Brief, RankedSignal } from '../api/models';
+import type { Brief, RankedSignal, TopStory } from '../api/models';
 
 export function signalFixture(overrides: Partial<RankedSignal> = {}): RankedSignal {
   return {
@@ -30,16 +30,12 @@ export function briefFixture(overrides: Partial<Brief> = {}): Brief {
   return {
     generated_at: '2026-10-21T08:00:00Z',
     window: { days: 7, since: '2026-10-14T08:00:00Z' },
-    headline: null,
-    overview: null,
-    headline_citations: [],
-    overview_sentences: [],
-    top: [signalFixture(), signalFixture({ id: 2, rank: 2, title: 'Second', is_claim: true })],
+    stats: { new_signals: 3, high_impact: 2, price_changes: 1, price_change_days: 7 },
+    top_story: null,
+    developments: [signalFixture(), signalFixture({ id: 2, rank: 2, title: 'Second', is_claim: true })],
     since_yesterday: [
       { id: 1, title: 'GitHub package firewall', url: 'https://x.test/1', impact: 4, category: 'product_launch', entities: [], published_at: '2026-10-21T01:00:00Z' },
     ],
-    since_yesterday_total: 3,
-    since_yesterday_high_impact: 2,
     filtered_not_relevant: 30,
     pricing_watch: [],
     pipeline: {
@@ -47,6 +43,24 @@ export function briefFixture(overrides: Partial<Brief> = {}): Brief {
       active_feeds: 3,
       watched_pages: 2,
     },
+    ...overrides,
+  };
+}
+
+export function storyFixture(overrides: Partial<TopStory> = {}): TopStory {
+  const a = { id: 7, title: 'GitHub package firewall', url: 'https://s.test/7', published_at: null };
+  const b = { id: 9, title: 'GitHub license compliance', url: 'https://s.test/9', published_at: null };
+  return {
+    source: 'daily_brief',
+    title: 'GitHub adds a package firewall that overlaps with Curation',
+    title_citations: [a],
+    what_happened: { text: 'GitHub previewed an npm-only package firewall.', citations: [a, b] },
+    why_it_matters: { text: 'It overlaps with JFrog Curation.', citations: [a] },
+    suggested_move: { text: 'Sales: add the npm-only limit to the Curation battlecard.', citations: [b] },
+    signal: signalFixture({ id: 7 }),
+    company: 'GitHub',
+    affects: ['JFrog Curation'],
+    signal_ids: [7, 9],
     ...overrides,
   };
 }

@@ -143,34 +143,49 @@ class CitationRef(BaseModel):
     published_at: datetime | None
 
 
-class CitedSentenceOut(BaseModel):
+class StoryRowOut(BaseModel):
     text: str
     citations: list[CitationRef]
-    company: str | None = Field(
-        None, description="Company the cited signals are about (primary entity), if one"
+
+
+class TopStoryOut(BaseModel):
+    """The one story the Brief leads with: from today's daily_brief report, or – when there is
+    none (or its rows no longer check out) – the top-ranked signal."""
+
+    source: Literal["daily_brief", "top_signal"]
+    title: str
+    title_citations: list[CitationRef]
+    what_happened: StoryRowOut | None
+    why_it_matters: StoryRowOut | None
+    suggested_move: StoryRowOut | None = Field(
+        None, description="Only from a daily brief; the fallback has none"
     )
+    signal: SignalOut = Field(description="Lead signal: confidence, source link")
+    company: str | None = Field(None, description="Company the story is about, if one")
     affects: list[str] = Field(
-        default_factory=list, description="JFrog products the sentence names (from config)"
+        default_factory=list, description="JFrog products the story names (from config)"
     )
+    signal_ids: list[int] = Field(description="Every signal the story cites")
+
+
+class BriefStats(BaseModel):
+    new_signals: int = Field(description="Relevant signals published in the last 24h")
+    high_impact: int = Field(description="Of those, impact >= 4")
+    price_changes: int = Field(description="Pricing-page changes in the last price_change_days")
+    price_change_days: int
 
 
 class BriefOut(BaseModel):
     generated_at: datetime
     window: BriefWindow
-    headline: str | None = Field(None, description="From the latest daily_brief report, if any")
-    overview: str | None = Field(None, description="From the latest daily_brief report, if any")
-    headline_citations: list[CitationRef] = Field(
-        default_factory=list, description="Signals the headline relies on"
+    stats: BriefStats
+    top_story: TopStoryOut | None
+    developments: list[RankedSignalOut] = Field(
+        description="Other developments: the next ranked signals, without the top story's"
     )
-    overview_sentences: list[CitedSentenceOut] = Field(
-        default_factory=list, description="The overview, sentence by sentence, with its sources"
-    )
-    top: list[RankedSignalOut]
     since_yesterday: list[SinceYesterdayItem] = Field(
-        description="New in the last 24h, without the signals already in top"
+        description="New in the last 24h, without the signals already shown above"
     )
-    since_yesterday_total: int = Field(description="All new signals, including those in top")
-    since_yesterday_high_impact: int = Field(description="New signals with impact >= 4")
     filtered_not_relevant: int
     pricing_watch: list[PricingItem]
     pipeline: PipelineInfo

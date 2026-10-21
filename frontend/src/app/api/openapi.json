@@ -146,6 +146,14 @@
       },
       "BriefOut": {
         "properties": {
+          "developments": {
+            "description": "Other developments: the next ranked signals, without the top story's",
+            "items": {
+              "$ref": "#/components/schemas/RankedSignalOut"
+            },
+            "title": "Developments",
+            "type": "array"
+          },
           "filtered_not_relevant": {
             "title": "Filtered Not Relevant",
             "type": "integer"
@@ -154,46 +162,6 @@
             "format": "date-time",
             "title": "Generated At",
             "type": "string"
-          },
-          "headline": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "From the latest daily_brief report, if any",
-            "title": "Headline"
-          },
-          "headline_citations": {
-            "description": "Signals the headline relies on",
-            "items": {
-              "$ref": "#/components/schemas/CitationRef"
-            },
-            "title": "Headline Citations",
-            "type": "array"
-          },
-          "overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "From the latest daily_brief report, if any",
-            "title": "Overview"
-          },
-          "overview_sentences": {
-            "description": "The overview, sentence by sentence, with its sources",
-            "items": {
-              "$ref": "#/components/schemas/CitedSentenceOut"
-            },
-            "title": "Overview Sentences",
-            "type": "array"
           },
           "pipeline": {
             "$ref": "#/components/schemas/PipelineInfo"
@@ -206,29 +174,25 @@
             "type": "array"
           },
           "since_yesterday": {
-            "description": "New in the last 24h, without the signals already in top",
+            "description": "New in the last 24h, without the signals already shown above",
             "items": {
               "$ref": "#/components/schemas/SinceYesterdayItem"
             },
             "title": "Since Yesterday",
             "type": "array"
           },
-          "since_yesterday_high_impact": {
-            "description": "New signals with impact >= 4",
-            "title": "Since Yesterday High Impact",
-            "type": "integer"
+          "stats": {
+            "$ref": "#/components/schemas/BriefStats"
           },
-          "since_yesterday_total": {
-            "description": "All new signals, including those in top",
-            "title": "Since Yesterday Total",
-            "type": "integer"
-          },
-          "top": {
-            "items": {
-              "$ref": "#/components/schemas/RankedSignalOut"
-            },
-            "title": "Top",
-            "type": "array"
+          "top_story": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopStoryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "window": {
             "$ref": "#/components/schemas/BriefWindow"
@@ -237,15 +201,46 @@
         "required": [
           "generated_at",
           "window",
-          "top",
+          "stats",
+          "top_story",
+          "developments",
           "since_yesterday",
-          "since_yesterday_total",
-          "since_yesterday_high_impact",
           "filtered_not_relevant",
           "pricing_watch",
           "pipeline"
         ],
         "title": "BriefOut",
+        "type": "object"
+      },
+      "BriefStats": {
+        "properties": {
+          "high_impact": {
+            "description": "Of those, impact >= 4",
+            "title": "High Impact",
+            "type": "integer"
+          },
+          "new_signals": {
+            "description": "Relevant signals published in the last 24h",
+            "title": "New Signals",
+            "type": "integer"
+          },
+          "price_change_days": {
+            "title": "Price Change Days",
+            "type": "integer"
+          },
+          "price_changes": {
+            "description": "Pricing-page changes in the last price_change_days",
+            "title": "Price Changes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "new_signals",
+          "high_impact",
+          "price_changes",
+          "price_change_days"
+        ],
+        "title": "BriefStats",
         "type": "object"
       },
       "BriefWindow": {
@@ -324,47 +319,6 @@
           "published_at"
         ],
         "title": "CitationRef",
-        "type": "object"
-      },
-      "CitedSentenceOut": {
-        "properties": {
-          "affects": {
-            "description": "JFrog products the sentence names (from config)",
-            "items": {
-              "type": "string"
-            },
-            "title": "Affects",
-            "type": "array"
-          },
-          "citations": {
-            "items": {
-              "$ref": "#/components/schemas/CitationRef"
-            },
-            "title": "Citations",
-            "type": "array"
-          },
-          "company": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Company the cited signals are about (primary entity), if one",
-            "title": "Company"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text",
-          "citations"
-        ],
-        "title": "CitedSentenceOut",
         "type": "object"
       },
       "CitedText": {
@@ -1518,6 +1472,27 @@
         "title": "SourceOut",
         "type": "object"
       },
+      "StoryRowOut": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationRef"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "citations"
+        ],
+        "title": "StoryRowOut",
+        "type": "object"
+      },
       "TimelineItem": {
         "properties": {
           "category": {
@@ -1575,6 +1550,104 @@
           "url"
         ],
         "title": "TimelineItem",
+        "type": "object"
+      },
+      "TopStoryOut": {
+        "description": "The one story the Brief leads with: from today's daily_brief report, or \u2013 when there is\nnone (or its rows no longer check out) \u2013 the top-ranked signal.",
+        "properties": {
+          "affects": {
+            "description": "JFrog products the story names (from config)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Affects",
+            "type": "array"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Company the story is about, if one",
+            "title": "Company"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/SignalOut",
+            "description": "Lead signal: confidence, source link"
+          },
+          "signal_ids": {
+            "description": "Every signal the story cites",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Signal Ids",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "daily_brief",
+              "top_signal"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "suggested_move": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoryRowOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only from a daily brief; the fallback has none"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "title_citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationRef"
+            },
+            "title": "Title Citations",
+            "type": "array"
+          },
+          "what_happened": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoryRowOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "why_it_matters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoryRowOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "title",
+          "title_citations",
+          "what_happened",
+          "why_it_matters",
+          "signal",
+          "signal_ids"
+        ],
+        "title": "TopStoryOut",
         "type": "object"
       },
       "ValidationError": {
@@ -1656,7 +1729,7 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 5,
+              "default": 4,
               "maximum": 20,
               "minimum": 1,
               "title": "Limit",

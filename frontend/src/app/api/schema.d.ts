@@ -183,6 +183,11 @@ export interface components {
         };
         /** BriefOut */
         BriefOut: {
+            /**
+             * Developments
+             * @description Other developments: the next ranked signals, without the top story's
+             */
+            developments: components["schemas"]["RankedSignalOut"][];
             /** Filtered Not Relevant */
             filtered_not_relevant: number;
             /**
@@ -190,47 +195,37 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
-            /**
-             * Headline
-             * @description From the latest daily_brief report, if any
-             */
-            headline?: string | null;
-            /**
-             * Headline Citations
-             * @description Signals the headline relies on
-             */
-            headline_citations?: components["schemas"]["CitationRef"][];
-            /**
-             * Overview
-             * @description From the latest daily_brief report, if any
-             */
-            overview?: string | null;
-            /**
-             * Overview Sentences
-             * @description The overview, sentence by sentence, with its sources
-             */
-            overview_sentences?: components["schemas"]["CitedSentenceOut"][];
             pipeline: components["schemas"]["PipelineInfo"];
             /** Pricing Watch */
             pricing_watch: components["schemas"]["PricingItem"][];
             /**
              * Since Yesterday
-             * @description New in the last 24h, without the signals already in top
+             * @description New in the last 24h, without the signals already shown above
              */
             since_yesterday: components["schemas"]["SinceYesterdayItem"][];
-            /**
-             * Since Yesterday High Impact
-             * @description New signals with impact >= 4
-             */
-            since_yesterday_high_impact: number;
-            /**
-             * Since Yesterday Total
-             * @description All new signals, including those in top
-             */
-            since_yesterday_total: number;
-            /** Top */
-            top: components["schemas"]["RankedSignalOut"][];
+            stats: components["schemas"]["BriefStats"];
+            top_story: components["schemas"]["TopStoryOut"] | null;
             window: components["schemas"]["BriefWindow"];
+        };
+        /** BriefStats */
+        BriefStats: {
+            /**
+             * High Impact
+             * @description Of those, impact >= 4
+             */
+            high_impact: number;
+            /**
+             * New Signals
+             * @description Relevant signals published in the last 24h
+             */
+            new_signals: number;
+            /** Price Change Days */
+            price_change_days: number;
+            /**
+             * Price Changes
+             * @description Pricing-page changes in the last price_change_days
+             */
+            price_changes: number;
         };
         /** BriefWindow */
         BriefWindow: {
@@ -261,23 +256,6 @@ export interface components {
             title: string;
             /** Url */
             url: string;
-        };
-        /** CitedSentenceOut */
-        CitedSentenceOut: {
-            /**
-             * Affects
-             * @description JFrog products the sentence names (from config)
-             */
-            affects?: string[];
-            /** Citations */
-            citations: components["schemas"]["CitationRef"][];
-            /**
-             * Company
-             * @description Company the cited signals are about (primary entity), if one
-             */
-            company?: string | null;
-            /** Text */
-            text: string;
         };
         /** CitedText */
         CitedText: {
@@ -666,6 +644,13 @@ export interface components {
              */
             trust: number;
         };
+        /** StoryRowOut */
+        StoryRowOut: {
+            /** Citations */
+            citations: components["schemas"]["CitationRef"][];
+            /** Text */
+            text: string;
+        };
         /** TimelineItem */
         TimelineItem: {
             category: components["schemas"]["SignalCategory"] | null;
@@ -679,6 +664,43 @@ export interface components {
             title: string;
             /** Url */
             url: string;
+        };
+        /**
+         * TopStoryOut
+         * @description The one story the Brief leads with: from today's daily_brief report, or – when there is
+         *     none (or its rows no longer check out) – the top-ranked signal.
+         */
+        TopStoryOut: {
+            /**
+             * Affects
+             * @description JFrog products the story names (from config)
+             */
+            affects?: string[];
+            /**
+             * Company
+             * @description Company the story is about, if one
+             */
+            company?: string | null;
+            /** @description Lead signal: confidence, source link */
+            signal: components["schemas"]["SignalOut"];
+            /**
+             * Signal Ids
+             * @description Every signal the story cites
+             */
+            signal_ids: number[];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "daily_brief" | "top_signal";
+            /** @description Only from a daily brief; the fallback has none */
+            suggested_move?: components["schemas"]["StoryRowOut"] | null;
+            /** Title */
+            title: string;
+            /** Title Citations */
+            title_citations: components["schemas"]["CitationRef"][];
+            what_happened: components["schemas"]["StoryRowOut"] | null;
+            why_it_matters: components["schemas"]["StoryRowOut"] | null;
         };
         /** ValidationError */
         ValidationError: {

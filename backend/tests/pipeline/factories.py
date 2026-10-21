@@ -229,16 +229,23 @@ def claim_keys_in(call: Call) -> list[str]:
     return _CLAIM_KEY.findall(call.messages[-1]["content"])
 
 
-def default_brief(call: Call) -> dict[str, Any]:
-    ids = signal_ids_in(call)
+def story(title_ids, what_ids=None, why_ids=None, move_ids=None, title="Sonatype ships Firewall 2"):
+    """A daily_brief.v3 output; each row cites the given ids (default: the title's)."""
     return {
-        "headline": {"text": "Sonatype moves on repository firewalls", "signal_ids": ids[:1]},
-        "overview": [
-            {"text": "Sonatype launched a new firewall release.", "signal_ids": ids[:1]},
-            {"text": "Registry pricing is shifting across vendors.", "signal_ids": ids[-1:]},
-            {"text": "Secret scanning keeps moving into platforms.", "signal_ids": ids[-1:]},
-        ],
-    }
+        "top_story": {
+            "title": {"text": title, "signal_ids": title_ids},
+            "what_happened": {"text": "Sonatype launched Firewall 2 for npm.",
+                              "signal_ids": what_ids or title_ids},
+            "why_it_matters_for_jfrog": {"text": "It overlaps with JFrog Curation.",
+                                         "signal_ids": why_ids or title_ids},
+            "suggested_move": {"text": "Sales: add Firewall 2 to the Curation battlecard.",
+                               "signal_ids": move_ids or title_ids},
+        }
+    }  # fmt: skip
+
+
+def default_brief(call: Call) -> dict[str, Any]:
+    return story(signal_ids_in(call)[:1])
 
 
 def default_battlecard(call: Call) -> dict[str, Any]:

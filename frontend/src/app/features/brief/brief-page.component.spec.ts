@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
-import { briefFixture } from '../../testing/fixtures';
+import { briefFixture, storyFixture } from '../../testing/fixtures';
 import { BriefPageComponent } from './brief-page.component';
 
 describe('BriefPageComponent', () => {
@@ -29,16 +29,26 @@ describe('BriefPageComponent', () => {
     fixture.detectChanges();
   }
 
-  it('shows skeletons while loading, then the ranked cards', () => {
+  it('shows skeletons while loading, then stat tiles and the other developments', () => {
     expect(el.querySelector('[aria-busy="true"]')).not.toBeNull();
     respond();
-    const cards = el.querySelectorAll('fr-signal-card');
-    expect(cards.length).toBe(2);
-    expect(el.querySelector('h1')?.textContent).toContain('Your morning brief');
+    expect(el.querySelectorAll('fr-signal-card').length).toBe(2);
+    expect(el.querySelector('#dev-heading')?.textContent).toContain('Other developments');
     expect(el.textContent).toContain('WEDNESDAY · 21 OCTOBER 2026');
     expect(el.textContent).toContain('Vendor claim');
     expect(el.textContent).toContain('30 items filtered as not relevant');
-    expect(el.textContent).toContain('3 new since yesterday · 2 high impact');
+    expect(el.textContent).not.toContain('What matters today');
+
+    const tiles = Array.from(el.querySelectorAll<HTMLAnchorElement>('a.tile'));
+    expect(tiles.map((t) => t.getAttribute('aria-label'))).toEqual([
+      '3 new signals, since yesterday',
+      '2 high impact, new, impact 4-5',
+      '1 price change, last 7 days',
+    ]);
+    expect(tiles[0].getAttribute('href')).toBe('/signals?since=24h');
+    expect(tiles[1].getAttribute('href')).toBe('/signals?since=24h&min_impact=4');
+    expect(tiles[2].getAttribute('href')).toBe('/signals?kind=page_diff&days=7');
+    expect(el.querySelector('fr-top-story')).toBeNull(); // none in this fixture
   });
 
   it('cards start collapsed; Expand all / Collapse all toggles every card', () => {
@@ -74,50 +84,25 @@ describe('BriefPageComponent', () => {
     expect(Object.keys(localStorage).some((k) => k.includes('expand'))).toBeFalse();
   });
 
-  it('uses the daily brief headline and links every sentence to its sources', () => {
-    const a = { id: 7, title: 'Nexus price rise', url: 'https://s.test/7', published_at: null };
-    const b = { id: 9, title: 'Firewall 2', url: 'https://s.test/9', published_at: null };
-    respond(
-      briefFixture({
-        headline: 'Sonatype reprices Nexus',
-        headline_citations: [a],
-        overview: 'Two moves matter today. Firewall 2 shipped.',
-        overview_sentences: [
-          { text: 'Two moves matter today.', citations: [a, b], company: 'Sonatype', affects: ['JFrog Curation'] },
-          { text: 'Firewall 2 shipped.', citations: [b], company: null, affects: [] },
-          { text: 'x'.repeat(130), citations: [a], company: 'GitHub', affects: [] },
-          { text: 'A fourth sentence is not shown.', citations: [a], company: null, affects: [] },
-        ],
-      }),
-    );
-    expect(el.querySelector('h1')?.textContent).toContain('Sonatype reprices Nexus');
-    expect(el.querySelector('h1 .cite a')?.getAttribute('href')).toBe('https://s.test/7');
-    expect(el.querySelector('.today-heading')?.textContent).toContain('What matters today');
-    const items = el.querySelectorAll<HTMLElement>('.today-item');
-    expect(items.length).toBe(3);
-    expect(items[0].querySelector('fr-company-chip')?.textContent).toContain('Sonatype');
-    expect(items[0].querySelector('.affects')?.textContent).toContain('JFrog Curation');
-    expect(items[1].querySelector('fr-company-chip')).toBeNull();
-    expect(items[1].querySelector('.affects')).toBeNull();
-    expect(items[0].querySelector('.today-text')?.classList).not.toContain('clamp');
-    expect(items[2].querySelector('.today-text')?.classList).toContain('clamp');
-    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.today .cite a'));
-    expect(links.map((l) => l.textContent?.trim())).toEqual(['1', '2', '2', '1']);
-    expect(links[1].getAttribute('aria-label')).toBe('Source 2: Firewall 2');
-    expect(links[1].getAttribute('rel')).toContain('noopener');
-    expect(el.textContent).not.toContain('A fourth sentence');
+  it('leads with the top story card', () => {
+    respond(briefFixture({ top_story: storyFixture() }));
+    const story = el.querySelector('fr-top-story')!;
+    expect(story.textContent).toContain('Top story today');
+    expect(story.querySelector('h2')?.textContent).toContain('GitHub adds a package firewall that overlaps with Curation');
+    expect(el.querySelector('h1')?.textContent).toContain('Morning Brief');
   });
 
-  it('switches to one-line cards and remembers it', () => {
-    respond();
+  it('executive view shows only the stat tiles and the top story, and is remembered', () => {
+    respond(briefFixture({ top_story: storyFixture() }));
     const toggle = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Executive view'))!;
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
     toggle.click();
     fixture.detectChanges();
     expect(toggle.getAttribute('aria-pressed')).toBe('true');
-    expect(el.querySelectorAll('article.exec').length).toBe(2);
-    expect(el.querySelector('.why')).toBeNull();
-    expect(el.querySelector('.main')!.querySelector('fr-impact-badge, fr-confidence-badge, blockquote')).toBeNull();
+    expect(el.querySelectorAll('a.tile').length).toBe(3);
+    expect(el.querySelector('fr-top-story')).not.toBeNull();
+    expect(el.querySelector('fr-signal-card')).toBeNull();
+    expect(el.querySelector('.rail')).toBeNull();
     expect(el.textContent).not.toContain('Expand all');
     expect(localStorage.getItem('frogradar.executiveView')).toBe('true');
   });
@@ -132,7 +117,7 @@ describe('BriefPageComponent', () => {
   });
 
   it('shows an error with a retry', () => {
-    http.expectOne('/api/brief?days=7&limit=5').flush('down', { status: 503, statusText: 'Down' });
+    http.expectOne('/api/brief?days=7&limit=4').flush('down', { status: 503, statusText: 'Down' });
     fixture.detectChanges();
     expect(el.querySelector('[role="alert"]')).not.toBeNull();
     (el.querySelector('[role="alert"] button') as HTMLButtonElement).click();

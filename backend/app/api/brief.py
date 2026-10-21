@@ -24,9 +24,8 @@ from app.api.queries import (
 )
 from app.api.schemas import (
     BriefOut,
+    BriefStats,
     BriefWindow,
-    CitationRef,
-    CitedSentenceOut,
     LastRun,
     PipelineInfo,
     PriceChange,
@@ -34,6 +33,8 @@ from app.api.schemas import (
     RankedSignalOut,
     SignalOut,
     SinceYesterdayItem,
+    StoryRowOut,
+    TopStoryOut,
 )
 from app.db.enums import FetchMethod, ReportKind, Verification
 from app.db.models import Entity, PipelineRun, Report, Signal, Source, signal_entities
@@ -46,6 +47,8 @@ SINCE_YESTERDAY_MAX = 10
 PRICING_WATCH_DAYS = 90
 PRICING_WATCH_MAX = 4
 HIGH_IMPACT = 4
+PRICE_CHANGE_DAYS = 7
+MAX_STORY_IDS = 10  # extra ranked rows fetched so the developments list stays full
 FEED_METHODS = (FetchMethod.RSS, FetchMethod.GITHUB, FetchMethod.WEB)
 
 
@@ -54,17 +57,20 @@ def get_brief(
     session: DbSession,
     now: Now,
     days: Annotated[int, Query(ge=1, le=90)] = 7,
-    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+    limit: Annotated[int, Query(ge=1, le=20)] = 4,
 ) -> BriefOut:
     since = now - timedelta(days=days)
 
     # Ranked: relevant, verified (supported or partial), impact × confidence (scope.ranked).
-    top_rows = session.scalars(
-        ranked(since, now).options(selectinload(Signal.source)).limit(limit)
+    ranked_rows = session.scalars(
+        ranked(since, now).options(selectinload(Signal.source)).limit(limit + MAX_STORY_IDS)
     ).all()
-    top = [
+    story = _top_story(session, ranked_rows)
+    story_ids = set(story.signal_ids) if story else set()
+    rest = [s for s in ranked_rows if s.id not in story_ids][:limit]
+    developments = [
         RankedSignalOut(rank=i, **out.model_dump())
-        for i, out in enumerate(to_outs(session, top_rows), start=1)
+        for i, out in enumerate(to_outs(session, rest), start=1)
     ]
 
     # New = published in the last 24h. Backfilled old articles fetched today don't count;
@@ -79,11 +85,11 @@ def get_brief(
     new_total, new_high = session.execute(
         select(func.count(), func.count().filter(Signal.impact >= HIGH_IMPACT)).where(*is_new)
     ).one()
-    # The list leaves out what the Top 5 already shows; the totals above count everything new.
-    top_ids = [t.id for t in top]
+    # The list leaves out what the page already shows above; the stats count everything new.
+    shown = [*story_ids, *(d.id for d in developments)]
     new_rows = session.scalars(
         select(Signal)
-        .where(*is_new, Signal.id.not_in(top_ids))
+        .where(*is_new, Signal.id.not_in(shown))
         .order_by(Signal.impact.desc().nulls_last(), event_time().desc(), Signal.id.desc())
         .limit(SINCE_YESTERDAY_MAX)
     ).all()
@@ -100,6 +106,16 @@ def get_brief(
         )  # fmt: skip
         for s in new_rows
     ]
+    price_changes = session.scalar(
+        select(func.count()).where(
+            visible(),
+            is_page_diff(),
+            Signal.relevant.is_(True),
+            Signal.verification != Verification.UNSUPPORTED,
+            event_time() >= now - timedelta(days=PRICE_CHANGE_DAYS),
+            event_time() <= now,
+        )
+    )
 
     filtered = session.scalar(
         select(func.count())
@@ -110,56 +126,100 @@ def get_brief(
     return BriefOut(
         generated_at=now,
         window=BriefWindow(days=days, since=since),
-        **_headline(session),
-        top=top,
+        stats=BriefStats(
+            new_signals=new_total,
+            high_impact=new_high,
+            price_changes=price_changes or 0,
+            price_change_days=PRICE_CHANGE_DAYS,
+        ),
+        top_story=story,
+        developments=developments,
         since_yesterday=since_yesterday,
-        since_yesterday_total=new_total,
-        since_yesterday_high_impact=new_high,
         filtered_not_relevant=filtered or 0,
         pricing_watch=_pricing_watch(session, now),
         pipeline=_pipeline_info(session),
     )
 
 
-def _headline(session: DbSession) -> dict[str, Any]:
-    """Headline + overview of the latest daily_brief, with their sources. Read-time check: a
-    sentence is shown only while every signal it cites is still usable."""
+def _top_story(session: DbSession, ranked_rows: list[Signal]) -> TopStoryOut | None:
+    """The latest daily_brief's top story, if its required rows still check out (read-time:
+    every cited signal still usable); else the top-ranked signal (no suggested move)."""
     report = session.scalar(
         select(Report)
         .where(Report.kind == ReportKind.DAILY_BRIEF)
         .order_by(Report.created_at.desc(), Report.id.desc())
         .limit(1)
     )
-    content = report.content if report else {}
-    headline_ids = _ids(content.get("headline_signal_ids"))
-    sentences = [
-        (s.get("text"), _ids(s.get("signal_ids")))
-        for s in content.get("overview_sentences") or []
-        if isinstance(s, dict)
-    ]
-    refs = citation_refs(session, [*headline_ids, *(i for _, ids in sentences for i in ids)])
+    rows_in = (report.content or {}).get("top_story") if report else None
+    if isinstance(rows_in, dict):
+        story = _from_report(session, rows_in)
+        if story is not None:
+            return story
+    if not ranked_rows:
+        return None
+    lead = ranked_rows[0]
+    out = to_outs(session, [lead])[0]
+    ref = citation_refs(session, [lead.id]).get(lead.id)
+    cites = [ref] if ref else []
+    why = lead.takeaway or first_sentence(lead.why_jfrog_cares)
     named = product_matcher(session)
+    return TopStoryOut(
+        source="top_signal",
+        title=out.title,
+        title_citations=cites,
+        what_happened=StoryRowOut(text=lead.summary, citations=cites) if lead.summary else None,
+        why_it_matters=StoryRowOut(text=why, citations=cites) if why else None,
+        suggested_move=None,
+        signal=out,
+        company=_company(session, [lead.id]),
+        affects=named(f"{why or ''}"),
+        signal_ids=[lead.id],
+    )
 
-    def cited(ids: list[int]) -> list[CitationRef] | None:
-        return [refs[i] for i in ids] if ids and all(i in refs for i in ids) else None
 
-    headline = content.get("headline")
-    headline_refs = cited(headline_ids)
-    if not (isinstance(headline, str) and headline.strip() and headline_refs):
-        headline, headline_refs = None, []
-    overview = [
-        CitedSentenceOut(
-            text=text, citations=c, company=_company(session, ids), affects=named(text)
-        )
-        for text, ids in sentences
-        if isinstance(text, str) and text.strip() and (c := cited(ids))
-    ]
-    return {
-        "headline": headline,
-        "headline_citations": headline_refs,
-        "overview": " ".join(o.text for o in overview) or None,
-        "overview_sentences": overview,
+def _from_report(session: DbSession, rows_in: dict[str, Any]) -> TopStoryOut | None:
+    rows = {
+        key: (row.get("text"), _ids(row.get("signal_ids")))
+        for key, row in rows_in.items()
+        if isinstance(row, dict) and isinstance(row.get("text"), str) and row["text"].strip()
     }
+    all_ids = [i for _, ids in rows.values() for i in ids]
+    refs = citation_refs(session, all_ids)
+
+    def row(key: str) -> StoryRowOut | None:
+        if key not in rows:
+            return None
+        text, ids = rows[key]
+        if not ids or not all(i in refs for i in ids):
+            return None
+        return StoryRowOut(text=text, citations=[refs[i] for i in ids])
+
+    title, what, why = row("title"), row("what_happened"), row("why_it_matters_for_jfrog")
+    if title is None or what is None or why is None:
+        return None
+    lead_id = rows["title"][1][0]
+    lead = session.scalars(signals_query().where(Signal.id == lead_id)).one()
+    used = list(dict.fromkeys(all_ids))
+    named = product_matcher(session)
+    return TopStoryOut(
+        source="daily_brief",
+        title=title.text,
+        title_citations=title.citations,
+        what_happened=what,
+        why_it_matters=why,
+        suggested_move=row("suggested_move"),
+        signal=to_outs(session, [lead])[0],
+        company=_company(session, rows["title"][1] + rows["what_happened"][1]),
+        affects=named(f"{why.text} {title.text}"),
+        signal_ids=[i for i in used if i in refs],
+    )
+
+
+def first_sentence(text: str | None) -> str | None:
+    if not text:
+        return None
+    head, dot, _ = text.partition(". ")
+    return head + ("." if dot else "")
 
 
 def _company(session: DbSession, ids: list[int]) -> str | None:

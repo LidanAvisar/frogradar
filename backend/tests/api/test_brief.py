@@ -11,22 +11,29 @@ def brief(client, **params):
     return r.json()
 
 
+def ranking(data):
+    """Without a daily brief the top story is the top-ranked signal; developments follow it."""
+    story = [data["top_story"]["signal"]["id"]] if data["top_story"] else []
+    return story + [d["id"] for d in data["developments"]]
+
+
 def test_top_ranked_by_impact_times_confidence(client, build):
     a = build.signal("a", impact=3, confidence=0.9)  # 2.7
     b = build.signal("b", impact=5, confidence=0.6)  # 3.0
     c = build.signal("c", impact=4, confidence=0.8)  # 3.2
     d = build.signal("d", impact=2, confidence=0.9)  # 1.8
 
-    top = brief(client)["top"]
+    data = brief(client)
 
-    assert [t["id"] for t in top] == [c.id, b.id, a.id, d.id]
-    assert [t["rank"] for t in top] == [1, 2, 3, 4]
+    assert ranking(data) == [c.id, b.id, a.id, d.id]
+    assert data["top_story"]["source"] == "top_signal"
+    assert [t["rank"] for t in data["developments"]] == [1, 2, 3]
 
 
 def test_top_tie_broken_by_newest(client, build):
     old = build.signal("old", hours_ago=30)
     new = build.signal("new", hours_ago=3)
-    assert [t["id"] for t in brief(client)["top"]] == [new.id, old.id]
+    assert ranking(brief(client)) == [new.id, old.id]
 
 
 def test_top_limit_and_window(client, build):
@@ -34,11 +41,11 @@ def test_top_limit_and_window(client, build):
         build.signal(f"in {i}", hours_ago=24 * i + 1)
     outside = build.signal("outside", hours_ago=24 * 8, impact=5)
 
-    data = brief(client, days=7, limit=5)
-    assert len(data["top"]) == 5
-    assert outside.id not in [t["id"] for t in data["top"]]
+    data = brief(client, days=7, limit=4)
+    assert len(data["developments"]) == 4
+    assert outside.id not in ranking(data)
     assert data["window"]["days"] == 7
-    assert outside.id in [t["id"] for t in brief(client, days=10, limit=20)["top"]]
+    assert outside.id in ranking(brief(client, days=10, limit=20))
 
 
 def test_top_excludes_unshowable_signals(client, build):
@@ -55,7 +62,7 @@ def test_top_excludes_unshowable_signals(client, build):
     canonical.dedup_cluster_id = canonical.id
     build.s.flush()
 
-    ids = {t["id"] for t in brief(client)["top"]}
+    ids = set(ranking(brief(client)))
     assert ids == {shown.id, partial.id, canonical.id}
 
 
@@ -143,7 +150,8 @@ def test_pricing_watch_prefers_verified_model_changes_and_display_title(client, 
     assert item["signal"]["title"] == "A raises Cloud Pro to $1,950 a year"
     assert item["signal"]["original_title"] == sig.title
     assert item["signal"]["takeaway"] == "A raises Pro: an opening for JFrog Artifactory."
-    build.signal("Bigger news", impact=5, hours_ago=1)  # takes the only Top slot
+    build.signal("Bigger news", impact=5, hours_ago=1)  # becomes the top story
+    build.signal("Next news", impact=5, hours_ago=1.5)  # takes the only developments slot
     (new,) = [i for i in brief(client, limit=1)["since_yesterday"] if i["id"] == sig.id]
     assert new["title"] == "A raises Cloud Pro to $1,950 a year"
 
@@ -174,50 +182,12 @@ def test_pipeline_info_skips_eval_runs(client, build):
 
 def test_no_runs_and_empty_db(client):
     data = brief(client)
-    assert data["top"] == [] and data["since_yesterday"] == [] and data["pricing_watch"] == []
+    assert data["developments"] == [] and data["since_yesterday"] == []
+    assert data["pricing_watch"] == [] and data["top_story"] is None
     assert data["pipeline"]["last_run"] is None
-    assert data["headline"] is None and data["overview"] is None
-
-
-def test_headline_from_latest_daily_brief_with_citations(client, build):
-    a, b = build.signal("Nexus price rise"), build.signal("Firewall 2")
-    hidden = build.signal("Re-collected, pending re-enrichment", enriched=False)
-    s = build.s
-    s.add(Report(kind=ReportKind.DAILY_BRIEF, content={"headline": "Old", "overview": "o"},
-                 created_at=NOW - timedelta(days=1)))  # fmt: skip
-    s.add(Report(
-        kind=ReportKind.DAILY_BRIEF, created_at=NOW - timedelta(hours=1),
-        content={
-            "headline": "Sonatype reprices Nexus", "headline_signal_ids": [a.id],
-            "overview": "joined text is recomputed",
-            "overview_sentences": [
-                {"text": "Sonatype raised Nexus Cloud Pro.", "signal_ids": [a.id]},
-                {"text": "It also shipped Firewall 2.", "signal_ids": [b.id, a.id]},
-                # a cited signal is no longer usable → the sentence is not shown
-                {"text": "Something unsupported now.", "signal_ids": [b.id, hidden.id]},
-            ],
-        },
-    ))  # fmt: skip
-    s.add(Report(kind=ReportKind.BATTLECARD, content={"headline": "Not a brief"}, created_at=NOW))
-    s.flush()
-
-    data = brief(client)
-    assert data["headline"] == "Sonatype reprices Nexus"
-    assert [c["id"] for c in data["headline_citations"]] == [a.id]
-    assert data["headline_citations"][0]["url"] == a.url
-    assert [o["text"] for o in data["overview_sentences"]] == [
-        "Sonatype raised Nexus Cloud Pro.", "It also shipped Firewall 2.",
-    ]  # fmt: skip
-    assert [c["id"] for c in data["overview_sentences"][1]["citations"]] == [b.id, a.id]
-    assert data["overview"] == "Sonatype raised Nexus Cloud Pro. It also shipped Firewall 2."
-
-
-def test_uncited_headline_is_not_shown(client, build):
-    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, content={"headline": "No sources"},
-                       created_at=NOW))  # fmt: skip
-    build.s.flush()
-    data = brief(client)
-    assert data["headline"] is None and data["overview"] is None
+    assert data["stats"] == {
+        "new_signals": 0, "high_impact": 0, "price_changes": 0, "price_change_days": 7,
+    }  # fmt: skip
 
 
 def test_invalid_params(client):
@@ -225,17 +195,22 @@ def test_invalid_params(client):
     assert client.get("/api/brief", params={"limit": 50}).status_code == 422
 
 
-def test_since_yesterday_leaves_out_top_but_counts_it(client, build):
-    in_top = build.signal("in top", hours_ago=2, impact=5)
+def test_since_yesterday_leaves_out_what_is_shown_but_stats_count_it(client, build):
+    story = build.signal("story", hours_ago=2, impact=5)
+    dev = build.signal("development", hours_ago=2.5, impact=4)
     only_new = [build.signal(f"new {i}", hours_ago=3, impact=2) for i in range(2)]
     build.signal("old", hours_ago=24 * 3, impact=1)
+    page = build.source("P", method=FetchMethod.PAGE_DIFF)
+    build.signal("price", source=page, hours_ago=24 * 3, impact=3, meta={"kind": "page_diff"})
+    build.signal("old price", source=page, hours_ago=24 * 9, impact=3, meta={"kind": "page_diff"})
 
     data = brief(client, limit=1)
 
-    assert [t["id"] for t in data["top"]] == [in_top.id]
+    assert ranking(data) == [story.id, dev.id]
     assert {i["id"] for i in data["since_yesterday"]} == {s.id for s in only_new}
-    assert data["since_yesterday_total"] == 3
-    assert data["since_yesterday_high_impact"] == 1
+    assert data["stats"] == {
+        "new_signals": 4, "high_impact": 2, "price_changes": 1, "price_change_days": 7,
+    }  # fmt: skip
 
 
 def test_pricing_watch_ordered_by_impact_then_date(client, build):
@@ -249,37 +224,72 @@ def test_pricing_watch_ordered_by_impact_then_date(client, build):
     assert ids == [high_new.id, high_old.id, low_new.id]
 
 
-def test_overview_sentences_carry_company_and_named_jfrog_products(client, build):
+def _story(**rows):
+    return {key: {"text": text, "signal_ids": ids} for key, (text, ids) in rows.items()}
+
+
+def test_top_story_from_the_daily_brief_with_company_products_and_sources(client, build):
     jfrog = build.entity("jfrog", "JFrog", relationship=Relationship.SELF, is_self=True)
     build.entity("jfrog-curation", "JFrog Curation", parent=jfrog)
-    build.entity("jfrog-xray", "JFrog Xray", parent=jfrog, aliases=["Xray"])
     build.entity("jfrog-advanced-security", "JFrog Advanced Security", parent=jfrog)
     build.entity(
         "jfrog-pipelines", "JFrog Pipelines", parent=jfrog, discontinued_on=date(2026, 5, 1)
     )
     github = build.entity("github", "GitHub")
     firewall = build.entity("github-firewall", "GitHub package firewall", parent=github)
-    sonatype = build.entity("sonatype", "Sonatype")
-    a, b, c = build.signal("GH firewall"), build.signal("GH license"), build.signal("Nexus")
+    a = build.signal("GH firewall", impact=3)
+    b = build.signal("GH license", impact=3)
+    top = build.signal("Ranked first", impact=5)
     build.link(a, firewall)
     build.link(b, github)
-    build.link(c, sonatype)
-    build.link(c, jfrog, primary=True)  # JFrog itself never counts as "the company"
-    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, created_at=NOW, content={
-        "headline": "GitHub moves on gating", "headline_signal_ids": [a.id],
-        "overview_sentences": [
-            {"text": "GitHub challenges Curation and Xray license checks.",
-             "signal_ids": [a.id, b.id]},
-            {"text": "GitHub Advanced Security and JFrog Pipelines users may care.",
-             "signal_ids": [b.id]},
-            {"text": "Sonatype raised prices.", "signal_ids": [c.id]},
-        ],
-    }))  # fmt: skip
+    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, created_at=NOW, content={"top_story": _story(
+        title=("GitHub adds a package firewall that overlaps with Curation", [a.id]),
+        what_happened=("GitHub previewed an npm-only package firewall.", [a.id, b.id]),
+        why_it_matters_for_jfrog=(
+            "It overlaps with Curation; GitHub Advanced Security and JFrog Pipelines are not ours.",
+            [a.id]),
+        suggested_move=("Sales: add the npm-only limit to the Curation battlecard.", [a.id]),
+    )}))  # fmt: skip
     build.s.flush()
 
-    sentences = brief(client)["overview_sentences"]
-    assert [(s["company"], s["affects"]) for s in sentences] == [
-        ("GitHub", ["JFrog Curation", "JFrog Xray"]),
-        ("GitHub", []),  # another vendor's "Advanced Security"; discontinued product ignored
-        ("Sonatype", []),
-    ]
+    data = brief(client)
+    story = data["top_story"]
+    assert story["source"] == "daily_brief"
+    assert story["title"] == "GitHub adds a package firewall that overlaps with Curation"
+    assert [c["id"] for c in story["what_happened"]["citations"]] == [a.id, b.id]
+    assert story["suggested_move"]["text"].startswith("Sales:")
+    assert story["signal"]["id"] == a.id and story["company"] == "GitHub"
+    assert story["affects"] == ["JFrog Curation"]  # other vendor's product, discontinued: skipped
+    assert story["signal_ids"] == [a.id, b.id]
+    # Developments leave out the story's signals; the top-ranked signal is listed there.
+    assert [d["id"] for d in data["developments"]] == [top.id]
+
+
+def test_story_row_with_an_unusable_signal_falls_back_to_the_top_signal(client, build):
+    a = build.signal("A", impact=3, summary="A summary of A.", takeaway="Matters for Curation.")
+    gone = build.signal("Pending re-enrichment", enriched=False)
+    lead = build.signal("Lead", impact=5, summary="Lead summary.", takeaway="Lead takeaway.")
+    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, created_at=NOW, content={"top_story": _story(
+        title=("Title", [a.id]), what_happened=("What.", [a.id, gone.id]),
+        why_it_matters_for_jfrog=("Why.", [a.id]),
+    )}))  # fmt: skip
+    build.s.flush()
+
+    story = brief(client)["top_story"]
+    assert story["source"] == "top_signal" and story["signal"]["id"] == lead.id
+    assert story["title"] == "Lead"
+    assert story["what_happened"]["text"] == "Lead summary."
+    assert story["why_it_matters"]["text"] == "Lead takeaway."
+    assert story["suggested_move"] is None
+    assert [c["id"] for c in story["title_citations"]] == [lead.id]
+
+
+def test_dropped_suggested_move_keeps_the_story(client, build):
+    a = build.signal("A")
+    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, created_at=NOW, content={"top_story": _story(
+        title=("Title", [a.id]), what_happened=("What.", [a.id]),
+        why_it_matters_for_jfrog=("Why.", [a.id]),
+    )}))  # fmt: skip
+    build.s.flush()
+    story = brief(client)["top_story"]
+    assert story["source"] == "daily_brief" and story["suggested_move"] is None

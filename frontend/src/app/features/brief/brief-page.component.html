@@ -2,40 +2,19 @@
   <header class="header">
     <div class="intro">
       <p class="eyebrow mono date">{{ dateLine() }}</p>
-      <h1>{{ headline() }}<ng-container *ngTemplateOutlet="citeLinks; context: { $implicit: headlineCites() }" /></h1>
-      @if (today().length) {
-        <section class="today" aria-labelledby="today-heading">
-          <h2 id="today-heading" class="eyebrow today-heading">What matters today</h2>
-          <ol class="today-list">
-            @for (item of today(); track $index) {
-              <li class="today-item">
-                @if (item.company) { <fr-company-chip class="today-company" [name]="item.company" /> }
-                <div class="today-body">
-                  <p class="today-text" [class.clamp]="item.long" [attr.title]="item.long ? item.text : null">{{ item.text }}</p>
-                  <div class="today-meta small">
-                    @for (p of item.affects; track p) {
-                      <span class="affects"><span class="affects-label">Affects</span> {{ p }}</span>
-                    }
-                    @if (item.cites.length) {
-                      <span class="sources muted">Sources<ng-container *ngTemplateOutlet="citeLinks; context: { $implicit: item.cites }" /></span>
-                    }
-                  </div>
-                </div>
-              </li>
-            }
-          </ol>
-        </section>
-      }
-      <ng-template #citeLinks let-cites>
-        @for (c of cites; track c.ref.id) {
-          <sup class="cite"><a [href]="c.ref.url" target="_blank" rel="noopener noreferrer"
-            [attr.title]="c.ref.title" [attr.aria-label]="'Source ' + c.n + ': ' + c.ref.title">{{ c.n }}</a></sup>
-        }
-      </ng-template>
-      @if (brief()) {
-        <p class="subline small mono">
-          {{ newCount() }} new since yesterday · {{ highImpactNew() }} high impact
-        </p>
+      <h1 class="visually-hidden">Morning Brief</h1>
+      @if (tiles().length) {
+        <ul class="tiles" aria-label="Today in numbers">
+          @for (t of tiles(); track t.label) {
+            <li>
+              <a class="tile" routerLink="/signals" [queryParams]="t.params" [attr.aria-label]="t.n + ' ' + t.label + ', ' + t.hint">
+                <span class="tile-n mono">{{ t.n }}</span>
+                <span class="tile-label">{{ t.label }}</span>
+                <span class="tile-hint small muted">{{ t.hint }}</span>
+              </a>
+            </li>
+          }
+        </ul>
       }
     </div>
     <div class="controls">
@@ -50,16 +29,21 @@
     </div>
   </header>
 
+  @if (story(); as st) {
+    <fr-top-story [story]="st" />
+  }
+
+  @if (!executive()) {
   <div class="layout">
-    <section class="main" aria-labelledby="top-heading">
+    <section class="main" aria-labelledby="dev-heading">
       <div class="section-head">
         <div class="section-title">
-          <h2 id="top-heading">Top 5 developments</h2>
+          <h2 id="dev-heading">Other developments</h2>
           @if (brief(); as b) {
             <span class="small muted">Last {{ b.window.days }} days, ranked by impact × confidence</span>
           }
         </div>
-        @if (!executive() && topIds().length) {
+        @if (devIds().length) {
           <button type="button" class="fr-button expand-all" (click)="toggleAll()">
             <fr-icon name="chevron" [size]="16" [class.flip]="allExpanded()" />
             {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
@@ -79,16 +63,16 @@
           <div class="panel"><fr-error-state (retry)="load()" /></div>
         }
         @default {
-          @if (brief()!.top.length === 0) {
+          @if (developments().length === 0) {
             <div class="panel">
-              <fr-empty-state title="No verified developments this week"
+              <fr-empty-state title="No other verified developments this week"
                               message="New signals appear here once the daily pipeline has enriched and verified them." />
             </div>
           } @else {
-            <ol class="cards" [class.exec]="executive()">
-              @for (s of brief()!.top; track s.id) {
+            <ol class="cards">
+              @for (s of developments(); track s.id) {
                 <li>
-                  <fr-signal-card [signal]="s" [rank]="s.rank" [variant]="executive() ? 'executive' : 'analyst'"
+                  <fr-signal-card [signal]="s" [rank]="s.rank" variant="analyst"
                                   [expanded]="view.isExpanded(s.id)" (expandedChange)="view.set(s.id, $event)" />
                 </li>
               }
@@ -114,4 +98,5 @@
       }
     </aside>
   </div>
+  }
 </div>

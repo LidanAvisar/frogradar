@@ -35,120 +35,54 @@ h1 {
   font-weight: 600;
 }
 
-/* "What matters today": up to 3 rows – company chip | sentence + (affects · sources). */
-.today {
-  display: flex;
-  flex-direction: column;
-  gap: var(--fr-gap-xs);
-  margin-top: var(--fr-gap-xs);
-}
-
-.today-heading {
-  color: var(--fr-muted);
-}
-
-.today-list {
+/* Stat tiles: three numbers, each a link to the filtered Signals list. */
+.tiles {
   list-style: none;
-  margin: 0;
+  margin: var(--fr-gap-xs) 0 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-}
-
-.today-item {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--fr-gap-sm);
-  padding: 10px 0;
-  border-top: 1px solid var(--fr-divider);
-
-  &:first-child {
-    border-top: 0;
-    padding-top: 2px;
-  }
-}
-
-.today-company {
-  grid-column: 1;
-  padding-top: 1px;
-}
-
-.today-body {
-  grid-column: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.today-text {
-  color: var(--fr-ink);
-
-  &.clamp {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-  }
-}
-
-.today-meta {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px var(--fr-gap-sm);
+  gap: var(--fr-gap-sm);
 }
 
-.affects {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-  border-radius: var(--fr-radius-pill);
-  background: var(--fr-accent-tint);
-  color: var(--fr-accent);
-  font-weight: 600;
-  white-space: nowrap;
-}
+.tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: baseline;
+  min-width: 168px;
+  padding: 10px 16px;
+  background: var(--fr-surface);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-card);
+  color: var(--fr-ink);
+  text-decoration: none;
 
-.affects-label {
-  color: var(--fr-ink-3);
-  font-weight: 500;
-}
-
-// Numbered source links after each sentence of the generated headline / overview.
-.cite {
-  font-family: var(--fr-font-mono);
-  font-size: var(--fr-text-small);
-  font-weight: 500;
-  line-height: 0;
-  margin-left: 2px;
-
-  a {
-    color: var(--fr-accent);
-    text-decoration: none;
-    padding: 0 2px;
-    border-radius: var(--fr-radius-control);
+  &:hover {
+    border-color: var(--fr-accent);
   }
 
-  a:hover {
-    color: var(--fr-accent-hover);
-    text-decoration: underline;
-  }
-
-  a:focus-visible {
+  &:focus-visible {
     outline: 2px solid var(--fr-focus-ring);
+    outline-offset: 2px;
   }
 }
 
-h1 .cite {
-  vertical-align: super;
+.tile-n {
+  grid-row: 1 / span 2;
+  font-size: var(--fr-text-headline);
+  line-height: 1;
+  font-weight: 600;
+  color: var(--fr-accent);
 }
 
-.subline {
-  color: var(--fr-muted);
+.tile-label {
+  font-weight: 600;
+}
+
+.tile-hint {
+  grid-column: 2;
 }
 
 .controls {
@@ -293,14 +227,29 @@ h1 .cite {
     font-size: 24px;
   }
 
-  .today-item {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--fr-gap-xs);
   }
 
-  .today-company,
-  .today-body {
-    grid-column: 1;
+  .tile {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 10px;
+  }
+
+  .tile-n {
+    grid-row: auto;
+    font-size: 22px;
+  }
+
+  .tile-label {
+    font-size: var(--fr-text-small);
+  }
+
+  .tile-hint {
+    display: none;
   }
 
   .controls {

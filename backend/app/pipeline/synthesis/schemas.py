@@ -26,18 +26,31 @@ class Headline(CitedSentence):
     text: Annotated[str, Field(min_length=10, max_length=HEADLINE_MAX)]
 
 
-POINT_MAX = 110
+ROW_MAX = 220
 
 
-class Point(CitedSentence):
-    """One "What matters today" point (daily_brief.v2): short enough for one line on the Brief."""
+class StoryRow(CitedSentence):
+    """One sentence of the top story (what happened / why it matters / suggested move)."""
 
-    text: Annotated[str, Field(min_length=10, max_length=POINT_MAX)]
+    text: Annotated[str, Field(min_length=10, max_length=ROW_MAX)]
+
+
+class TopStory(_Out):
+    title: Headline = Field(description="Plain-language title, at most 90 characters.")
+    what_happened: StoryRow
+    why_it_matters_for_jfrog: StoryRow
+    suggested_move: StoryRow = Field(description="One concrete action for CI, sales or product.")
 
 
 class DailyBrief(_Out):
-    headline: Headline
-    overview: Annotated[list[Point], Field(min_length=3, max_length=3)]
+    """daily_brief.v3: one top story (v1/v2 had a headline and overview points)."""
+
+    top_story: TopStory
+
+
+# Claim keys of the top story, in display order; the first three are required.
+STORY_KEYS = ("title", "what_happened", "why_it_matters_for_jfrog", "suggested_move")
+REQUIRED_STORY_KEYS = STORY_KEYS[:3]
 
 
 # ---------- battlecard ----------

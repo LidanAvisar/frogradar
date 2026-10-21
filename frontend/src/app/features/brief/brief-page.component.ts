@@ -1,42 +1,32 @@
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
-import type { Brief, CitationRef } from '../../api/models';
+import type { Brief } from '../../api/models';
 import { ApiService } from '../../core/api.service';
 import { BriefViewService } from '../../core/brief-view.service';
 import { eyebrowDate } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
-import { CompanyChipComponent } from '../../shared/company-chip.component';
 import { IconComponent } from '../../shared/icon.component';
 import { SignalCardComponent } from '../../shared/signal-card.component';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../shared/states.component';
 import { PipelineStatusComponent } from './pipeline-status.component';
 import { PricingWatchComponent } from './pricing-watch.component';
 import { SinceYesterdayComponent } from './since-yesterday.component';
-
-interface Cite {
-  n: number;
-  ref: CitationRef;
-}
+import { TopStoryComponent } from './top-story.component';
 
 type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; brief: Brief };
 
-const DEFAULT_HEADLINE = 'Your morning brief';
-const MAX_TODAY = 3;
-/** Longer sentences are clamped to two lines (full text stays in the DOM and the title). */
-const CLAMP_AFTER_CHARS = 110;
 
-/** Route "/": top developments, what changed since yesterday, pricing watch, pipeline status. */
+/** Route "/": stat tiles, the top story, other developments, since yesterday, pricing watch, pipeline. */
 @Component({
   selector: 'fr-brief-page',
   standalone: true,
   imports: [
-    CompanyChipComponent,
     EmptyStateComponent,
-    NgTemplateOutlet,
+    RouterLink,
+    TopStoryComponent,
     ErrorStateComponent,
     IconComponent,
     PipelineStatusComponent,
@@ -64,36 +54,23 @@ export class BriefPageComponent implements OnInit {
     return s.status === 'ready' ? s.brief : null;
   });
   protected readonly dateLine = computed(() => eyebrowDate(this.brief()?.generated_at ?? new Date().toISOString()));
-  protected readonly headline = computed(() => this.brief()?.headline ?? DEFAULT_HEADLINE);
-  /** Citation numbers, in order of first use across the headline and the overview sentences. */
-  private readonly citeNumbers = computed(() => {
-    const b = this.brief();
-    const order = new Map<number, number>();
-    const refs = [...(b?.headline_citations ?? []), ...(b?.overview_sentences ?? []).flatMap((s) => s.citations)];
-    for (const r of refs) if (!order.has(r.id)) order.set(r.id, order.size + 1);
-    return order;
+  protected readonly story = computed(() => this.brief()?.top_story ?? null);
+  protected readonly developments = computed(() => this.brief()?.developments ?? []);
+  protected readonly devIds = computed(() => this.developments().map((s) => s.id));
+  protected readonly allExpanded = computed(() => this.view.allExpanded(this.devIds()));
+  /** Stat tiles: each opens the Signals list with the matching filter. */
+  protected readonly tiles = computed(() => {
+    const st = this.brief()?.stats;
+    if (!st) return [];
+    return [
+      { n: st.new_signals, label: st.new_signals === 1 ? 'new signal' : 'new signals',
+        hint: 'since yesterday', params: { since: '24h' } },
+      { n: st.high_impact, label: 'high impact', hint: 'new, impact 4-5', params: { since: '24h', min_impact: 4 } },
+      { n: st.price_changes, label: st.price_changes === 1 ? 'price change' : 'price changes',
+        hint: `last ${st.price_change_days} days`, params: { kind: 'page_diff', days: st.price_change_days } },
+    ];
   });
-  protected readonly headlineCites = computed(() => this.cites(this.brief()?.headline_citations ?? []));
-  /** "What matters today": up to 3 overview sentences, each with its company, products and sources. */
-  protected readonly today = computed(() =>
-    (this.brief()?.overview_sentences ?? []).slice(0, MAX_TODAY).map((s) => ({
-      text: s.text,
-      long: s.text.length > CLAMP_AFTER_CHARS,
-      company: s.company ?? null,
-      affects: s.affects ?? [],
-      cites: this.cites(s.citations),
-    })),
-  );
-  protected readonly newCount = computed(() => this.brief()?.since_yesterday_total ?? 0);
-  protected readonly highImpactNew = computed(() => this.brief()?.since_yesterday_high_impact ?? 0);
-  protected readonly topIds = computed(() => this.brief()?.top.map((s) => s.id) ?? []);
-  protected readonly allExpanded = computed(() => this.view.allExpanded(this.topIds()));
   protected readonly skeletons = [1, 2, 3];
-
-  private cites(refs: CitationRef[]): Cite[] {
-    const numbers = this.citeNumbers();
-    return refs.map((ref) => ({ n: numbers.get(ref.id) ?? 0, ref }));
-  }
 
   ngOnInit(): void {
     this.load();
@@ -112,14 +89,14 @@ export class BriefPageComponent implements OnInit {
 
   toggleAll(): void {
     const open = !this.allExpanded();
-    this.view.setAll(this.topIds(), open);
+    this.view.setAll(this.devIds(), open);
     this.announcer.announce(open ? 'All developments expanded' : 'All developments collapsed');
   }
 
   toggleExecutive(): void {
     const on = !this.executive();
     this.prefs.setExecutiveView(on);
-    this.announcer.announce(on ? 'Executive view on: one line per development' : 'Executive view off');
+    this.announcer.announce(on ? 'Executive view on: stats and top story only' : 'Executive view off');
   }
 
   search(event: Event, query: string): void {
