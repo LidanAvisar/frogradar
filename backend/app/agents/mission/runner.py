@@ -696,10 +696,13 @@ class MissionRunner:
         return {}
 
     def _llm_report(self, kept: list[MissionFinding], notes: list[str]) -> dict[str, Any]:
-        lines = [
-            f"F{f.id} ({_label(f.verification)}, confidence {f.confidence.value}): {f.statement}"
-            for f in kept
-        ]
+        lines = []
+        for f in kept:
+            head = f"F{f.id} ({_label(f.verification)}, confidence {f.confidence.value})"
+            line = f"{head}: {f.statement}"
+            if f.verification == Verification.PARTIAL and f.verification_notes:
+                line += f"\n    Not confirmed: {f.verification_notes}"
+            lines.append(line)
         if notes:
             lines += ["", "Unanswered / not found:", *(f"- {n}" for n in notes)]
         tag, text = delimit("\n".join(lines), 20000)

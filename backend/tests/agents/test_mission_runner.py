@@ -305,3 +305,21 @@ def test_stop_during_planning_cancels_after_the_plan(s, cfg):
     MissionRunner(s, m.id, tools, cfg).plan()
     s.expire_all()
     assert s.get(Mission, m.id).status == MissionStatus.CANCELLED
+
+
+def test_report_sees_the_verifier_note_of_partly_verified_findings(s, cfg, tools, llm):
+    import re
+
+    def partial(call):
+        keys = re.findall(r"Finding (F\d+):", call.messages[-1]["content"])
+        return {
+            "items": [
+                {"key": k, "verdict": "partial", "note": "No date in the excerpt."} for k in keys
+            ]
+        }
+
+    llm.handlers["mission_verify"] = partial
+    _run(s, cfg, tools, max_steps=4)
+    report = next(c for c in llm.calls if c.operation == "mission_report")
+    assert "Not confirmed: No date in the excerpt." in report.messages[-1]["content"]
+    assert "never repeat the unconfirmed detail" in report.messages[0]["content"]
