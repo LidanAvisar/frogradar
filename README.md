@@ -48,6 +48,7 @@ curl localhost:8000/health
 | `make eval-embed` | Embed the full catalog for dedup calibration (paid, ~$0.005) |
 | `make eval-label` | Silver labels from the synthesis model for the eval set and the pairs (paid, ~$0.70, cached) |
 | `make eval` | Eval pass (triage → enrich → verify + verifier thinking A/B) vs silver labels → `eval/results/` (paid for uncached items only; never writes to `signals`) |
+| `make eval-ask` | Ask eval (`eval/ask_questions.yaml`): recall@k, cites-expected, not-enough-evidence, cost → `eval/results/ask_*` (paid; `ARGS="--retrieval-only"` = embeddings only; `--cap 0.60`) |
 | `make eval-compare A=… B=…` | Headline metrics of two eval runs side by side |
 | `make api-types` | Export the OpenAPI schema and regenerate the frontend's TypeScript types (commit both) |
 | `make screenshots` | Playwright screenshots of the Brief, Radar list, Radar detail, Battlecard (Sonatype) and Signals (filtered) at 1440 / 390 px with the local Google Chrome (API on :8000, `ng serve` on :4200, `FRONTEND_URL` / `API_URL` to override) |
@@ -398,6 +399,9 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `GET /api/signals/{id}` | one signal |
 | `GET /api/entities` | tracked companies with signal counts |
 | `GET /api/nav` | sidebar counts |
+| `POST /api/ask` | `{question, conversation_id?}` → cited answer points, what it means for JFrog, `not_enough_evidence`, 3 follow-ups, sources, retrieved count, cost |
+| `GET /api/ask/conversations`, `/{id}` | recent conversations; one conversation's turns as shown |
+| `POST /api/ask/turns/{id}/feedback` | Helpful / Something's wrong (reason + comment) → feedback row |
 | `GET /api/battlecards` | tracked competitors for the switcher: those with a card first, then "no card yet" |
 | `GET /api/entities/{slug}/battlecard` | latest battlecard, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
 | `GET /api/self` | JFrog and its product names (from `competitors.yaml`) for highlighting |
@@ -443,6 +447,59 @@ All three reuse the Brief's components and tokens; every claim links to its sour
 Phone screenshots (390 px): [Radar](docs/screenshots/radar-390.png), [Radar detail](docs/screenshots/radar-detail-390.png),
 [Battlecard](docs/screenshots/battlecard-sonatype-390.png), [Signals](docs/screenshots/signals-filtered-390.png);
 desktop [Radar detail](docs/screenshots/radar-detail-1440.png).
+
+## Ask your intelligence (`backend/app/rag/`)
+
+![Ask at 1440 px](docs/screenshots/ask-1440.png)
+
+Analysts ask in plain language; the answer comes only from stored intelligence, every point cited, or it says
+there is not enough evidence ([390 px](docs/screenshots/ask-390.png)).
+
+- **Documents:** usable signals (articles and pricing diffs: title, takeaway, summary, why JFrog cares, verified
+  quote; never `raw_text`), items of each competitor's latest battlecard whose cited signals are still usable, and
+  accepted Competitor Radar profiles. Each has a typed id the model cites: `sig:1055`, `bc:sonatype:weaknesses:1`,
+  `radar:158`.
+- **Retrieval:** the question is embedded (gateway, cached); signals are ranked by pgvector cosine on their stored
+  embedding and by `ts_rank` on `search_tsv` (OR of the question's lexemes); battlecard and radar texts the same
+  way in code / one SQL statement. A third list holds signals of a category the question names ("incidents" →
+  security incident) and battlecard items of a named section ("weaknesses"). Reciprocal rank fusion
+  (1 / (60 + rank)) merges them; top 8 (cap 12), at most 3 battlecard items and 3 radar profiles.
+- **Filters in code, not by the model:** one named company (products and aliases map to it; JFrog never filters)
+  and a time window ("this week", "this month", "in October", "this year") become SQL conditions; battlecard items
+  drop out of time-bounded questions, radar profiles out of company questions. The UI shows the filters used.
+- **Follow-ups:** with earlier turns, the bulk model rewrites the question into a standalone one from the last 3
+  turns (`ask_rewrite.v1`); the UI shows "Searched for: …".
+- **Answer (`ask.v1`, synthesis model):** 2-6 points (bold lead + one or two sentences, 1-4 doc ids each), an
+  optional "What it means for JFrog" (current portfolio only; discontinued products never suggested), 3 follow-ups,
+  or `not_enough_evidence` with the gap and what to track / which mission to run. The question and the documents
+  are separate delimited blocks; instructions inside them are never followed.
+- **Checks (as in S10):** an item citing an id outside the retrieved set is dropped; `verify_ask.v1` (verify model,
+  other provider) judges each item against its cited documents, with JFrog's portfolio and capability levels as
+  trusted context; only `supported` is kept. Dropped items are stored with the turn, never returned. No point left
+  → not enough evidence. No document at all → not enough evidence without any LLM call.
+- **Conversations and cost:** `ask_conversations` / `ask_turns` (migration 0011) keep each turn's standalone query,
+  filters, retrieved ids with ranks, the answer as shown, dropped items and prompt versions. `llm_calls.ask_turn_id`
+  gives the cost per turn; identical question + identical documents = identical messages = a cache hit ($0).
+- **UI (`/ask`):** thread with question bubbles, answer cards with numbered citation chips (focus moves to the
+  entry in the Sources rail: type, confidence, title link, source, date), follow-up chips, recent questions in the
+  sidebar, `?c=<conversation>&t=<turn>` deep links, a live region announcing the answer, Helpful / Something's wrong
+  (dialog with reason codes) and "Dig deeper with a mission" (Coming soon).
+
+**Eval (2026-10-21, `eval/results/ask_20261021T150444Z.md`):** 12 questions written from the stored data, 2 the
+data can't answer and 2 answered from radar / battlecard documents. Retrieval tuning (embeddings only) moved mean
+recall@8 from 0.65 to 0.92 (per-type cap, category / section list, radar relation in the document text).
+
+| | result |
+|---|---|
+| mean recall@8 (10 answerable) | 0.92; 8 of 10 at full recall (q08 misses the DoWI 8430.01 post for "US public sector", q12 one Sonatype pricing diff) |
+| answer cites ≥ 1 expected document | 10 of 10 |
+| not enough evidence when unanswerable | 2 of 2 (GitLab Ultimate price, Cloudsmith funding: no documents after the company filter, $0) |
+| items dropped by the verifier | 4 in 2 answers (partial: an added detail or a JFrog-side claim) |
+| cost | $0.211 for 12 questions (about $0.02 per answered question: Sonnet answer + gpt-5.4-mini check) |
+
+Known limits: a "what it means" line can still predict a competitor's behaviour ("Expect Sonatype to cite…")
+despite the prompt rule, and the verifier passed it; the corpus is small (32 signals), so recall numbers are
+about ranking, not scale; recall@k is measured against ids chosen by one person.
 
 ## Synthesis: daily brief and battlecards (`backend/app/pipeline/synthesis/`)
 
@@ -678,6 +735,9 @@ Each line: what we chose – why – what we rejected.
 - **D61 First write endpoints without auth** – watch / approve / dismiss with feedback rows; approve creates an entity and an optional disabled GitHub source; auth is a known limitation – rejected auto-activating sources.
 - **D62 Radar list from the API, threshold in config** – the list returns the profile's statements, the ranking relation with its JFrog products and the verifier's check (supported / partial), plus `lower_relevance_below` from config; the nav pill counts only the top section (same rule); relation and kind filters in SQL – rejected a hard-coded threshold in the UI and showing partial statements as fact.
 - **D63 Signals filters match the Brief** – `window` computed on the server clock and unsupported summaries hidden by default, so each Brief tile equals its Signals total; all filters live in the URL – rejected client-computed dates and component-only filter state.
+- **D65 Hybrid retrieval for Ask** – pgvector + full text (OR of lexemes, cast to tsquery so stems aren't re-stemmed) + a category / battlecard-section list, merged with reciprocal rank fusion; company and time filters inferred in code and applied in SQL; at most 3 battlecard items / radar profiles in the top 8 – rejected letting the model choose filters, vector-only search, and a re-ranking model call.
+- **D66 Checked answers or "not enough evidence"** – ask.v1 cites document ids; invalid citation → item dropped; verify_ask.v1 (other provider) keeps only supported items; no point left or no documents → not enough evidence with the gap and what to track; dropped items stored, never shown – rejected showing partly supported points with a warning.
+- **D67 Conversations and per-turn cost** – ask_conversations / ask_turns, follow-ups rewritten from the last 3 turns by the bulk model, `llm_calls.ask_turn_id` for the cost of each turn, the gateway cache answers repeated questions over the same documents – rejected an answer-level cache keyed by question text (stale when documents change).
 - **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
 ## Repository layout
