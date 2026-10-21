@@ -392,9 +392,13 @@ class RadarCandidateOut(BaseModel):
     )
     line_source: Literal["why_notable_now", "what_it_is", "context"] | None = None
     what_it_is: str | None = Field(None, description="Profile statement (accepted profiles only)")
+    what_it_is_check: Literal["supported", "partial"] | None = Field(
+        None, description='partial = shown as "Partly verified"'
+    )
     why_notable_now: str | None = Field(
         None, description="Profile statement (accepted profiles only)"
     )
+    why_notable_now_check: Literal["supported", "partial"] | None = None
     relation: RadarRelation | None = Field(
         None, description="JFrog relation used for ranking (null = no trusted profile relation)"
     )
@@ -404,7 +408,7 @@ class RadarCandidateOut(BaseModel):
     relation_check: Literal["supported", "partial"] | None = Field(
         None,
         description="Verifier verdict of the relation statement: partial = core right, a detail "
-        "overstated (the statement itself is not shown)",
+        'overstated (shown as "Partly verified" with the verifier\'s note)',
     )
     profile_status: Literal["none", "ok", "rejected"]
     origins: list[str] = Field(
@@ -433,6 +437,12 @@ class RadarStatementOut(BaseModel):
     stage: (
         Literal["open_source_project", "startup", "feature_of_large_company", "unknown"] | None
     ) = None
+    verification: Literal["supported", "partial"] = "supported"
+    verification_label: str = Field("Verified", description='"Verified" or "Partly verified"')
+    verifier_note: str | None = Field(None, description="What the verifier could not confirm")
+    confidence: Literal["high", "medium"] = Field(
+        "high", description="high only when supported; partly verified statements are medium"
+    )
 
 
 class RadarMentionOut(CitationRef):

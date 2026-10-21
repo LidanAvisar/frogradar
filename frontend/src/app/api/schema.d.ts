@@ -1630,7 +1630,7 @@ export interface components {
             relation?: ("threatens" | "complements" | "both" | "none") | null;
             /**
              * Relation Check
-             * @description Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)
+             * @description Verifier verdict of the relation statement: partial = core right, a detail overstated (shown as "Partly verified" with the verifier's note)
              */
             relation_check?: ("supported" | "partial") | null;
             /**
@@ -1659,10 +1659,17 @@ export interface components {
              */
             what_it_is?: string | null;
             /**
+             * What It Is Check
+             * @description partial = shown as "Partly verified"
+             */
+            what_it_is_check?: ("supported" | "partial") | null;
+            /**
              * Why Notable Now
              * @description Profile statement (accepted profiles only)
              */
             why_notable_now?: string | null;
+            /** Why Notable Now Check */
+            why_notable_now_check?: ("supported" | "partial") | null;
         };
         /** RadarCandidateOut */
         RadarCandidateOut: {
@@ -1715,7 +1722,7 @@ export interface components {
             relation?: ("threatens" | "complements" | "both" | "none") | null;
             /**
              * Relation Check
-             * @description Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)
+             * @description Verifier verdict of the relation statement: partial = core right, a detail overstated (shown as "Partly verified" with the verifier's note)
              */
             relation_check?: ("supported" | "partial") | null;
             /**
@@ -1742,10 +1749,17 @@ export interface components {
              */
             what_it_is?: string | null;
             /**
+             * What It Is Check
+             * @description partial = shown as "Partly verified"
+             */
+            what_it_is_check?: ("supported" | "partial") | null;
+            /**
              * Why Notable Now
              * @description Profile statement (accepted profiles only)
              */
             why_notable_now?: string | null;
+            /** Why Notable Now Check */
+            why_notable_now_check?: ("supported" | "partial") | null;
         };
         /** RadarDismissIn */
         RadarDismissIn: {
@@ -1889,6 +1903,13 @@ export interface components {
             /** Citations */
             citations: components["schemas"]["CitationRef"][];
             /**
+             * Confidence
+             * @description high only when supported; partly verified statements are medium
+             * @default high
+             * @enum {string}
+             */
+            confidence: "high" | "medium";
+            /**
              * Key
              * @enum {string}
              */
@@ -1906,6 +1927,23 @@ export interface components {
             stage?: ("open_source_project" | "startup" | "feature_of_large_company" | "unknown") | null;
             /** Text */
             text: string;
+            /**
+             * Verification
+             * @default supported
+             * @enum {string}
+             */
+            verification: "supported" | "partial";
+            /**
+             * Verification Label
+             * @description "Verified" or "Partly verified"
+             * @default Verified
+             */
+            verification_label: string;
+            /**
+             * Verifier Note
+             * @description What the verifier could not confirm
+             */
+            verifier_note?: string | null;
         };
         /** RadarTeaser */
         RadarTeaser: {

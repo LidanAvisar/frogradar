@@ -25,7 +25,7 @@
               @if (cand.relation) {
                 <span [class]="'fr-pill tone-' + relation().tone">{{ relation().label }}@if (cand.relation_products?.length) { · {{ cand.relation_products?.join(', ') }} }</span>
                 @if (cand.relation_check === 'partial') {
-                  <span class="small muted">Relation partly verified: the statement overstated a detail, so it is not shown below.</span>
+                  <span class="small muted">Relation partly verified (see the profile below)</span>
                 }
               }
             </div>
@@ -70,6 +70,10 @@
                       <dt class="eyebrow">{{ s.label }}</dt>
                       <dd>
                         <p>{{ s.text }}<fr-cites [cites]="s.cites" /></p>
+                        @if (s.partial) {
+                          <p class="small partly"><span class="fr-pill tone-yellow">Partly verified</span>
+                            @if (s.note) { <span class="muted">Not confirmed: {{ s.note }}</span> }</p>
+                        }
                         @if (s.tags.length) {
                           <span class="tags">@for (t of s.tags; track t) { <span class="fr-pill">{{ t }}</span> }</span>
                         }
@@ -79,10 +83,10 @@
                 </dl>
               } @else {
                 <fr-empty-state title="No verified profile yet"
-                                message="Profiles are written for the top candidates and checked against their sources; statements that fail the check are not shown." />
+                                message="Profiles are written for the top candidates and checked against their sources; statements the check finds unsupported are not shown." />
               }
               @if (cand.dropped_statements) {
-                <p class="small muted dropped">{{ cand.dropped_statements }} {{ cand.dropped_statements === 1 ? 'statement is' : 'statements are' }} not shown: the verification check found {{ cand.dropped_statements === 1 ? 'it' : 'them' }} not fully supported by the sources.</p>
+                <p class="small muted dropped">{{ cand.dropped_statements }} {{ cand.dropped_statements === 1 ? 'statement is' : 'statements are' }} not shown: the verification check found {{ cand.dropped_statements === 1 ? 'it' : 'them' }} unsupported by the sources.</p>
               }
             </section>
 

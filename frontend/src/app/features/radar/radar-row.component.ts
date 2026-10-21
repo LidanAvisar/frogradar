@@ -33,10 +33,10 @@ export type RadarAction = 'watch' | 'track' | 'dismiss';
           </p>
         }
         @if (c().what_it_is) {
-          <p class="line"><span class="line-label">What it is</span> {{ c().what_it_is }}</p>
+          <p class="line"><span class="line-label">What it is</span> {{ c().what_it_is }}@if (c().what_it_is_check === 'partial') { <span class="small muted partly" title="The verifier found the core right but a detail not confirmed">partly verified</span> }</p>
         }
         @if (c().why_notable_now) {
-          <p class="line"><span class="line-label">Why now</span> {{ c().why_notable_now }}</p>
+          <p class="line"><span class="line-label">Why now</span> {{ c().why_notable_now }}@if (c().why_notable_now_check === 'partial') { <span class="small muted partly" title="The verifier found the core right but a detail not confirmed">partly verified</span> }</p>
         }
         @if (!c().what_it_is && !c().why_notable_now && c().line) {
           <p class="line"><span class="line-label">Context</span> {{ c().line }}</p>

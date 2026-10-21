@@ -178,3 +178,11 @@
 .chips .fr-pill {
   white-space: normal;
 }
+
+.partly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--fr-gap-xs);
+  margin-top: 4px;
+}

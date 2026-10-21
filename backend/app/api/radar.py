@@ -55,7 +55,7 @@ from app.db.enums import (
 )
 from app.db.models import Entity, Feedback, RadarCandidate, Signal, Source
 from app.pipeline.radar.normalize import repo_slug
-from app.pipeline.radar.profile import KEYS, profile_relation
+from app.pipeline.radar.profile import KEYS, profile_relation, statement_check
 from app.pipeline.synthesis.inputs import display_title
 
 router = APIRouter(prefix="/api/radar", tags=["radar"])
@@ -66,6 +66,10 @@ STATUS_ORDER = {s.value: i for i, s in enumerate(RadarStatus)}
 
 
 # ---------- read ----------
+
+
+# "[#1469]" markers the writer sometimes leaves in a statement: the citations are shown as links.
+_INLINE_IDS = re.compile(r"\s*\[#\d+\]")
 
 
 def _live() -> Any:
@@ -87,7 +91,15 @@ def _line(c: RadarCandidate) -> tuple[str | None, str | None]:
 def _statement(c: RadarCandidate, key: str) -> dict[str, Any]:
     if c.profile_status != ProfileStatus.OK:
         return {}
-    return dict(((c.profile or {}).get("items") or {}).get(key) or {})
+    st = dict(((c.profile or {}).get("items") or {}).get(key) or {})
+    if st.get("statement"):
+        st["statement"] = _INLINE_IDS.sub("", st["statement"])
+    return st
+
+
+def _check(c: RadarCandidate, key: str) -> str | None:
+    st = _statement(c, key)
+    return statement_check(st) if st.get("statement") else None
 
 
 def _relation_source(c: RadarCandidate) -> tuple[list[str], str | None]:
@@ -95,7 +107,7 @@ def _relation_source(c: RadarCandidate) -> tuple[list[str], str | None]:
     kept statement ("supported"), else one dropped only as partial ("partial")."""
     kept = _statement(c, "jfrog_relation")
     if kept.get("relation"):
-        return list(kept.get("products") or []), "supported"
+        return list(kept.get("products") or []), statement_check(kept)
     if c.profile_status == ProfileStatus.OK:
         for d in (c.profile or {}).get("dropped") or []:
             if d.get("key") == "jfrog_relation" and d.get("reason") == "verifier_partial":
@@ -126,7 +138,9 @@ def to_out(c: RadarCandidate, names: dict[str, str] | None = None) -> RadarCandi
         line=line,
         line_source=line_source,
         what_it_is=_statement(c, "what_it_is").get("statement"),
+        what_it_is_check=_check(c, "what_it_is"),
         why_notable_now=_statement(c, "why_notable_now").get("statement"),
+        why_notable_now_check=_check(c, "why_notable_now"),
         relation=relation,
         relation_products=[(names or {}).get(p, p) for p in products],
         relation_check=relation_check,
@@ -254,7 +268,7 @@ def _refs(session: Session, ids: list[int]) -> dict[int, tuple[CitationRef, str 
     return {
         s.id: (
             CitationRef(id=s.id, title=display_title(s), url=s.url, published_at=s.published_at),
-            name,
+            name or (f"Research mission #{s.mission_id}" if s.mission_id else None),
         )
         for s, name in rows
     }
@@ -312,12 +326,16 @@ def detail(session: Session, c: RadarCandidate) -> RadarCandidateDetail:
         statements.append(
             RadarStatementOut(
                 key=key,
-                text=it.get("statement") or it.get("text", ""),
+                text=_INLINE_IDS.sub("", it.get("statement") or it.get("text", "")),
                 citations=[refs[i][0] for i in ids],
                 segments=it.get("segments"),
                 relation=it.get("relation"),
                 products=[names.get(p, p) for p in it["products"]] if it.get("products") else None,
                 stage=it.get("stage"),
+                verification=(check := statement_check(it)),
+                verification_label="Partly verified" if check == "partial" else "Verified",
+                verifier_note=it.get("verifier_note") if check == "partial" else None,
+                confidence="medium" if check == "partial" else "high",
             )
         )
     origins = (c.meta or {}).get("mention_origins") or {}
@@ -457,7 +475,7 @@ def approve(
         aliases=sorted({n for n in (c.meta or {}).get("other_names") or [] if n != name}),
         segments=list(c.segments or []),
         website=c.homepage or c.repo_url,
-        description=statement.get("statement"),
+        description=_INLINE_IDS.sub("", statement.get("statement") or "") or None,
         relationship=Relationship(body.relationship),
         is_tracked=True,
         review_status=EntityReviewStatus.APPROVED,

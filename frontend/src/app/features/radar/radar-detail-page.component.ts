@@ -90,6 +90,8 @@ export class RadarDetailPageComponent {
       label: STATEMENT_LABELS[s.key] ?? s.key,
       text: s.text,
       cites: numbers.all(s.citations) as Cite[],
+      partial: s.verification === 'partial',
+      note: s.verifier_note,
       tags: [
         ...(s.segments ?? []).map(segmentLabel),
         ...(s.relation ? [relationInfo(s.relation).label] : []),

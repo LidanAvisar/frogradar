@@ -79,7 +79,7 @@ def _profile(ids):
         "items": {
             "what_it_is": {
                 "key": "what_it_is",
-                "statement": "An open-source registry firewall.",
+                "statement": "An open-source registry firewall [#1].",
                 "signal_ids": ids[:1],
             },
             "jfrog_relation": {
@@ -88,6 +88,8 @@ def _profile(ids):
                 "signal_ids": ids[:1],
                 "relation": "threatens",
                 "products": ["jfrog-curation"],
+                "check": "partial",
+                "verifier_note": "Curation overlap overstated.",
             },
             "why_notable_now": {
                 "key": "why_notable_now",
@@ -162,6 +164,13 @@ def test_detail_has_cited_statements_and_no_raw_text(client, radar):
     rel = d["statements"][1]
     assert rel["products"] == ["JFrog Curation"] and rel["relation"] == "threatens"
     assert rel["citations"][0]["title"] == "Show HN: Regshield"
+    # Check rule 2: a partial statement is shown, labelled, with the note, never high confidence.
+    assert rel["verification"] == "partial" and rel["verification_label"] == "Partly verified"
+    assert rel["verifier_note"] == "Curation overlap overstated." and rel["confidence"] == "medium"
+    first = d["statements"][0]
+    assert first["verification_label"] == "Verified" and first["confidence"] == "high"
+    assert first["verifier_note"] is None
+    assert d["what_it_is_check"] == "supported"
     assert d["dropped_statements"] == 1
     assert [m["title"] for m in d["mentions"]] == ["Show HN: Regshield", "Regshield 1.0"]
     assert d["mentions"][0]["source"] == "Hacker News (discovery)"
@@ -294,7 +303,7 @@ def test_list_has_profile_lines_relation_and_threshold(client, radar, db_session
     assert top["what_it_is"] == "An open-source registry firewall."
     assert top["why_notable_now"] == "Launched on HN this week."
     assert top["relation"] == "threatens" and top["relation_products"] == ["JFrog Curation"]
-    assert top["relation_check"] == "supported"
+    assert top["relation_check"] == "partial"  # the fixture's relation statement is partial
     other = data["items"][1]
     assert (other["what_it_is"], other["relation"], other["relation_products"]) == (None, None, [])
     # A rejected profile supplies no statements.

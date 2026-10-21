@@ -106,8 +106,8 @@ export function candidateFixture(overrides: Partial<RadarCandidateDetail> = {}):
     origins: ['hn_new_entity'],
     metrics: { mentions: 3, sources: 2, mentions_recent: 1, stars: 800, star_velocity: 12.5, star_velocity_basis: 'age', hn_points_max: null, max_impact: 4, relation: 'threatens' },
     statements: [
-      { key: 'what_it_is', text: 'An open-source registry firewall.', citations: [{ id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: '2026-10-19T08:00:00Z' }] },
-      { key: 'why_notable_now', text: 'Launched on HN this week.', citations: [{ id: 6, title: 'Regshield 1.0', url: 'https://x.test/6', published_at: null }, { id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: null }] },
+      { key: 'what_it_is', text: 'An open-source registry firewall.', citations: [{ id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: '2026-10-19T08:00:00Z' }], verification: 'supported', verification_label: 'Verified', confidence: 'high' },
+      { key: 'why_notable_now', text: 'Launched on HN this week.', verification: 'partial', verification_label: 'Partly verified', confidence: 'medium', verifier_note: 'The week is not stated.', citations: [{ id: 6, title: 'Regshield 1.0', url: 'https://x.test/6', published_at: null }, { id: 5, title: 'Show HN: Regshield', url: 'https://news.ycombinator.com/item?id=1', published_at: null }] },
     ],
     dropped_statements: 1,
     profile_generated_at: '2026-10-21T08:00:00Z',

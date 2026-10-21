@@ -3031,7 +3031,7 @@
                 "type": "null"
               }
             ],
-            "description": "Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)",
+            "description": "Verifier verdict of the relation statement: partial = core right, a detail overstated (shown as \"Partly verified\" with the verifier's note)",
             "title": "Relation Check"
           },
           "relation_products": {
@@ -3104,6 +3104,22 @@
             "description": "Profile statement (accepted profiles only)",
             "title": "What It Is"
           },
+          "what_it_is_check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "partial = shown as \"Partly verified\"",
+            "title": "What It Is Check"
+          },
           "why_notable_now": {
             "anyOf": [
               {
@@ -3115,6 +3131,21 @@
             ],
             "description": "Profile statement (accepted profiles only)",
             "title": "Why Notable Now"
+          },
+          "why_notable_now_check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why Notable Now Check"
           }
         },
         "required": [
@@ -3279,7 +3310,7 @@
                 "type": "null"
               }
             ],
-            "description": "Verifier verdict of the relation statement: partial = core right, a detail overstated (the statement itself is not shown)",
+            "description": "Verifier verdict of the relation statement: partial = core right, a detail overstated (shown as \"Partly verified\" with the verifier's note)",
             "title": "Relation Check"
           },
           "relation_products": {
@@ -3345,6 +3376,22 @@
             "description": "Profile statement (accepted profiles only)",
             "title": "What It Is"
           },
+          "what_it_is_check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "partial = shown as \"Partly verified\"",
+            "title": "What It Is Check"
+          },
           "why_notable_now": {
             "anyOf": [
               {
@@ -3356,6 +3403,21 @@
             ],
             "description": "Profile statement (accepted profiles only)",
             "title": "Why Notable Now"
+          },
+          "why_notable_now_check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why Notable Now Check"
           }
         },
         "required": [
@@ -3762,6 +3824,16 @@
             "title": "Citations",
             "type": "array"
           },
+          "confidence": {
+            "default": "high",
+            "description": "high only when supported; partly verified statements are medium",
+            "enum": [
+              "high",
+              "medium"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
           "key": {
             "enum": [
               "what_it_is",
@@ -3839,6 +3911,33 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "verification": {
+            "default": "supported",
+            "enum": [
+              "supported",
+              "partial"
+            ],
+            "title": "Verification",
+            "type": "string"
+          },
+          "verification_label": {
+            "default": "Verified",
+            "description": "\"Verified\" or \"Partly verified\"",
+            "title": "Verification Label",
+            "type": "string"
+          },
+          "verifier_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the verifier could not confirm",
+            "title": "Verifier Note"
           }
         },
         "required": [
