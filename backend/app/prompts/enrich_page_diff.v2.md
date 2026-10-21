@@ -53,9 +53,10 @@ Fields:
   1 = barely actionable for JFrog.
 - impact_rationale: which rubric level applies and why, in one sentence.
 - evidence_quote: one line, or part of one line, copied exactly, character for character, from an
-  [after] section (the current page), that best shows the change. Never quote [before] or
-  [context] lines or the header. Do not paraphrase, shorten with "...", or merge lines. The quote
-  is checked automatically against the [after] text.
+  [after] section (the current page), that best shows the change. Never quote [context] lines or
+  the header. Exception: if the diff only removes lines (every [after] section says "(removed)"),
+  copy the removed line from a [before] section instead. Do not paraphrase, shorten with "...", or
+  merge lines. The quote is checked automatically against that section.
 - is_claim: false for prices, tiers and limits the page states (verifiable facts); true only if the
   change itself is a marketing claim ("the most secure registry").
 - entities: tracked entities the item is about ("primary") or only mentions ("mention"). Use only

@@ -9,7 +9,8 @@ quote, is_claim, entity links, new-entity candidates and capabilities (bulk mode
   tries again (quote_retries); still failing → stored with evidence_quote_verified=false
   (confidence is capped; the UI must not show it as a quote).
 - Page-diff signals (meta.kind = page_diff) use the enrich_page_diff prompt, and their quote must
-  come from the [after] text of the diff (D40).
+  come from the [after] text of the diff, or from [before] when the change only removed lines
+  (meta.quote_side = "before"; the UI shows it as "Removed: '…'") (D40).
 - Entities: the model confirms/corrects the rule-based links (slugs validated by the schema).
   Final links = the model's list + the source's own entity (always primary). Rule links the model
   didn't confirm are removed; meta.entity_review records confirmed / added / dropped.
@@ -31,7 +32,8 @@ from app.db.enums import Verification
 from app.db.models import Capability, Entity, Signal, Source, signal_capabilities, signal_entities
 from app.pipeline.context import RunContext
 from app.pipeline.llm_steps import canonical_or_unclustered, load_input, merge_meta, run_parallel
-from app.pipeline.page_diff import after_text, is_page_diff
+from app.pipeline.page_diff import is_page_diff
+from app.pipeline.page_diff import quote_source as page_quote_source
 from app.pipeline.prompting import Catalog, enrich_messages
 from app.pipeline.quotes import quote_error, quote_in_text, repair_quote
 from app.pipeline.schemas import EnrichedSignalBase, enrich_schema
@@ -73,7 +75,8 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
         diff = is_page_diff(meta)
         prompt_name = DIFF_PROMPT if diff else "enrich_signal"
         # Where the quote may come from: the whole text, or only the [after] lines of a diff.
-        quote_source = after_text(sig.raw_text) if diff else sig.raw_text
+        # Removal-only diffs have no [after] text: their quote comes from [before] (quote_side).
+        side, quote_source = page_quote_source(sig.raw_text) if diff else (None, sig.raw_text)
         prompt, messages = enrich_messages(sig, catalog, cfg.max_chars, prompt_name)
         result = complete("bulk", prompt_name, messages, schema, prompt_version=prompt.id)
         attempts = 1
@@ -92,7 +95,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                 break
             if attempts > cfg.quote_retries:
                 break
-            error = quote_error(result.evidence_quote, diff=diff)
+            error = quote_error(result.evidence_quote, diff_side=side)
             retry = [*messages, *retry_messages(result.model_dump_json(), error)]
             result = complete("bulk", prompt_name, retry, schema, prompt_version=prompt.id)
             attempts += 1
@@ -142,6 +145,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                             "enrich": info,
                             "entity_review": review,
                             "quote_repaired": repair is not None,
+                            **({"quote_side": side} if side else {}),
                         }
                     )
                     .op("-")("enrich_error")

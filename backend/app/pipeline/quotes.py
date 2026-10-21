@@ -39,12 +39,16 @@ def quote_in_text(quote: str, text: str) -> bool:
     return len(q) >= _MIN_QUOTE_CHARS and q in normalize(text)
 
 
-def quote_error(quote: str, *, diff: bool = False) -> str:
-    where = (
-        "one line (or part of one) exactly as it appears in an [after] section of the diff"
-        if diff
-        else "one or two complete sentences exactly as they appear inside the source_text block"
-    )
+def quote_error(quote: str, *, diff_side: str | None = None) -> str:
+    if diff_side == "after":
+        where = "one line (or part of one) exactly as it appears in an [after] section of the diff"
+    elif diff_side == "before":
+        where = (
+            "one removed line (or part of one) exactly as it appears in a [before] section of "
+            "the diff (this change only removed lines)"
+        )
+    else:
+        where = "one or two complete sentences exactly as they appear inside the source_text block"
     return (
         f"evidence_quote is not a verbatim excerpt of the source text: {quote[:200]!r}. "
         f"Copy {where} (no paraphrasing, no ellipses, no added words). "

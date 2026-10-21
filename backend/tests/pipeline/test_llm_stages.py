@@ -483,3 +483,56 @@ def test_page_diff_signal_uses_the_diff_prompt_and_after_text_quotes(world):
     llm2 = FakeLLM(triage=_irrelevant_llm, enrich_page_diff=enrich, enrich_signal=_enrich_firewall)
     _run(factory, llm2, enrich_signals)
     assert llm2.count("enrich_page_diff") == 0 and llm2.count("enrich_signal") == 0
+
+
+REMOVAL_DIFF = (
+    "Page: GitHub Pricing\nURL: https://g.test/pricing\nBefore: 2025-10-21 (wayback)\n"
+    "After: 2026-04-22 (wayback)\nChanged lines: 1 removed, 0 added\n\n## Change 1 of 1\n"
+    "[context]\nOrganization and team management\n"
+    "[before]\nTeam discussions for every organization and repository\n[after]\n(removed)"
+)
+
+
+def test_removal_only_diff_quotes_the_removed_line(world):
+    factory, _ = world
+    with factory.begin() as s:
+        src = s.scalar(select(Source).where(Source.name == "Sonatype Blog"))
+        sid = signal(s, src, "Pricing page changed: GitHub Pricing", text=REMOVAL_DIFF).id
+        s.execute(update(Signal).where(Signal.id == sid).values(meta={"kind": "page_diff"}))
+
+    def enrich(call):  # a [context] line first (not allowed), then the removed line
+        context = "Organization and team management"
+        removed = "Team discussions for every organization and repository"
+        return {
+            **_enrich_firewall(call),
+            "evidence_quote": context if call.attempt == 1 else removed,
+        }
+
+    llm = FakeLLM(triage=_irrelevant_llm, enrich_page_diff=enrich)
+    _run(factory, llm, triage_signals, enrich_signals)
+
+    sig = _get(factory, sid)
+    assert sig.evidence_quote_verified is True and sig.meta["quote_side"] == "before"
+    retry = [c for c in llm.calls if c.operation == "enrich_page_diff"][1]
+    assert "[before] section" in retry.messages[-1]["content"]
+
+
+def test_diff_with_added_text_still_rejects_a_before_quote(world):
+    factory, _ = world
+    with factory.begin() as s:
+        src = s.scalar(select(Source).where(Source.name == "Sonatype Blog"))
+        sid = signal(s, src, "Pricing page changed: Sonatype Pricing", text=DIFF_TEXT).id
+        s.execute(update(Signal).where(Signal.id == sid).values(meta={"kind": "page_diff"}))
+
+    def enrich(call):  # always the OLD price line
+        return {
+            **_enrich_firewall(call),
+            "evidence_quote": "Pro Edition Starting at $1,620 / year + consumption",
+        }
+
+    llm = FakeLLM(triage=_irrelevant_llm, enrich_page_diff=enrich)
+    _run(factory, llm, triage_signals, enrich_signals)
+
+    sig = _get(factory, sid)
+    assert sig.evidence_quote_verified is False and sig.meta["quote_side"] == "after"
+    assert sig.meta["quote_repaired"] is False  # the $1,950 line is close, but numbers differ

@@ -16,7 +16,8 @@ Used by the live page_diff collector and by the Wayback backfill (D40, D41).
                   from those instead (diff_mode = price_lines); otherwise no signal at all.
 - Signal text: a header (with a format note) plus "## Change N" blocks with [before] / [after] /
   [context] sections, and a "Moved between sections" list for features that changed tiers. The
-  evidence quote must come from the [after] text (after_text()).
+  evidence quote comes from the [after] text; only a removal-only diff (no [after] text at all)
+  quotes the removed [before] text instead (quote_side = "before").
 """
 
 import hashlib
@@ -389,17 +390,38 @@ def render_diff(
     return cut + "\n\n[... further changes truncated]", True
 
 
-def after_text(raw_text: str) -> str:
-    """Only the [after] lines of a rendered diff (where an evidence quote may come from)."""
+def _section_text(raw_text: str, marker: str, placeholder: str) -> str:
     out: list[str] = []
     inside = False
     for line in raw_text.splitlines():
         if line in _MARKERS or line.startswith("## "):
-            inside = line == _AFTER
+            inside = line == marker
             continue
-        if inside and line not in ("(removed)",):
+        if inside and line != placeholder:
             out.append(line)
     return "\n".join(out)
+
+
+def after_text(raw_text: str) -> str:
+    """Only the [after] lines of a rendered diff (where an evidence quote may come from)."""
+    return _section_text(raw_text, _AFTER, "(removed)")
+
+
+def before_text(raw_text: str) -> str:
+    """Only the [before] lines (the old page)."""
+    return _section_text(raw_text, _BEFORE, "(nothing)")
+
+
+def quote_side(raw_text: str) -> str:
+    """Where a diff's evidence quote comes from: "after" (the current page), or "before" when the
+    change only removed lines, so there is no new text to quote (UI: "Removed: '…'")."""
+    return "after" if after_text(raw_text).strip() else "before"
+
+
+def quote_source(raw_text: str) -> tuple[str, str]:
+    """(side, text) the evidence quote of a diff signal is checked against."""
+    side = quote_side(raw_text)
+    return side, after_text(raw_text) if side == "after" else before_text(raw_text)
 
 
 def is_page_diff(meta: dict[str, Any] | None) -> bool:

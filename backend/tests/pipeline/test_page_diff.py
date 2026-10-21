@@ -419,3 +419,18 @@ def _run_id(db) -> int:
         s.add(run)
         s.flush()
         return run.id
+
+
+def test_quote_side_is_before_only_for_removal_only_diffs():
+    before = text("pricing_v1")
+    removed = "\n".join(ln for ln in before.splitlines() if not ln.startswith("Vulnerability"))
+    snap = pd.SnapshotInfo(None, at("2026-10-01"), "live")
+    r = pd.classify(before, removed, CFG)
+    raw, _ = pd.render_diff("A", URL, snap, snap, r, 12000)
+    assert pd.quote_source(raw) == (
+        "before", "Vulnerability scanning for container images and npm packages",
+    )  # fmt: skip
+    r2 = pd.classify(before, text("pricing_v2"), CFG)
+    raw2, _ = pd.render_diff("A", URL, snap, snap, r2, 12000)
+    side, quotable = pd.quote_source(raw2)
+    assert side == "after" and "Team $5 per user/month" in quotable and "Team $4" not in quotable
