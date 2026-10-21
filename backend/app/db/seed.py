@@ -26,11 +26,12 @@ from app.core.catalog import (
     SourceConfig,
     load_capabilities,
     load_competitors,
+    load_self_capabilities,
     load_sources,
 )
 from app.db.checks import assert_embedding_dim_matches_db
-from app.db.enums import DiscoveredBy, EntityReviewStatus, EntityType, Relationship
-from app.db.models import Capability, Entity, Source
+from app.db.enums import CapabilityLevel, DiscoveredBy, EntityReviewStatus, EntityType, Relationship
+from app.db.models import Capability, CapabilityMatrix, Entity, Source
 
 
 @dataclass
@@ -47,7 +48,7 @@ class SeedReport:
 
     def __str__(self) -> str:
         return "\n".join(
-            f"{name:<13} inserted={c.inserted} updated={c.updated} "
+            f"{name:<17} inserted={c.inserted} updated={c.updated} "
             f"unchanged={c.unchanged} deactivated={c.deactivated}"
             for name, c in self.tables.items()
         )
@@ -213,7 +214,47 @@ def seed(session: Session, config_dir: Path | None = None) -> SeedReport:
         CAPABILITY_UPDATE_COLS,
         report.tables["capabilities"],
     )
+
+    # 4. JFrog's own capability levels (config/jfrog_capabilities.yaml, not the LLM).
+    report.tables["capability_matrix"] = _seed_self_levels(session, config_dir)
     return report
+
+
+def _seed_self_levels(session: Session, config_dir: Path | None) -> TableCounts:
+    """Upsert one capability_matrix row per capability for the self entity (no evidence signal;
+    the note carries the doc). Level changes record previous_level / level_changed_at."""
+    counts = TableCounts()
+    levels = load_self_capabilities(config_dir)
+    self_id = session.scalar(select(Entity.id).where(Entity.is_self))
+    if self_id is None:
+        return counts
+    cap_ids = dict(session.execute(select(Capability.slug, Capability.id)).all())
+    existing = {
+        row.capability_id: row
+        for row in session.scalars(
+            select(CapabilityMatrix).where(CapabilityMatrix.entity_id == self_id)
+        )
+    }
+    for slug, cfg in levels.capabilities.items():
+        notes = f"{cfg.note} Source: {cfg.source}" if cfg.source else cfg.note
+        level = CapabilityLevel(cfg.level)
+        row = existing.get(cap_ids[slug])
+        if row is None:
+            session.add(
+                CapabilityMatrix(
+                    entity_id=self_id, capability_id=cap_ids[slug], level=level, notes=notes
+                )
+            )
+            counts.inserted += 1
+        elif row.level != level or row.notes != notes:
+            if row.level != level:
+                row.previous_level, row.level_changed_at = row.level, func.now()
+            row.level, row.notes = level, notes
+            counts.updated += 1
+        else:
+            counts.unchanged += 1
+    session.flush()
+    return counts
 
 
 def main() -> int:

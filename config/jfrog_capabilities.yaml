@@ -1,0 +1,51 @@
+# JFrog's own capability levels for the battlecard matrix (JFrog vs competitor). Not from the LLM.
+# Validated by app/core/catalog.py (SelfCapabilitiesFile): every slug in capabilities.yaml is listed.
+# Conservative: a level is set only where a public JFrog doc or product page clearly states it
+# (source = that page); otherwise "unknown". Pages checked 2026-10-21. Review before relying on it.
+# level: full | partial | planned | none | unknown
+
+capabilities:
+  # artifact_management
+  universal-repository: {level: full, note: "Artifactory docs list the supported package types (Maven, npm, PyPI, Go, NuGet, Helm, Docker, generic, ...).", source: "https://docs.jfrog.com/artifactory/docs/supported-package-types.md"}
+  oci-registry: {level: full, note: "Artifactory docs: OCI repositories (plus Docker repositories).", source: "https://docs.jfrog.com/artifactory/docs/oci-repositories.md"}
+  remote-proxy-cache: {level: full, note: "Artifactory docs: remote repositories cache and proxy artifacts from a remote URL.", source: "https://docs.jfrog.com/artifactory/docs/remote-repositories.md"}
+  virtual-repositories: {level: full, note: "Artifactory docs: virtual repositories aggregate local and remote repos in one URL.", source: "https://docs.jfrog.com/artifactory/docs/virtual-repositories.md"}
+  multi-site-replication: {level: full, note: "Artifactory docs: Federated repositories synchronize artifacts across JFrog Platform Deployments.", source: "https://docs.jfrog.com/artifactory/docs/federated-repositories.md"}
+  retention-cleanup: {level: full, note: "Artifactory product page: 'Automated cleanup and asset archival'.", source: "https://jfrog.com/artifactory/"}
+  build-info-promotion: {level: full, note: "Artifactory docs: Build-Info integration.", source: "https://docs.jfrog.com/artifactory/docs/build-integration.md"}
+  artifact-search-metadata: {level: full, note: "Artifactory docs: Artifactory Query Language (AQL) and properties.", source: "https://docs.jfrog.com/artifactory/docs/artifactory-query-language.md"}
+  deployment-options: {level: full, note: "Artifactory product page: 'Fully managed SaaS, self-managed, multi-cloud, and hybrid support'.", source: "https://jfrog.com/artifactory/"}
+  access-control-sso: {level: full, note: "Artifactory product page: RBAC and enterprise platform security (SSO).", source: "https://jfrog.com/artifactory/"}
+  # supply_chain_security
+  sca-vulnerability-scanning: {level: full, note: "Xray product page: enterprise-grade SCA for OSS vulnerabilities.", source: "https://jfrog.com/xray/"}
+  license-compliance: {level: full, note: "Xray docs: license compliance.", source: "https://docs.jfrog.com/security/docs/legal.md"}
+  malicious-package-detection: {level: full, note: "JFrog Security docs: malicious package detection.", source: "https://docs.jfrog.com/security/docs/malicious-package-detection.md"}
+  reachability-analysis: {level: full, note: "Advanced Security docs: contextual analysis of CVEs.", source: "https://docs.jfrog.com/security/docs/contextual-analysis-of-cves.md"}
+  package-curation: {level: full, note: "Curation docs: blocks risky open-source packages at the remote repository.", source: "https://docs.jfrog.com/security/docs/curation-intro.md"}
+  sbom: {level: full, note: "Xray docs: SBOM export and SBOM import.", source: "https://docs.jfrog.com/security/docs/sbom-import.md"}
+  container-scanning: {level: full, note: "Xray docs: Docker / OCI image scanning.", source: "https://docs.jfrog.com/security/docs/xray-docker-containers.md"}
+  secrets-detection: {level: full, note: "Advanced Security docs: secrets scans.", source: "https://docs.jfrog.com/security/docs/secrets-scans.md"}
+  sast: {level: full, note: "Advanced Security docs: SAST.", source: "https://docs.jfrog.com/security/docs/sast.md"}
+  iac-scanning: {level: full, note: "Advanced Security product page: Infrastructure as Code scanning.", source: "https://jfrog.com/advanced-security/"}
+  signing-attestation: {level: partial, note: "Evidence management (signed evidence) and GPG signing are documented; Sigstore/SLSA provenance not checked.", source: "https://docs.jfrog.com/governance/docs/evidence-management.md"}
+  hardened-base-images: {level: unknown, note: "No public JFrog doc found for vendor-maintained hardened images."}
+  policy-engine: {level: full, note: "Xray docs: policies and watches (block downloads, fail builds).", source: "https://docs.jfrog.com/security/docs/policies-in-jfrog-xray.md"}
+  # mlops
+  model-registry: {level: full, note: "Artifactory docs: machine learning repositories.", source: "https://docs.jfrog.com/artifactory/docs/machine-learning-repositories.md"}
+  hf-proxy-cache: {level: full, note: "Artifactory docs: Hugging Face repositories.", source: "https://docs.jfrog.com/artifactory/docs/hugging-face-repositories.md"}
+  model-scanning: {level: full, note: "JFrog Security docs: detecting malicious AI models.", source: "https://docs.jfrog.com/security/docs/detect-malicious-ai-models.md"}
+  ai-bom: {level: unknown, note: "No public JFrog doc found for an AI-BOM."}
+  model-serving: {level: full, note: "JFrog ML product page: 'Train and Deploy Any Model'.", source: "https://jfrog.com/jfrog-ml/"}
+  ai-gateway: {level: unknown, note: "No public JFrog doc found for an LLM gateway."}
+  # cicd
+  hosted-pipelines: {level: unknown, note: "Not checked against current docs (JFrog Pipelines status unclear)."}
+  self-hosted-runners: {level: unknown, note: "Not checked against current docs."}
+  release-lifecycle: {level: full, note: "Governance docs: Release Lifecycle Management.", source: "https://docs.jfrog.com/governance/docs/release-lifecycle-management.md"}
+  cli-api-automation: {level: full, note: "JFrog CLI download page and REST API docs.", source: "https://jfrog.com/getcli/"}
+  ide-integration: {level: full, note: "JFrog Security docs: JetBrains IDE plugin.", source: "https://docs.jfrog.com/security/docs/jetbrains.md"}
+  # distribution
+  edge-distribution: {level: full, note: "Distribution product page: edge nodes and CDN.", source: "https://jfrog.com/distribution/"}
+  p2p-download: {level: unknown, note: "Not found in the current public docs."}
+  air-gapped-transfer: {level: full, note: "Governance docs: distributing Release Bundle v2 versions in an air gap environment.", source: "https://docs.jfrog.com/governance/docs/distribute-release-bundle-v2-versions-in-an-air-gap-environment.md"}
+  signed-release-bundles: {level: full, note: "Distribution product page: GPG-signed, immutable Release Bundles.", source: "https://jfrog.com/distribution/"}
+  iot-ota-updates: {level: full, note: "JFrog Connect product page: OTA device updates for IoT fleets.", source: "https://jfrog.com/connect/"}

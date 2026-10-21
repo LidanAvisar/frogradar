@@ -138,3 +138,39 @@ def test_embedding_dim_check_without_schema(make_database):
             assert conn.execute(text("SELECT 1")).scalar() == 1
     finally:
         engine.dispose()
+
+
+def test_seed_writes_jfrog_capability_levels_from_config(db_session, config_copy):
+    from app.db.models import CapabilityMatrix
+
+    first = seed(db_session, config_copy)
+    levels = catalog.load_self_capabilities(config_copy).capabilities
+    rows = db_session.execute(
+        select(Capability.slug, CapabilityMatrix)
+        .join(CapabilityMatrix, CapabilityMatrix.capability_id == Capability.id)
+        .join(Entity, Entity.id == CapabilityMatrix.entity_id)
+        .where(Entity.is_self)
+    ).all()
+    assert first.tables["capability_matrix"].inserted == len(levels) == len(rows)
+    by_slug = {slug: row for slug, row in rows}
+    assert by_slug["package-curation"].level == levels["package-curation"].level
+    assert levels["package-curation"].source in by_slug["package-curation"].notes
+    assert all(r.evidence_signal_id is None for r in by_slug.values())
+
+    # A changed level in config → updated with the previous level kept.
+    _edit_yaml(
+        config_copy / "jfrog_capabilities.yaml",
+        lambda d: d["capabilities"]["ai-bom"].update(level="planned", source="https://x.test/a"),
+    )
+    catalog.clear_cache()
+    second = seed(db_session, config_copy)
+    assert second.tables["capability_matrix"].updated == 1
+    db_session.refresh(by_slug["ai-bom"])
+    assert (by_slug["ai-bom"].level, by_slug["ai-bom"].previous_level) == ("planned", "unknown")
+
+
+def test_jfrog_capabilities_must_list_every_capability(config_copy):
+    _edit_yaml(config_copy / "jfrog_capabilities.yaml", lambda d: d["capabilities"].pop("sbom"))
+    catalog.clear_cache()
+    with pytest.raises(catalog.ConfigError, match="missing slugs \\['sbom'\\]"):
+        catalog.load_self_capabilities(config_copy)

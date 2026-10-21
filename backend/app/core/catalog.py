@@ -183,6 +183,37 @@ class CapabilitiesFile(_Strict):
         return self
 
 
+# ---------- jfrog_capabilities.yaml ----------
+
+
+class SelfCapability(_Strict):
+    level: Literal["full", "partial", "planned", "none", "unknown"]
+    note: Annotated[str, Field(min_length=3, max_length=240)]
+    source: Annotated[str, Field(pattern=r"^https://")] | None = None
+
+    @model_validator(mode="after")
+    def _source_for_known_levels(self) -> Self:
+        if self.level != "unknown" and not self.source:
+            raise ValueError("a known level needs a source (public JFrog doc URL)")
+        return self
+
+
+class SelfCapabilitiesFile(_Strict):
+    """JFrog's own capability levels (from public docs, not from the LLM). Every capability slug in
+    capabilities.yaml must be listed (unknown is a valid level)."""
+
+    capabilities: dict[str, SelfCapability]
+
+
+def check_self_capabilities(levels: SelfCapabilitiesFile, caps: CapabilitiesFile) -> None:
+    known = {c.slug for group in caps.segments.values() for c in group}
+    listed = set(levels.capabilities)
+    if listed - known:
+        raise ConfigError(f"jfrog_capabilities.yaml: unknown slugs {sorted(listed - known)}")
+    if known - listed:
+        raise ConfigError(f"jfrog_capabilities.yaml: missing slugs {sorted(known - listed)}")
+
+
 # ---------- llm_routing.yaml ----------
 
 
@@ -373,6 +404,25 @@ class PageDiffSettings(_Strict):
         return self
 
 
+class BriefSettings(_Strict):
+    window_days: Annotated[int, Field(ge=1, le=90)] = 7
+    max_signals: Annotated[int, Field(ge=1, le=50)] = 12
+
+
+class BattlecardSettings(_Strict):
+    refresh_days: Annotated[int, Field(ge=1, le=90)] = 7
+    trigger_impact: Annotated[int, Field(ge=1, le=5)] = 4
+    lookback_days: Annotated[int, Field(ge=7, le=730)] = 180
+    max_signals: Annotated[int, Field(ge=1, le=100)] = 30
+    min_primary_signals: Annotated[int, Field(ge=1, le=50)] = 1
+    changed_recently_days: Annotated[int, Field(ge=1, le=90)] = 14
+
+
+class SynthesisSettings(_Strict):
+    brief: BriefSettings = Field(default_factory=BriefSettings)
+    battlecards: BattlecardSettings = Field(default_factory=BattlecardSettings)
+
+
 class PipelineFile(_Strict):
     embedding: EmbedSettings = Field(default_factory=EmbedSettings)
     dedup: DedupSettings = Field(default_factory=DedupSettings)
@@ -382,6 +432,7 @@ class PipelineFile(_Strict):
     verify: VerifySettings = Field(default_factory=VerifySettings)
     score: ScoreSettings = Field(default_factory=ScoreSettings)
     page_diff: PageDiffSettings = Field(default_factory=PageDiffSettings)
+    synthesis: SynthesisSettings = Field(default_factory=SynthesisSettings)
 
 
 # ---------- loading ----------
@@ -457,6 +508,14 @@ def _llm_routing(config_dir: Path) -> LLMRoutingFile:
 
 
 @lru_cache
+def _self_capabilities(config_dir: Path) -> SelfCapabilitiesFile:
+    name = "jfrog_capabilities.yaml"
+    levels = _validate(SelfCapabilitiesFile, config_dir, name, _read_yaml(config_dir, name))
+    check_self_capabilities(levels, _capabilities(config_dir))
+    return levels
+
+
+@lru_cache
 def _pipeline(config_dir: Path) -> PipelineFile:
     name = "pipeline.yaml"
     return _validate(PipelineFile, config_dir, name, _read_yaml(config_dir, name))
@@ -478,10 +537,14 @@ def load_capabilities(config_dir: Path | None = None) -> CapabilitiesFile:
     return _capabilities(_dir(config_dir))
 
 
+def load_self_capabilities(config_dir: Path | None = None) -> SelfCapabilitiesFile:
+    return _self_capabilities(_dir(config_dir))
+
+
 def load_llm_routing(config_dir: Path | None = None) -> LLMRoutingFile:
     return _llm_routing(_dir(config_dir))
 
 
 def clear_cache() -> None:
-    for fn in (_competitors, _sources, _capabilities, _llm_routing, _pipeline):
+    for fn in (_competitors, _sources, _capabilities, _self_capabilities, _llm_routing, _pipeline):
         fn.cache_clear()

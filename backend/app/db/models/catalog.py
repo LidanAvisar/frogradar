@@ -133,6 +133,11 @@ class CapabilityMatrix(Base):
         enum_type(CapabilityLevel, "capability_level"),
         server_default=CapabilityLevel.UNKNOWN.value,
     )
+    # Level before the last change and when it changed (battlecard "changed recently" flag).
+    previous_level: Mapped[CapabilityLevel | None] = mapped_column(
+        enum_type(CapabilityLevel, "previous_capability_level")
+    )
+    level_changed_at: Mapped[datetime | None]
     notes: Mapped[str | None]
     evidence_signal_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("signals.id", ondelete="SET NULL")

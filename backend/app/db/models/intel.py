@@ -129,6 +129,8 @@ class Signal(Base):
     )
     summary: Mapped[str | None]
     why_jfrog_cares: Mapped[str | None]
+    # One sentence (≤ 160 chars): the single most important point for JFrog (enrich v3 / diff v4).
+    takeaway: Mapped[str | None]
     impact: Mapped[int | None] = mapped_column(SmallInteger)
     confidence: Mapped[float | None]
     evidence_quote: Mapped[str | None]
