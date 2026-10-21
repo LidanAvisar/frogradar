@@ -1626,6 +1626,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                /** @description ui = asked by analysts (default); eval = created by make eval-ask */
+                source?: "ui" | "eval" | "all";
             };
             header?: never;
             path?: never;

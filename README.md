@@ -400,7 +400,7 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `GET /api/entities` | tracked companies with signal counts |
 | `GET /api/nav` | sidebar counts |
 | `POST /api/ask` | `{question, conversation_id?}` → cited answer points, what it means for JFrog, `not_enough_evidence`, 3 follow-ups, sources, retrieved count, cost |
-| `GET /api/ask/conversations`, `/{id}` | recent conversations; one conversation's turns as shown |
+| `GET /api/ask/conversations`, `/{id}` | recent analyst conversations (`source=ui` default; `eval`, `all`); one conversation's turns as shown |
 | `POST /api/ask/turns/{id}/feedback` | Helpful / Something's wrong (reason + comment) → feedback row |
 | `GET /api/battlecards` | tracked competitors for the switcher: those with a card first, then "no card yet" |
 | `GET /api/entities/{slug}/battlecard` | latest battlecard, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
@@ -477,7 +477,8 @@ there is not enough evidence ([390 px](docs/screenshots/ask-390.png)).
   other provider) judges each item against its cited documents, with JFrog's portfolio and capability levels as
   trusted context; only `supported` is kept. Dropped items are stored with the turn, never returned. No point left
   → not enough evidence. No document at all → not enough evidence without any LLM call.
-- **Conversations and cost:** `ask_conversations` / `ask_turns` (migration 0011) keep each turn's standalone query,
+- **Conversations and cost:** `ask_conversations` (with `source`: ui, or eval for `make eval-ask` runs, which
+  Recent questions and `GET /api/ask/conversations` leave out unless `?source=eval|all`) / `ask_turns` (migration 0011) keep each turn's standalone query,
   filters, retrieved ids with ranks, the answer as shown, dropped items and prompt versions. `llm_calls.ask_turn_id`
   gives the cost per turn; identical question + identical documents = identical messages = a cache hit ($0).
 - **UI (`/ask`):** thread with question bubbles, answer cards with numbered citation chips (focus moves to the

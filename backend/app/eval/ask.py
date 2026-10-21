@@ -16,6 +16,7 @@ import yaml
 from sqlalchemy.orm import sessionmaker
 
 from app.core.catalog import load_pipeline
+from app.db.enums import AskSource
 from app.eval.files import eval_dir, results_dir
 from app.rag.filters import infer_filters
 from app.rag.retrieve import Retrieval, retrieve
@@ -103,7 +104,7 @@ def run(
                 filters = f.as_dict()
             else:
                 out = ask(s, q.question, conversation_id=None, llm=llm, now=now, cfg=cfg,
-                          on_retrieval=captured.append)  # fmt: skip
+                          on_retrieval=captured.append, source=AskSource.EVAL)  # fmt: skip
                 filters = out.filters.model_dump()
         retrieved = [h.doc.id for h in captured[0].hits] if captured else []
         hits, recall = score(q, retrieved)

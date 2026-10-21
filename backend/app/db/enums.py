@@ -135,6 +135,11 @@ class ReasonCode(StrEnum):
     OTHER = "other"
 
 
+class AskSource(StrEnum):
+    UI = "ui"  # asked by an analyst (API / UI)
+    EVAL = "eval"  # created by `make eval-ask`; hidden from Recent questions
+
+
 class RadarKind(StrEnum):
     COMPANY = "company"
     PRODUCT = "product"

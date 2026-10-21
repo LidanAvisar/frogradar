@@ -12,7 +12,8 @@ from sqlalchemy import BigInteger, ForeignKey, Index, Integer, Numeric, String, 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, created_at, pk, updated_at
+from app.db.base import Base, created_at, enum_type, pk, updated_at
+from app.db.enums import AskSource
 
 
 class AskConversation(Base):
@@ -20,6 +21,9 @@ class AskConversation(Base):
 
     id: Mapped[int] = pk()
     title: Mapped[str] = mapped_column(String(200))  # the first question, cut
+    source: Mapped[AskSource] = mapped_column(
+        enum_type(AskSource, "ask_source"), server_default=AskSource.UI.value
+    )
     created_at: Mapped[datetime] = created_at()
     updated_at: Mapped[datetime] = updated_at()
 

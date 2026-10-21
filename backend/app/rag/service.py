@@ -25,6 +25,7 @@ from app.api.schemas import (
 )
 from app.core.catalog import AskSettings, load_pipeline
 from app.core.llm import llm_context
+from app.db.enums import AskSource as ConversationSource
 from app.db.models import AskConversation, AskTurn, LLMCall
 from app.pipeline.context import CompleteFn, EmbedFn
 from app.rag.answer import AnswerResult, Item, answer
@@ -113,6 +114,7 @@ def ask(
     now: datetime,
     cfg: AskSettings | None = None,
     on_retrieval: Callable[[Retrieval], None] | None = None,
+    source: ConversationSource = ConversationSource.UI,
 ) -> AskOut:
     cfg = cfg or load_pipeline().ask
     question = " ".join(question.split())
@@ -126,7 +128,7 @@ def ask(
             raise AskInputError(f"No conversation {conversation_id}")
         history = _history(session, conv.id)
     else:
-        conv = AskConversation(title=question[:200])
+        conv = AskConversation(title=question[:200], source=source)
         session.add(conv)
         session.flush()
         history = []

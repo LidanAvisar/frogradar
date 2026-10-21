@@ -9,10 +9,10 @@ Answers cite documents (signals, battlecard items, radar profiles); dropped poin
 the turn and never returned; raw_text is never read (app.rag.documents).
 """
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 
 from app.api.deps import DbSession, Now
 from app.api.schemas import (
@@ -58,7 +58,12 @@ def post_ask(body: AskIn, session: DbSession, now: Now, llm: Llm) -> AskOut:
 
 @router.get("/conversations", response_model=list[AskConversationOut])
 def list_conversations(
-    session: DbSession, limit: Annotated[int, Query(ge=1, le=50)] = 10
+    session: DbSession,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    source: Annotated[
+        Literal["ui", "eval", "all"],
+        Query(description="ui = asked by analysts (default); eval = created by make eval-ask"),
+    ] = "ui",
 ) -> list[AskConversationOut]:
     counts = (
         select(AskTurn.conversation_id, func.count().label("n"))
@@ -69,6 +74,7 @@ def list_conversations(
     rows = session.execute(
         select(AskConversation, counts.c.n)
         .join(counts, counts.c.conversation_id == AskConversation.id)
+        .where(AskConversation.source == source if source != "all" else true())
         .order_by(AskConversation.updated_at.desc(), AskConversation.id.desc())
         .limit(limit)
     ).all()

@@ -325,3 +325,23 @@ def test_budget_exceeded_is_429_and_the_turn_records_the_error(client, world, ll
     turn = db_session.scalars(select(AskTurn).order_by(AskTurn.id.desc())).first()
     assert turn.error.startswith("BudgetExceeded")
     assert client.get("/api/ask/conversations").json() == []  # failed turns aren't listed
+
+
+def test_eval_conversations_are_hidden_from_recent_questions(client, world, llm, db_session):
+    from app.db.enums import AskSource
+    from app.db.models import AskConversation
+    from app.rag.service import ask as run_ask
+    from tests.api.conftest import NOW
+
+    ui = post(client).json()
+    fake = app.dependency_overrides[get_llm]()
+    ev = run_ask(db_session, "Who else launched a firewall?", conversation_id=None, llm=fake,
+                 now=NOW, source=AskSource.EVAL)  # fmt: skip
+    assert db_session.get(AskConversation, ev.conversation_id).source == AskSource.EVAL
+    ids = lambda **p: [c["id"] for c in client.get("/api/ask/conversations", params=p).json()]  # noqa: E731
+    assert ids() == [ui["conversation_id"]]
+    assert ids(source="eval") == [ev.conversation_id]
+    assert set(ids(source="all")) == {ui["conversation_id"], ev.conversation_id}
+    # Still readable by id (eval history).
+    assert client.get(f"/api/ask/conversations/{ev.conversation_id}").status_code == 200
+    assert client.get("/api/ask/conversations", params={"source": "bogus"}).status_code == 422

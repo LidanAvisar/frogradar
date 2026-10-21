@@ -3624,6 +3624,23 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "description": "ui = asked by analysts (default); eval = created by make eval-ask",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "default": "ui",
+              "description": "ui = asked by analysts (default); eval = created by make eval-ask",
+              "enum": [
+                "ui",
+                "eval",
+                "all"
+              ],
+              "title": "Source",
+              "type": "string"
+            }
           }
         ],
         "responses": {
