@@ -31,16 +31,22 @@ curl localhost:8000/health
 | `make llm-smoke` | One tiny call per LLM tier + one embedding; prints model, latency, tokens, cost |
 | `make collect` | Collect new items from all active sources (`SOURCE="Snyk Blog"` or `SOURCE=12` for one) |
 | `make backfill` | Page back through history (`SINCE=90d` default, or `SINCE=2026-01-01`) |
+| `make embed` | Embed in-scope signals without an embedding (paid: embedding API, cached per text) |
+| `make dedup` | Semantic dedup into clusters (no LLM calls) |
+| `make link` | Rule-based entity linking from names/aliases in `competitors.yaml` (no LLM calls) |
+| `make dedup-report` | Calibration report: most similar pairs, similarity distribution, entity link counts |
 | `make lint` | ruff check + format check |
 
 ## Configuration (`config/`)
 
 All "what to track" settings are YAML, validated by Pydantic on load (`backend/app/core/catalog.py`):
 
-- `competitors.yaml` – companies (incl. JFrog as `self`), relationship, aliases, segments, products, sources
+- `competitors.yaml` – companies (incl. JFrog as `self`), relationship, aliases (with optional match rules for
+  ambiguous names), segments, products, sources
 - `sources.yaml` – industry sources not tied to one competitor
 - `capabilities.yaml` – capability taxonomy by segment (artifact management, supply-chain security, MLOps, CI/CD, distribution)
 - `llm_routing.yaml` – model per task (bulk / synthesis / verify), embedding model + dimension, fallback pricing
+- `pipeline.yaml` – embedding input length and batch size; dedup window and similarity thresholds
 
 Adding a competitor = add a block to `competitors.yaml`, then `make seed`.
 
@@ -103,6 +109,25 @@ stays its own signal.
 shown in the UI or returned verbatim by the API/MCP. Users see a summary, a short evidence quote and a link to
 the original.
 
+## Dedup and entity linking (`backend/app/pipeline/`)
+
+After collection, three steps run on in-scope signals (each `step(session, RunContext) -> counts`, one
+`pipeline_runs` row per CLI run):
+
+1. **Embed** (`embed.py`) – title + first 2,000 characters of the text, `text-embedding-3-small`, batched.
+2. **Dedup** (`dedup.py`) – a signal joins a cluster only if it is similar enough to the cluster's *canonical*
+   signal: ≥ 0.85 from another source, ≥ 0.97 from the same source (changelog entries share a template), within
+   ±14 days. The canonical is the most trusted source, then the earliest. Duplicates are kept and point at it; the
+   canonical lists its sources ("reported by 3 sources"). Re-running changes nothing.
+3. **Link** (`link.py`) – names and aliases matched on word boundaries; ambiguous terms (Socket, Docker, GitHub)
+   need a capital letter and the title or 3+ mentions; products win over their parent company. Primary = the
+   source's own entity or named in the title; otherwise a mention. The LLM confirms/corrects links in enrichment.
+
+First run on the demo scope (56 signals, $0.00043 for embeddings): no cross-source duplicates – the closest
+cross-source pair is 0.63, so the three sources don't report the same news yet; the most similar same-source
+pair (two GitHub Copilot deprecation notices, 0.89) stays apart as intended. 43 entity links, at most 3 per
+signal. `make dedup-report` shows the pairs and the similarity distribution for calibration.
+
 ## LLM gateway (`backend/app/core/llm/`)
 
 Every LLM and embedding call goes through one module (LiteLLM underneath):
@@ -155,6 +180,9 @@ Each line: what we chose – why – what we rejected.
 - **D27 Backfill semantics** – `--since` (default 90d) everywhere; backfill pages GitHub until older than `--since`, RSS gives what the feed lists; report shows real coverage per source – rejected scraping blog archives.
 - **D28 No evasion of bot protection** – Docker/OpenSSF/CNCF feeds 403 our client by fingerprint; they stay failed in the run report until there is a sanctioned route – rejected imitating curl/browser fingerprints and silently deactivating them.
 - **D29 Demo scope: 3 active sources** – Sonatype Blog (direct competitor), GitHub Changelog (high-frequency product changes), The New Stack (industry press for entity linking and cross-source dedup); all other sources stay in config with `is_active: false`; collected signals from inactive sources are kept but out of scope for dedup/enrichment (`pipeline/scope.py`) – rejected deleting sources from config or signals from the DB.
+- **D30 Embedding input** – title + first 2,000 chars of raw_text (`pipeline.yaml`), batched through the gateway; a model change re-embeds and re-clusters – rejected full text (cost, dilution) and embedding summaries (dedup runs before enrichment).
+- **D31 Dedup via the canonical** – a signal joins a cluster only at ≥ 0.85 similarity to its canonical signal (≥ 0.97 for the same source, also checked against same-source members), within ±14 days; canonical = highest trust, then earliest; duplicates kept and linked, re-runs change nothing – rejected single-link clustering (chaining), re-clustering every run, deleting duplicates.
+- **D32 Rule-based entity linking** – word-boundary matching of names/aliases with per-term rules in `competitors.yaml` (case-sensitive, min mentions, title suffices, disabled), longest match wins so products beat companies, primary = source entity or title, evidence in `meta.entity_links`; the LLM confirms in S6 – rejected LLM-only linking and rules in code.
 
 ## Repository layout
 
