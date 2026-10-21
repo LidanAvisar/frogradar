@@ -17,11 +17,11 @@ def test_enrich_prompts_define_every_category_identically():
     assert signal == diff
     defined = set(re.findall(r"^\s+([a-z_]+) = ", signal, re.MULTILINE))
     assert defined == {c.value for c in SignalCategory} - {"other"}
-    assert load_prompt("enrich_signal").id == "enrich_signal.v2"
-    assert load_prompt("enrich_page_diff").id == "enrich_page_diff.v3"
+    assert load_prompt("enrich_signal").id == "enrich_signal.v3"
+    assert load_prompt("enrich_page_diff").id == "enrich_page_diff.v4"
 
 
-def test_verify_v2_puts_jfrog_analysis_out_of_scope():
+def test_verify_puts_jfrog_analysis_out_of_scope():
     p = load_prompt("verify_signal")
-    assert p.id == "verify_signal.v2"
+    assert p.id == "verify_signal.v3"
     assert "never list as unsupported: statements about JFrog" in (p.system or "")

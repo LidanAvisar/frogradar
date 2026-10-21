@@ -170,6 +170,7 @@ def test_enrich_schema_rejects_unknown_slugs():
     schema = enrich_schema(["sonatype"], ["oci-registry"])
     good = {
         "category": "other", "summary": "x" * 50, "why_jfrog_cares": "y" * 50, "impact": 2,
+        "takeaway": "t" * 30,
         "impact_rationale": "r", "evidence_quote": "a quote here", "is_claim": False,
         "entities": [{"slug": "sonatype", "role": "primary"}], "capabilities": ["oci-registry"],
     }  # fmt: skip
@@ -404,6 +405,7 @@ def test_long_verifier_notes_keep_the_verdict(world):
 def _minimal_enrich() -> dict:
     return {
         "category": "other", "summary": "x" * 50, "why_jfrog_cares": "y" * 50, "impact": 2,
+        "takeaway": "t" * 30,
         "impact_rationale": "r", "evidence_quote": "a quote here", "is_claim": False,
         "entities": [], "capabilities": [],
     }  # fmt: skip
@@ -565,3 +567,38 @@ def test_section_prefix_is_split_off_the_stored_quote(world):
     sig = _get(factory, sid)
     assert sig.evidence_quote == "Starting at $7,500 / year" and sig.evidence_quote_verified
     assert sig.meta["quote_section"] == "Nexus Repository > Self-Hosted > Pro Edition"
+
+
+def test_page_diff_stores_display_title_takeaway_and_only_verified_price_changes(world):
+    factory, _ = world
+    with factory.begin() as s:
+        src = s.scalar(select(Source).where(Source.name == "Sonatype Blog"))
+        sid = signal(s, src, "Pricing page changed: Sonatype Pricing", text=PRICE_LINES_DIFF).id
+        s.execute(update(Signal).where(Signal.id == sid).values(meta={"kind": "page_diff"}))
+    quote = "[Nexus Repository > Cloud > Pro Edition] Starting at $1,950 / year + consumption"
+
+    def enrich(call):
+        return {
+            **_enrich_firewall(call),
+            "evidence_quote": quote,
+            "takeaway": "Sonatype raises Nexus Cloud Pro: a price opening for JFrog Artifactory.",
+            "display_title": "Sonatype raises Nexus Repository Cloud Pro to $1,950 a year",
+            "price_changes": [
+                {"label": "Pro", "before": "$1,620 / year", "after": "$1,950 / year"},
+                {"label": "Pro", "before": "$1,620 / year", "after": "$9,999 / year"},
+            ],
+        }
+
+    _run(factory, FakeLLM(triage=_irrelevant_llm, enrich_page_diff=enrich), triage_signals,
+         enrich_signals)  # fmt: skip
+    sig = _get(factory, sid)
+    assert sig.takeaway.startswith("Sonatype raises Nexus Cloud Pro")
+    assert (
+        sig.meta["display_title"] == "Sonatype raises Nexus Repository Cloud Pro to $1,950 a year"
+    )
+    assert sig.title == "Pricing page changed: Sonatype Pricing"  # original kept
+    assert sig.meta["price_changes"] == [
+        {"label": "Cloud > Pro Edition", "before": "$1,620 / year",
+         "after": "$1,950 / year"}
+    ]  # fmt: skip
+    assert sig.meta["price_changes_dropped"][0]["reason"] == "after_not_in_same_hunk"

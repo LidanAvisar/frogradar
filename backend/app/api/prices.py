@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass
 
 from app.api.schemas import PriceChange
+from app.pipeline.page_diff import section_label
 
 _AMOUNT = re.compile(r"\$\s?(?:\d[\d,]*(?:\.\d+)?|\.\d+)")
 _PRICE = re.compile(
@@ -83,9 +84,7 @@ def _contains_in_order(short: tuple[str, ...], long: tuple[str, ...]) -> bool:
 
 
 def _label_text(label: tuple[str, ...]) -> str:
-    # Drop a generic first segment ("Product Packages") when there is more to say.
-    parts = label[1:] if len(label) > 2 else label
-    return " > ".join(parts)[:_MAX_LABEL]
+    return section_label(label, _MAX_LABEL)
 
 
 def _pair_labeled(before: list[_Priced], after: list[_Priced]) -> list[PriceChange]:

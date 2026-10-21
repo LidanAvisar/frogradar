@@ -93,6 +93,7 @@ def test_eval_pass_compares_with_silver_labels_and_never_writes_signals(eval_wor
             "impact": 5,
             "summary": "Sonatype launched Firewall 2, which blocks malicious npm packages.",
             "why_jfrog_cares": "It competes directly with JFrog Curation at the repository layer.",
+            "takeaway": "Firewall 2 competes head-on with JFrog Curation.",
             "impact_rationale": "5",
             "evidence_quote": first_sentence(c.source_text),
             "is_claim": False,

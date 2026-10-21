@@ -2,7 +2,8 @@
 
 Selects enriched in-scope canonical signals whose verification is pending, or that were verified
 with another prompt version (or all with --force verify). The verifier sees the same truncated
-source text the writer saw, plus summary, why_jfrog_cares and the evidence quote.
+source text the writer saw, plus summary, why_jfrog_cares, the evidence quote, the takeaway and
+(page diffs) the display title.
 verdict → signals.verification; notes (+ unsupported claims) → verification_notes.
 """
 
@@ -47,10 +48,14 @@ def verify_one(
     complete: CompleteFn,
     *,
     thinking: str | None = None,
+    takeaway: str | None = None,
+    display_title: str | None = None,
 ) -> VerifyResult:
     """One verification (no DB writes). Shared by the stage and the eval runner (app.eval).
     thinking overrides the configured level (eval A/B only)."""
-    prompt, messages = verify_messages(sig, summary, why, quote, max_chars)
+    prompt, messages = verify_messages(
+        sig, summary, why, quote, max_chars, takeaway=takeaway, display_title=display_title
+    )
     extra = {"thinking": thinking} if thinking is not None else {}
     return complete(
         "verify", "verify_signal", messages, VerifyResult, prompt_version=prompt.id, **extra
@@ -79,12 +84,25 @@ def verify_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     def worker(signal_id: int) -> str:
         with factory() as s:
             sig = load_input(s, signal_id)
-            summary, why, quote = s.execute(
-                select(Signal.summary, Signal.why_jfrog_cares, Signal.evidence_quote).where(
-                    Signal.id == signal_id
-                )
+            summary, why, quote, takeaway, display_title = s.execute(
+                select(
+                    Signal.summary,
+                    Signal.why_jfrog_cares,
+                    Signal.evidence_quote,
+                    Signal.takeaway,
+                    Signal.meta["display_title"].astext,
+                ).where(Signal.id == signal_id)
             ).one()
-        result = verify_one(sig, summary, why, quote or "", cfg.max_chars, complete)
+        result = verify_one(
+            sig,
+            summary,
+            why,
+            quote or "",
+            cfg.max_chars,
+            complete,
+            takeaway=takeaway,
+            display_title=display_title,
+        )
         info = {"prompt_version": version, "unsupported_claims": result.unsupported_claims}
         with factory.begin() as s:
             s.execute(

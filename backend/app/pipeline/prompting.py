@@ -121,7 +121,14 @@ def enrich_messages(
 
 
 def verify_messages(
-    sig: SignalInput, summary: str, why: str, quote: str, max_chars: int
+    sig: SignalInput,
+    summary: str,
+    why: str,
+    quote: str,
+    max_chars: int,
+    *,
+    takeaway: str | None = None,
+    display_title: str | None = None,
 ) -> tuple[Prompt, list[dict[str, str]]]:
     prompt = load_prompt("verify_signal")
     return prompt, prompt.messages(
@@ -129,4 +136,6 @@ def verify_messages(
         summary=summary,
         why_jfrog_cares=why,
         evidence_quote=quote,
+        takeaway=takeaway or "(none)",
+        display_title=display_title or "(none: not a page diff)",
     )

@@ -12,6 +12,7 @@ evidence quote) keeps hard limits.
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, create_model, model_validator
@@ -72,6 +73,24 @@ class NewEntity(_Out):
     )
 
 
+TAKEAWAY_MAX = 160  # hard limit; the prompt asks for <= 140 (one validation retry beyond 160)
+DISPLAY_TITLE_MAX = 90  # hard limit; the prompt asks for <= 80
+
+
+class ProposedPriceChange(_Out):
+    """A price change the model read from a page diff. Checked in code (price_verify) before use."""
+
+    label: Annotated[str, Field(max_length=80)] = Field(
+        description="Plan / edition / section the price belongs to."
+    )
+    before: Annotated[str, Field(min_length=1, max_length=60)] = Field(
+        description="Old price exactly as written in a [before] line."
+    )
+    after: Annotated[str, Field(min_length=1, max_length=60)] = Field(
+        description="New price exactly as written in the [after] line that replaced it."
+    )
+
+
 class EnrichedSignalBase(_Out):
     """Fields shared by every run's enrich schema (entities/capabilities are added per run)."""
 
@@ -87,14 +106,29 @@ class EnrichedSignalBase(_Out):
     evidence_quote: Annotated[str, Field(min_length=10, max_length=400)] = Field(
         description="1-2 sentences copied exactly from the source text."
     )
+    takeaway: Annotated[str, Field(min_length=20, max_length=TAKEAWAY_MAX)] = Field(
+        description="One sentence, at most 140 characters: the single most important point for "
+        "JFrog, naming the affected JFrog product when there is one."
+    )
     is_claim: bool = Field(
         description="True if the core statement is the vendor's own marketing claim."
     )
     new_entities: list[NewEntity] = Field(default_factory=list, max_length=5)
 
 
-def enrich_schema(entity_slugs: list[str], capability_slugs: list[str]) -> type[EnrichedSignalBase]:
-    """EnrichedSignal with entity/capability slugs restricted to the given lists."""
+class EnrichedPageDiffBase(EnrichedSignalBase):
+    """Page diffs also get a specific headline and the price changes they show."""
+
+    display_title: Annotated[str, Field(min_length=15, max_length=DISPLAY_TITLE_MAX)] = Field(
+        description="Short, specific headline for the change (at most 80 characters)."
+    )
+    price_changes: list[ProposedPriceChange] = Field(default_factory=list, max_length=8)
+
+
+def enrich_schema(
+    entity_slugs: list[str], capability_slugs: list[str], *, page_diff: bool = False
+) -> type[EnrichedSignalBase]:
+    """EnrichedSignal (or EnrichedPageDiff) with entity/capability slugs restricted to the lists."""
     if not entity_slugs or not capability_slugs:
         raise ValueError("enrich_schema needs at least one entity and one capability slug")
     entity_slug = Literal[tuple(sorted(entity_slugs))]
@@ -106,10 +140,28 @@ def enrich_schema(entity_slugs: list[str], capability_slugs: list[str]) -> type[
         role=(Literal["primary", "mention"], Field(description="primary = the news is about it")),
     )
     return create_model(
-        "EnrichedSignal",
-        __base__=EnrichedSignalBase,
+        "EnrichedPageDiff" if page_diff else "EnrichedSignal",
+        __base__=EnrichedPageDiffBase if page_diff else EnrichedSignalBase,
         entities=(list[entity_ref], Field(default_factory=list, max_length=10)),
         capabilities=(list[capability_slug], Field(default_factory=list, max_length=6)),
+    )
+
+
+@dataclass(frozen=True)
+class EnrichSchemas:
+    """The run's two enrich schemas: articles and page diffs."""
+
+    article: type[EnrichedSignalBase]
+    page_diff: type[EnrichedSignalBase]
+
+    def pick(self, diff: bool) -> type[EnrichedSignalBase]:
+        return self.page_diff if diff else self.article
+
+
+def enrich_schemas(entity_slugs: list[str], capability_slugs: list[str]) -> EnrichSchemas:
+    return EnrichSchemas(
+        enrich_schema(entity_slugs, capability_slugs),
+        enrich_schema(entity_slugs, capability_slugs, page_diff=True),
     )
 
 

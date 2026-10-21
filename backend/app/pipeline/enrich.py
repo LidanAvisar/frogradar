@@ -36,9 +36,15 @@ from app.pipeline.context import CompleteFn, RunContext
 from app.pipeline.llm_steps import canonical_or_unclustered, load_input, merge_meta, run_parallel
 from app.pipeline.page_diff import is_page_diff, split_section
 from app.pipeline.page_diff import quote_source as page_quote_source
+from app.pipeline.price_verify import verify_price_changes
 from app.pipeline.prompting import Catalog, SignalInput, enrich_messages
 from app.pipeline.quotes import quote_error, quote_in_text, repair_quote
-from app.pipeline.schemas import EnrichedSignalBase, enrich_schema
+from app.pipeline.schemas import (
+    EnrichedPageDiffBase,
+    EnrichedSignalBase,
+    EnrichSchemas,
+    enrich_schemas,
+)
 from app.pipeline.scope import in_scope
 
 logger = logging.getLogger(__name__)
@@ -61,13 +67,14 @@ def enrich_one(
     sig: SignalInput,
     meta: dict[str, Any] | None,
     catalog: Catalog,
-    schema: type[EnrichedSignalBase],
+    schemas: EnrichSchemas,
     cfg: EnrichSettings,
     complete: CompleteFn,
 ) -> EnrichOutcome:
     """Enrich one signal incl. the quote check / repair / retry (no DB writes).
     Shared by the stage and the eval runner (app.eval)."""
     diff = is_page_diff(meta)
+    schema = schemas.pick(diff)
     prompt_name = DIFF_PROMPT if diff else "enrich_signal"
     # Where the quote may come from: the whole text, or only the [after] lines of a diff.
     # Removal-only diffs have no [after] text: their quote comes from [before] (quote_side).
@@ -120,7 +127,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
         )
     ids = session.scalars(select(Signal.id).where(*todo).order_by(Signal.id)).all()
     catalog = Catalog.load(session)
-    schema = enrich_schema(catalog.entity_slugs, catalog.capability_slugs)
+    schemas = enrich_schemas(catalog.entity_slugs, catalog.capability_slugs)
     entity_ids = dict(session.execute(select(Entity.slug, Entity.id)).all())
     tracked = tracked_terms(session)
     capability_ids = dict(session.execute(select(Capability.slug, Capability.id)).all())
@@ -134,7 +141,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                 .outerjoin(Source, Source.id == Signal.source_id)
                 .where(Signal.id == signal_id)
             ).one()
-        out = enrich_one(sig, meta, catalog, schema, cfg, complete)
+        out = enrich_one(sig, meta, catalog, schemas, cfg, complete)
         result, quote_ok, attempts, repair = out.result, out.quote_ok, out.attempts, out.repair
         side, section, prompt_id = out.quote_side, out.quote_section, out.prompt_version
 
@@ -161,6 +168,14 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
             }
             if repair is not None:
                 info["quote_repair"] = repair
+            diff_meta: dict[str, Any] = {}
+            if isinstance(result, EnrichedPageDiffBase):
+                accepted, dropped = verify_price_changes(result.price_changes, sig.raw_text)
+                diff_meta = {
+                    "display_title": result.display_title,
+                    "price_changes": accepted,
+                    "price_changes_dropped": dropped,
+                }
             s.execute(
                 update(Signal)
                 .where(Signal.id == signal_id)
@@ -168,6 +183,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                     category=result.category,
                     summary=result.summary,
                     why_jfrog_cares=result.why_jfrog_cares,
+                    takeaway=result.takeaway,
                     impact=result.impact,
                     evidence_quote=result.evidence_quote,
                     evidence_quote_verified=quote_ok,
@@ -184,6 +200,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
                             "quote_repaired": repair is not None,
                             **({"quote_side": side} if side else {}),
                             **({"quote_section": section} if section else {}),
+                            **diff_meta,
                         }
                     )
                     .op("-")("enrich_error")
@@ -282,6 +299,7 @@ _INHERITED = (
     "category",
     "summary",
     "why_jfrog_cares",
+    "takeaway",
     "impact",
     "evidence_quote",
     "is_claim",

@@ -30,7 +30,7 @@ from app.eval.files import LabelRow, read_labels, read_pairs
 from app.pipeline.enrich import enrich_one, link_roles
 from app.pipeline.llm_steps import load_input
 from app.pipeline.prompting import Catalog, SignalInput, enrich_messages, triage_messages
-from app.pipeline.schemas import TriageResult, enrich_schema
+from app.pipeline.schemas import TriageResult, enrich_schemas
 from app.pipeline.scope import eval_set
 from app.pipeline.triage import triage_one
 from app.pipeline.verify import verify_one
@@ -84,7 +84,7 @@ def estimate(factory: sessionmaker[Session]) -> tuple[Estimate, Estimate]:
                 )
             ).all()
         )
-    schema = enrich_schema(catalog.entity_slugs, catalog.capability_slugs)
+    schemas = enrich_schemas(catalog.entity_slugs, catalog.capability_slugs)
     verify_version = load_prompt("verify_signal").id
     main, off = Estimate(), Estimate()
     from app.eval.common import count_tokens
@@ -96,6 +96,7 @@ def estimate(factory: sessionmaker[Session]) -> tuple[Estimate, Estimate]:
         probe(main, "bulk", tmsg, TriageResult, tokens_out=80)
         name = "enrich_page_diff" if is_page_diff(meta) else "enrich_signal"
         _, emsg = enrich_messages(sig, catalog, cfg.enrich.max_chars, name)
+        schema = schemas.pick(is_page_diff(meta))
         enrich_cached = gw.cached("bulk", emsg, schema)
         probe(main, "bulk", emsg, schema, tokens_out=700)
         vin = count_tokens(verify_model, emsg) // 2 + 600  # source text + summary, no catalog
@@ -112,7 +113,7 @@ def _process(
     row: LabelRow,
     inputs: dict[int, tuple[SignalInput, dict, str | None]],
     catalog: Catalog,
-    schema: Any,
+    schemas: Any,
 ) -> dict[str, Any]:
     cfg = load_pipeline()
     sig, meta, source_slug = inputs[row.id]
@@ -124,11 +125,18 @@ def _process(
     }
     if not tri.relevant:
         return out
-    e = enrich_one(sig, meta, catalog, schema, cfg.enrich, complete)
+    e = enrich_one(sig, meta, catalog, schemas, cfg.enrich, complete)
     r = e.result
     roles = link_roles([(ref.slug, ref.role) for ref in r.entities], source_slug)
     v = verify_one(
-        sig, r.summary, r.why_jfrog_cares, r.evidence_quote, cfg.verify.max_chars, complete
+        sig,
+        r.summary,
+        r.why_jfrog_cares,
+        r.evidence_quote,
+        cfg.verify.max_chars,
+        complete,
+        takeaway=r.takeaway,
+        display_title=getattr(r, "display_title", None),
     )
     out |= {
         "category": str(r.category),
@@ -165,10 +173,10 @@ def run_pass(factory: sessionmaker[Session]) -> dict[str, Any]:
     with factory() as s:
         catalog = Catalog.load(s)
         inputs = _inputs(s, [r.id for r in rows])
-    schema = enrich_schema(catalog.entity_slugs, catalog.capability_slugs)
+    schemas = enrich_schemas(catalog.entity_slugs, catalog.capability_slugs)
 
     with eval_run(factory, "eval_pipeline") as main_counts:
-        results = parallel_map(lambda r: _process(r, inputs, catalog, schema), rows)
+        results = parallel_map(lambda r: _process(r, inputs, catalog, schemas), rows)
         failures = [
             {"id": r.id, "error": f"{type(x).__name__}: {x}"[:300]}
             for r, x in zip(rows, results, strict=True)

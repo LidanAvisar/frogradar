@@ -599,3 +599,60 @@ def split_section(quote: str) -> tuple[str | None, str]:
 
 def is_page_diff(meta: dict[str, Any] | None) -> bool:
     return bool(meta) and meta.get("kind") == "page_diff"
+
+
+# ---------- reading a rendered diff back (price checks, API) ----------
+
+_LABELED_LINE = re.compile(r"^\[([^\]]+)\]\s*(.*)$")
+
+
+@dataclass(frozen=True)
+class DiffLine:
+    side: str  # "before" | "after" | "context"
+    text: str  # page text (a "[a > b] " prefix split off)
+    section: tuple[str, ...] | None  # section path from the prefix or the last "# " line
+
+
+def diff_hunks(raw_text: str) -> list[list[DiffLine]]:
+    """The "## Change" hunks of a rendered diff, line by line, with their section paths.
+    Placeholders ("(nothing)", "(removed)") are skipped; the "Moved between sections" list and
+    anything else after a non-change "## " heading is not part of any hunk."""
+    hunks: list[list[DiffLine]] = []
+    current: list[DiffLine] | None = None
+    side: str | None = None
+    heading: tuple[str, ...] | None = None
+    for raw in raw_text.splitlines():
+        line = raw.strip()
+        if line.startswith("## "):
+            current = [] if line.startswith("## Change") else None
+            if current is not None:
+                hunks.append(current)
+            side, heading = None, None
+            continue
+        if current is None:
+            continue
+        if line in _MARKERS:
+            side = line[1:-1]
+            continue
+        if side is None or not line or line in ("(nothing)", "(removed)"):
+            continue
+        if line.startswith(PATH_PREFIX):
+            heading = _path(line[len(PATH_PREFIX) :])
+            continue
+        m = _LABELED_LINE.match(line)
+        if m:
+            current.append(DiffLine(side, m.group(2), _path(m.group(1))))
+        else:
+            current.append(DiffLine(side, line, heading))
+    return [h for h in hunks if h]
+
+
+def _path(text: str) -> tuple[str, ...]:
+    return tuple(p.strip() for p in text.split(">") if p.strip())
+
+
+def section_label(path: tuple[str, ...], max_chars: int = 120) -> str:
+    """Display label of a section path; a generic first segment ("Product Packages") is dropped
+    when there is more to say."""
+    parts = path[1:] if len(path) > 2 else path
+    return " > ".join(parts)[:max_chars]
