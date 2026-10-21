@@ -75,5 +75,9 @@ describe('AppShellComponent recent questions', () => {
     const link = el.querySelector<HTMLAnchorElement>('.recent-link')!;
     expect(link.textContent?.trim()).toBe('Who launched a package firewall?');
     expect(link.getAttribute('href')).toBe('/ask?c=3');
+    expect(link.getAttribute('aria-current')).toBeNull();
+    await router.navigateByUrl('/ask?c=3');
+    fixture.detectChanges();
+    expect(link.getAttribute('aria-current')).toBe('page');
   });
 });

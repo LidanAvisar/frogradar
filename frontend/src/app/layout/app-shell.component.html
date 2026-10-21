@@ -33,7 +33,12 @@
           <p class="recent-title eyebrow" id="recent-heading">Recent questions</p>
           <ul aria-labelledby="recent-heading">
             @for (c of recent(); track c.id) {
-              <li><a class="recent-link" routerLink="/ask" [queryParams]="{ c: c.id }">{{ c.title }}</a></li>
+              <li>
+                <a class="recent-link" routerLink="/ask" [queryParams]="{ c: c.id }"
+                   [class.current]="c.id === currentAsk()" [attr.aria-current]="c.id === currentAsk() ? 'page' : null">
+                  <span class="clamp">{{ c.title }}</span>
+                </a>
+              </li>
             }
           </ul>
         </div>

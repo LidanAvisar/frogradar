@@ -89,6 +89,9 @@ export class AskPageComponent {
     this.api.askConversation(id).subscribe({
       next: (c) => {
         this.turns.set(c.turns);
+        // ?t=<turn id> selects that answer's sources (deep link to one answer).
+        const t = Number(this.route.snapshot.queryParamMap.get('t'));
+        if (t && c.turns.some((x) => x.turn_id === t)) this.selectedTurn.set(t);
         this.loadingConversation.set(false);
       },
       error: () => {

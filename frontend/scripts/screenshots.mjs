@@ -2,7 +2,7 @@
 // Chrome. Needs the API on :8000 and `ng serve` (default :4200).
 // Usage: node scripts/screenshots.mjs [outDir] [name-filter]
 // Env: FRONTEND_URL (default http://localhost:4200), API_URL (default http://localhost:8000),
-//      EXEC=1 also captures the executive Brief.
+//      EXEC=1 also captures the executive Brief, ASK_C = the Ask conversation to show.
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
@@ -12,6 +12,10 @@ const api = process.env.API_URL ?? 'http://localhost:8000';
 const outDir = resolve(process.argv[2] ?? '../docs/screenshots');
 const only = process.argv[3] ?? '';
 mkdirSync(outDir, { recursive: true });
+
+// /ask shows conversation ASK_C, else the most recent one.
+const convs = await fetch(`${api}/api/ask/conversations?limit=1`).then((r) => r.json()).catch(() => []);
+const askId = process.env.ASK_C ?? convs?.[0]?.id;
 
 // The Radar detail shows the top-ranked open candidate.
 const radar = await fetch(`${api}/api/radar?limit=1`).then((r) => r.json()).catch(() => null);
@@ -23,6 +27,7 @@ const pages = [
   ...(topId ? [{ name: 'radar-detail', path: `/radar/${topId}`, ready: '.statements, fr-empty-state, fr-error-state' }] : []),
   { name: 'battlecard-sonatype', path: '/battlecards/sonatype', ready: 'fr-capability-matrix, fr-empty-state, fr-error-state' },
   { name: 'signals-filtered', path: '/signals?since=7d&min_impact=4', ready: 'fr-signal-card, fr-empty-state, fr-error-state' },
+  ...(askId ? [{ name: 'ask', path: `/ask?c=${askId}`, ready: 'fr-answer-card' }] : []),
 ];
 const shots = pages.flatMap((p) => [
   { ...p, file: `${p.name}-1440.png`, width: 1440, height: 900, executive: false },

@@ -42,6 +42,7 @@ export class AppShellComponent {
   private readonly nav = inject(NavCountsService);
   protected readonly recent = inject(AskRecentService).items;
   protected readonly onAsk = signal(false);
+  protected readonly currentAsk = signal<number | null>(null);
   private readonly counts = this.nav.counts;
 
   protected readonly menuOpen = signal(false);
@@ -56,7 +57,9 @@ export class AppShellComponent {
       )
       .subscribe((e) => {
         this.menuOpen.set(false);
-        this.onAsk.set((e as NavigationEnd).urlAfterRedirects.startsWith('/ask'));
+        const url = (e as NavigationEnd).urlAfterRedirects;
+        this.onAsk.set(url.startsWith('/ask'));
+        this.currentAsk.set(Number(new URLSearchParams(url.split('?')[1] ?? '').get('c')) || null);
       });
   }
 

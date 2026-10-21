@@ -210,13 +210,22 @@
   text-decoration: none;
   font-size: var(--fr-text-small);
   line-height: 1.35;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 
   &:hover {
     background: var(--fr-page);
     color: var(--fr-ink);
   }
+
+  &.current {
+    background: var(--fr-page);
+    color: var(--fr-ink);
+    font-weight: 600;
+  }
+}
+
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
