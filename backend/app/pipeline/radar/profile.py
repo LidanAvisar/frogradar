@@ -14,9 +14,12 @@ Checks, same rules as the brief / battlecards (D53):
    drops the statement (reason invalid_citation, per id: unknown / not_in_input);
 2. the verify model (a different provider, verify_profile prompt) judges each remaining
    statement against the signals it cites (JFrog's portfolio is trusted context for the "JFrog
-   relation" statement); partial / unsupported → dropped with the note.
-what_it_is dropped → profile_status rejected (nothing shown but the candidate's raw facts).
-Dropped statements are kept in profile.dropped.
+   relation" statement). Check rule 2 (S15, same rule as research missions): supported → kept,
+   check "supported"; partial → kept, check "partial" with the verifier's note (shown as "Partly
+   verified", never high confidence); unsupported / no verdict → dropped with the note.
+what_it_is not kept (unsupported, invalid citation, no verdict) → profile_status rejected.
+Dropped statements are kept in profile.dropped. apply_check_rule() moves stored rule-1 profiles
+(partial dropped) to rule 2 without an LLM call: the verdicts and notes are stored.
 """
 
 import hashlib
@@ -43,6 +46,7 @@ PROMPT = "radar_profile"
 VERIFY_PROMPT = "verify_profile"
 KEYS = ("what_it_is", "segments", "jfrog_relation", "stage", "why_notable_now")
 REQUIRED = "what_it_is"
+CHECK_RULE = 2  # 1: partial dropped (S11); 2: partial kept and labelled (S15)
 BLOCK_MAX_CHARS = 40000
 
 Ids = Annotated[list[int], Field(min_length=1, max_length=4)]
@@ -228,8 +232,11 @@ def verify_statements(
         v = verdicts.get(c.key)
         if v is None:
             out.drop(c, "not_verified")
-        elif v.verdict == "supported":
+        elif v.verdict in ("supported", "partial"):
             out.kept.append(c)
+            c.extra["check"] = v.verdict
+            if v.verdict == "partial":
+                c.extra["verifier_note"] = v.note
         else:
             out.drop(c, f"verifier_{v.verdict}", verifier_note=v.note)
     return out, prompt.id
@@ -277,6 +284,7 @@ def build_profile(
     cand.profile = {
         "prompt_version": prompt.id,
         "verify_prompt_version": verify_version,
+        "check_rule": CHECK_RULE,
         "model": model,
         "generated_at": now.isoformat(),
         "input_signal_ids": sorted(by_id),
@@ -289,9 +297,9 @@ def build_profile(
 
 
 def profile_relation(profile: dict[str, Any] | None) -> str | None:
-    """The profile's JFrog relation if it may be used for ranking: the statement was kept, or
-    dropped only as "partial" (by the verify prompt's definition the core is right, a detail is
-    overstated). Dropped as unsupported / invalid citation → None (not trusted)."""
+    """The profile's JFrog relation if it may be used for ranking: the kept jfrog_relation
+    statement (supported or partial). Dropped as unsupported / invalid citation → None. Rule-1
+    profiles not yet moved by apply_check_rule: a statement dropped only as partial counts too."""
     if not profile:
         return None
     kept = (profile.get("items") or {}).get("jfrog_relation")
@@ -301,3 +309,29 @@ def profile_relation(profile: dict[str, Any] | None) -> str | None:
         if d.get("key") == "jfrog_relation" and d.get("reason") == "verifier_partial":
             return d.get("relation")
     return None
+
+
+def statement_check(item: dict[str, Any]) -> str:
+    """ "supported" or "partial" for a kept statement (rule-1 items carry no check: supported)."""
+    return "partial" if item.get("check") == "partial" else "supported"
+
+
+def apply_check_rule(profile: dict[str, Any]) -> tuple[dict[str, Any], ProfileStatus, int]:
+    """Move a stored profile to the current check rule without an LLM call: statements the verifier
+    marked partial (stored in dropped with their note) become kept items with check "partial".
+    Returns (profile, status, statements moved). Idempotent."""
+    items = {k: dict(v) for k, v in (profile.get("items") or {}).items()}
+    for v in items.values():
+        v.setdefault("check", "supported")
+    dropped, moved = [], 0
+    for d in profile.get("dropped") or []:
+        if d.get("reason") == "verifier_partial" and d.get("key") not in items:
+            item = {k: v for k, v in d.items() if k != "reason"}
+            item["check"] = "partial"
+            items[d["key"]] = item
+            moved += 1
+        else:
+            dropped.append(d)
+    out = {**profile, "items": items, "dropped": dropped, "check_rule": CHECK_RULE}
+    status = ProfileStatus.OK if REQUIRED in items else ProfileStatus.REJECTED
+    return out, status, moved

@@ -1,7 +1,7 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
 	eval-select eval-embed eval-pairs eval-label eval eval-compare eval-ask eval-gold api-types screenshots \
-	radar radar-backfill
+	radar radar-backfill radar-recheck
 
 up:
 	docker compose up -d --build
@@ -61,6 +61,10 @@ radar: migrate
 	cd backend && uv run --env-file ../.env python -m app.pipeline.run radar $(ARGS)
 
 # Semantic dedup of embedded signals (no LLM calls).
+# Re-apply the radar profile check rule to stored profiles (partial kept + labelled). No LLM calls.
+radar-recheck: migrate
+	cd backend && uv run python -m app.pipeline.radar.recheck
+
 dedup: migrate
 	cd backend && uv run python -m app.pipeline.run dedup
 

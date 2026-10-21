@@ -221,7 +221,8 @@ def radar_docs(session: Session) -> list[Doc]:
             st = items.get(key) or {}
             text = st.get("statement") or st.get("text")
             if text:
-                lines.append(f"{STATEMENT_LABELS[key]}: {text}")
+                partly = " (partly verified)" if st.get("check") == "partial" else ""
+                lines.append(f"{STATEMENT_LABELS[key]}{partly}: {text}")
         if len(lines) == 1:
             continue
         relation = (c.metrics or {}).get("relation")

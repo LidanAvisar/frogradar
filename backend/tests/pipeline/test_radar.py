@@ -423,7 +423,7 @@ def test_enrich_uses_discovery_prompt_and_keeps_new_entities(jfrog_world):
 # ---------- radar step end to end ----------
 
 
-def _profile_handler(*, bad_id=None, partial=()):
+def _profile_handler(*, bad_id=None, partial=(), unsupported=()):
     def profile(call):
         from tests.pipeline.factories import signal_ids_in
 
@@ -459,7 +459,15 @@ def _profile_handler(*, bad_id=None, partial=()):
     def verify(call):
         return {
             "items": [
-                {"key": k, "verdict": "partial" if k in partial else "supported", "note": "n"}
+                {
+                    "key": k,
+                    "verdict": "partial"
+                    if k in partial
+                    else "unsupported"
+                    if k in unsupported
+                    else "supported",
+                    "note": "n",
+                }
                 for k in claim_keys_in(call)
             ]
         }
@@ -589,7 +597,9 @@ def test_radar_step_end_to_end(jfrog_world):
 def test_profile_invalid_citation_and_verifier_drops(jfrog_world):
     factory = jfrog_world
     _radar_world(factory)
-    profile, verify = _profile_handler(bad_id=999999, partial=("stage",))
+    profile, verify = _profile_handler(
+        bad_id=999999, partial=("stage",), unsupported=("why_notable_now",)
+    )
     llm = FakeLLM(radar_profile=profile, verify_profile=verify)
     _step(factory, llm)
     with factory() as s:
@@ -598,18 +608,60 @@ def test_profile_invalid_citation_and_verifier_drops(jfrog_world):
         dropped = {d["key"]: d for d in cand.profile["dropped"]}
         assert dropped["jfrog_relation"]["reason"] == "invalid_citation"
         assert dropped["jfrog_relation"]["invalid_ids"] == {"999999": "unknown"}
-        assert dropped["stage"]["reason"] == "verifier_partial"
-        assert set(cand.profile["items"]) == {"what_it_is", "segments", "why_notable_now"}
+        assert dropped["why_notable_now"]["reason"] == "verifier_unsupported"
+        # Check rule 2: partial is kept and labelled with the verifier's note.
+        items = cand.profile["items"]
+        assert set(items) == {"what_it_is", "segments", "stage"}
+        assert items["stage"]["check"] == "partial" and items["stage"]["verifier_note"] == "n"
+        assert items["what_it_is"]["check"] == "supported"
+        assert cand.profile["check_rule"] == 2
 
 
-def test_profile_rejected_when_what_it_is_fails(jfrog_world):
+def test_profile_rejected_only_when_what_it_is_is_unsupported(jfrog_world):
     factory = jfrog_world
     _radar_world(factory)
     profile, verify = _profile_handler(partial=("what_it_is",))
     _step(factory, FakeLLM(radar_profile=profile, verify_profile=verify))
     with factory() as s:
         cand = s.scalars(select(RadarCandidate)).one()
+        assert cand.profile_status == ProfileStatus.OK  # partial "what it is" is kept
+        assert cand.profile["items"]["what_it_is"]["check"] == "partial"
+    profile, verify = _profile_handler(unsupported=("what_it_is",))
+    _step(
+        factory, FakeLLM(radar_profile=profile, verify_profile=verify), force=frozenset({"radar"})
+    )
+    with factory() as s:
+        cand = s.scalars(select(RadarCandidate)).one()
         assert cand.profile_status == ProfileStatus.REJECTED
+
+
+def test_recheck_moves_rule_1_profiles_without_llm_calls():
+    from app.pipeline.radar.profile import apply_check_rule
+
+    old = {
+        "items": {
+            "why_notable_now": {"key": "why_notable_now", "statement": "Now.", "signal_ids": [1]}
+        },
+        "dropped": [
+            {"key": "what_it_is", "statement": "A secrets scanner.", "signal_ids": [1],
+             "reason": "verifier_partial", "verifier_note": "No date."},
+            {"key": "jfrog_relation", "statement": "Overlaps Xray.", "relation": "threatens",
+             "products": ["jfrog-xray"], "signal_ids": [1], "reason": "verifier_partial",
+             "verifier_note": "Overstated."},
+            {"key": "stage", "statement": "Startup.", "signal_ids": [1],
+             "reason": "verifier_unsupported", "verifier_note": "Not stated."},
+        ],
+    }  # fmt: skip
+    new, status, moved = apply_check_rule(old)
+    assert status == ProfileStatus.OK and moved == 2
+    assert new["items"]["what_it_is"]["check"] == "partial"
+    assert new["items"]["what_it_is"]["verifier_note"] == "No date."
+    assert new["items"]["why_notable_now"]["check"] == "supported"
+    assert new["items"]["jfrog_relation"]["relation"] == "threatens"
+    assert [d["key"] for d in new["dropped"]] == ["stage"]
+    assert apply_check_rule(new)[2] == 0  # idempotent
+    rejected = {"items": {}, "dropped": [{**old["dropped"][2], "key": "what_it_is"}]}
+    assert apply_check_rule(rejected)[1] == ProfileStatus.REJECTED
 
 
 def test_observations_skip_irrelevant(jfrog_world):
