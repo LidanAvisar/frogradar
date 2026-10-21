@@ -1,0 +1,31 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+    <a class="brand" routerLink="/" aria-label="FrogRadar, Morning Brief">
+      <span class="logo" aria-hidden="true"><fr-icon name="radar" [size]="18" /></span>
+      <span class="brand-name">FrogRadar</span>
+    </a>
+    <nav aria-label="Main">
+      <ul class="nav">
+        @for (item of items(); track item.path) {
+          <li>
+            <a class="nav-link" [routerLink]="item.path" routerLinkActive="active"
+               [routerLinkActiveOptions]="{ exact: item.path === '/' }" ariaCurrentWhenActive="page">
+              <fr-icon [name]="item.icon" />
+              <span class="label">{{ item.label }}</span>
+              @if (item.countValue !== null) {
+                <span class="count mono" [attr.aria-label]="item.countValue + ' items'">{{ item.countValue }}</span>
+              }
+            </a>
+          </li>
+        }
+      </ul>
+    </nav>
+    <p class="tagline small">Competitive intelligence for JFrog</p>
+    </div>
+  </aside>
+  <main id="main" class="content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>

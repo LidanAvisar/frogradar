@@ -1,12 +1,12 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+
+import { AppShellComponent } from './layout/app-shell.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, MatToolbarModule],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
+  imports: [AppShellComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '<fr-app-shell />',
 })
 export class AppComponent {}

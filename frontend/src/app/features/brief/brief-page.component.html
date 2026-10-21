@@ -1,0 +1,78 @@
+<div class="page">
+  <header class="header">
+    <div class="intro">
+      <p class="eyebrow mono date">{{ dateLine() }}</p>
+      <h1>{{ headline() }}</h1>
+      @if (brief()?.overview; as overview) { <p class="overview">{{ overview }}</p> }
+      @if (brief()) {
+        <p class="subline small mono">
+          {{ newCount() }} new since yesterday · {{ highImpactNew() }} high impact
+        </p>
+      }
+    </div>
+    <div class="controls">
+      <form class="search" role="search" (submit)="search($event, q.value)">
+        <label class="visually-hidden" for="brief-search">Search signals</label>
+        <fr-icon name="search" [size]="16" />
+        <input #q id="brief-search" type="search" placeholder="Search signals" autocomplete="off" />
+      </form>
+      <button type="button" class="fr-button" [attr.aria-pressed]="executive()" (click)="toggleExecutive()">
+        Executive view
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="main" aria-labelledby="top-heading">
+      <div class="section-head">
+        <h2 id="top-heading">Top 5 developments</h2>
+        @if (brief(); as b) {
+          <span class="small muted">Last {{ b.window.days }} days, ranked by impact × confidence</span>
+        }
+      </div>
+
+      @switch (state().status) {
+        @case ('loading') {
+          <div class="cards" aria-busy="true" aria-label="Loading developments">
+            @for (s of skeletons; track s) {
+              <div class="skeleton-card"><fr-skeleton [lines]="['30%', '85%', '95%', '70%']" /></div>
+            }
+          </div>
+        }
+        @case ('error') {
+          <div class="panel"><fr-error-state (retry)="load()" /></div>
+        }
+        @default {
+          @if (brief()!.top.length === 0) {
+            <div class="panel">
+              <fr-empty-state title="No verified developments this week"
+                              message="New signals appear here once the daily pipeline has enriched and verified them." />
+            </div>
+          } @else {
+            <ol class="cards" [class.exec]="executive()">
+              @for (s of brief()!.top; track s.id) {
+                <li><fr-signal-card [signal]="s" [rank]="s.rank" [variant]="executive() ? 'executive' : 'analyst'" /></li>
+              }
+            </ol>
+          }
+        }
+      }
+    </section>
+
+    <aside class="rail" aria-label="Brief details">
+      @if (brief(); as b) {
+        <fr-pricing-watch [items]="b.pricing_watch" />
+        <fr-since-yesterday [items]="b.since_yesterday">
+          <p class="filtered small muted">
+            <span class="mono">{{ b.filtered_not_relevant }}</span>
+            {{ b.filtered_not_relevant === 1 ? 'item' : 'items' }} filtered as not relevant this week
+          </p>
+        </fr-since-yesterday>
+        <div class="panel tight"><fr-pipeline-status [info]="b.pipeline" /></div>
+      } @else if (state().status === 'loading') {
+        <div class="skeleton-card"><fr-skeleton /></div>
+        <div class="skeleton-card"><fr-skeleton /></div>
+      }
+    </aside>
+  </div>
+</div>
