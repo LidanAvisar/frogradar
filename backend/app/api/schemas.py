@@ -211,6 +211,7 @@ class BriefOut(BaseModel):
 
 
 class EntityOut(BaseModel):
+    id: int
     slug: str
     name: str
     type: EntityType

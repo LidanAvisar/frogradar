@@ -43,6 +43,7 @@ def list_entities(session: DbSession) -> list[EntityOut]:
     ).all()
     return [
         EntityOut(
+            id=e.id,
             slug=e.slug,
             name=e.name,
             type=e.type,

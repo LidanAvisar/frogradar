@@ -285,6 +285,10 @@ def test_prefill_from_every_origin(client, s):
     assert p["brief"] == "Does Sonatype offer reachability-analysis?" and p["company_ids"] == [
         sonatype.id
     ]
+    by_slug = client.get(
+        "/api/missions/prefill?entity_slug=sonatype&capability_slug=reachability-analysis"
+    ).json()
+    assert by_slug["origin_ref"] == {"entity_id": sonatype.id, "capability_id": cap}
     p = client.get(f"/api/missions/prefill?signal={sig.id}").json()
     assert (
         p["origin_kind"] == "signal"

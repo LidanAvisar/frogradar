@@ -238,8 +238,20 @@ def get_prefill(
     entity: int | None = None,
     capability: int | None = None,
     turn: int | None = None,
+    entity_slug: str | None = None,
+    capability_slug: str | None = None,
 ) -> MissionPrefillOut:
+    """Form defaults for a mission started from a signal, a radar candidate, a battlecard
+    (entity, optionally a capability; ids or slugs) or an Ask turn."""
     cfg = load_pipeline().missions
+    if entity_slug:
+        entity = session.scalar(select(Entity.id).where(Entity.slug == entity_slug))
+        if entity is None:
+            raise HTTPException(status_code=404, detail=f"No company {entity_slug}")
+    if capability_slug:
+        capability = session.scalar(select(Capability.id).where(Capability.slug == capability_slug))
+        if capability is None:
+            raise HTTPException(status_code=404, detail=f"No capability {capability_slug}")
     try:
         p = prefill(session, signal=signal, candidate=candidate, entity=entity,
                     capability=capability, turn=turn)  # fmt: skip

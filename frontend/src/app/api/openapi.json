@@ -1190,6 +1190,10 @@
       },
       "EntityOut": {
         "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
           "is_self": {
             "title": "Is Self",
             "type": "boolean"
@@ -1226,6 +1230,7 @@
           }
         },
         "required": [
+          "id",
           "slug",
           "name",
           "type",
@@ -5798,6 +5803,7 @@
     },
     "/api/missions/prefill": {
       "get": {
+        "description": "Form defaults for a mission started from a signal, a radar candidate, a battlecard\n(entity, optionally a capability; ids or slugs) or an Ask turn.",
         "operationId": "get_prefill_api_missions_prefill_get",
         "parameters": [
           {
@@ -5878,6 +5884,38 @@
                 }
               ],
               "title": "Turn"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Slug"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capability_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capability Slug"
             }
           }
         ],

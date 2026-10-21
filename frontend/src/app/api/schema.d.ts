@@ -220,7 +220,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Prefill */
+        /**
+         * Get Prefill
+         * @description Form defaults for a mission started from a signal, a radar candidate, a battlecard
+         *     (entity, optionally a capability; ids or slugs) or an Ask turn.
+         */
         get: operations["get_prefill_api_missions_prefill_get"];
         put?: never;
         post?: never;
@@ -964,6 +968,8 @@ export interface components {
         };
         /** EntityOut */
         EntityOut: {
+            /** Id */
+            id: number;
             /** Is Self */
             is_self: boolean;
             /** Last Signal At */
@@ -2831,6 +2837,8 @@ export interface operations {
                 entity?: number | null;
                 capability?: number | null;
                 turn?: number | null;
+                entity_slug?: string | null;
+                capability_slug?: string | null;
             };
             header?: never;
             path?: never;
