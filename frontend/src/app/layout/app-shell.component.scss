@@ -241,3 +241,66 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* System status (sidebar) and the demo banner. */
+.system {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--fr-gap-lg);
+  padding: 0 8px;
+}
+
+.status-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fr-ink-3);
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--fr-ink);
+  }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fr-accent);
+
+  &.demo {
+    background: var(--fr-claim-border);
+  }
+}
+
+.demo-banner {
+  padding: 8px var(--fr-content-pad-x);
+  border-bottom: 1px solid var(--fr-claim-border);
+  background: var(--fr-claim-bg);
+  color: var(--fr-claim-fg);
+  line-height: 1.4;
+}
+
+.link-button {
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .demo-banner {
+    padding: 8px var(--fr-content-pad-x-phone);
+  }
+}

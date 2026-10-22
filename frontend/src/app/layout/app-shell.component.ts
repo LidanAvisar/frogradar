@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { filter } from 'rxjs';
 
 import type { NavCounts } from '../api/models';
 import { AskRecentService } from '../core/ask-recent.service';
 import { NavCountsService } from '../core/nav-counts.service';
 import { PreferencesService } from '../core/preferences.service';
+import { StatusService, asOfLabel, usdShort } from '../core/status.service';
 import { IconComponent } from '../shared/icon.component';
 
 interface NavItem {
@@ -48,11 +50,25 @@ export class AppShellComponent {
   private readonly prefs = inject(PreferencesService);
   protected readonly analystName = this.prefs.analystName;
 
+  private readonly statusSvc = inject(StatusService);
+  private readonly dialog = inject(MatDialog);
+  protected readonly status = this.statusSvc.status;
+  protected readonly demo = this.statusSvc.demo;
+  protected readonly asOf = computed(() => {
+    const v = this.statusSvc.asOf();
+    return v ? asOfLabel(v) : null;
+  });
+  protected readonly spend = computed(() => {
+    const s = this.status();
+    return s && s.mode === 'live' ? `${usdShort(s.spend_today_usd)} of ${usdShort(s.daily_budget_usd)}` : null;
+  });
+
   protected readonly menuOpen = signal(false);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
 
   constructor() {
     this.nav.refresh();
+    this.statusSvc.refresh();
     inject(Router)
       .events.pipe(
         filter((e) => e instanceof NavigationEnd),
@@ -64,6 +80,16 @@ export class AppShellComponent {
         this.onAsk.set(url.startsWith('/ask'));
         this.currentAsk.set(Number(new URLSearchParams(url.split('?')[1] ?? '').get('c')) || null);
       });
+  }
+
+  async openStatus(): Promise<void> {
+    const { StatusDialogComponent } = await import('./status-dialog.component');
+    this.dialog.open(StatusDialogComponent, {
+      width: '560px',
+      maxWidth: '100vw',
+      panelClass: 'fr-dialog',
+      autoFocus: 'first-tabbable',
+    });
   }
 
   setName(name: string): void {

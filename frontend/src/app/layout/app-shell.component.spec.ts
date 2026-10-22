@@ -5,6 +5,8 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
 import { AskRecentService } from '../core/ask-recent.service';
+import { StatusService } from '../core/status.service';
+import { demoStatusFixture, statusFixture } from '../testing/status-fixture';
 import { AppShellComponent } from './app-shell.component';
 
 @Component({ standalone: true, template: '' })
@@ -79,5 +81,32 @@ describe('AppShellComponent recent questions', () => {
     await router.navigateByUrl('/ask?c=3');
     fixture.detectChanges();
     expect(link.getAttribute('aria-current')).toBe('page');
+  });
+
+});
+
+describe('AppShellComponent status', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: '', component: BlankComponent }]), provideHttpClient(), provideHttpClientTesting()],
+    });
+  });
+
+  it('shows the demo banner with the snapshot date only in demo mode, and today\'s spend in live mode', () => {
+    const fixture = TestBed.createComponent(AppShellComponent);
+    const el: HTMLElement = fixture.nativeElement;
+    const status = TestBed.inject(StatusService);
+    status.status.set(statusFixture());
+    fixture.detectChanges();
+    expect(el.querySelector('.demo-banner')).toBeNull();
+    expect(el.querySelector('.spend')?.textContent).toContain('$0.03 of $2.00');
+
+    status.status.set(demoStatusFixture());
+    fixture.detectChanges();
+    const banner = el.querySelector('.demo-banner')?.textContent ?? '';
+    expect(banner).toContain('Demo mode:');
+    expect(banner).toContain('21 Oct 2026');
+    expect(banner).toContain('no API keys needed');
+    expect(el.querySelector('.spend')).toBeNull();
   });
 });

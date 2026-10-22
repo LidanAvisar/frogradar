@@ -6,8 +6,10 @@ import { catchError, map, of } from 'rxjs';
 
 import type { Entity, Mission, MissionCreateIn, MissionPrefill } from '../../api/models';
 import { ApiService, type PrefillQuery } from '../../core/api.service';
+import { errorMessage } from '../../core/api-error';
 import { dateTime } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
+import { StatusService, usdShort } from '../../core/status.service';
 import { EmptyStateComponent, ErrorStateComponent, SkeletonComponent } from '../../shared/states.component';
 import { missionOriginLabel, missionStatusInfo, usd } from './mission-format';
 
@@ -30,6 +32,9 @@ export class MissionsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly prefs = inject(PreferencesService);
+  private readonly statusSvc = inject(StatusService);
+  protected readonly demo = this.statusSvc.demo;
+  protected readonly missionCost = computed(() => usdShort(this.statusSvc.costs()?.mission));
 
   protected readonly list = signal<ListState>({ status: 'loading' });
   protected readonly formOpen = signal(false);
@@ -143,7 +148,7 @@ export class MissionsPageComponent {
       },
       error: (e) => {
         this.submitting.set(false);
-        this.submitError.set(e?.error?.detail && typeof e.error.detail === 'string' ? e.error.detail : 'The mission could not be created. Check the fields and try again.');
+        this.submitError.set(errorMessage(e, 'The mission could not be created. Check the fields and try again.'));
       },
     });
   }

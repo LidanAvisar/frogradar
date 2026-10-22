@@ -70,3 +70,5 @@ export type SubQuestion = Schemas['SubQuestionOut'];
 export type FindingReviewIn = Schemas['FindingReviewIn'];
 export type FindingReviewOut = Schemas['FindingReviewOut'];
 export type RadarRefreshOut = Schemas['RadarRefreshOut'];
+export type SystemStatus = Schemas['StatusOut'];
+export type SystemFeature = Schemas['FeatureOut'];

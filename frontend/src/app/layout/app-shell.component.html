@@ -49,11 +49,27 @@
           </ul>
         </div>
       }
+      <div class="system">
+        <button type="button" class="status-button small" (click)="openStatus()">
+          <span class="dot" [class.demo]="demo()" aria-hidden="true"></span>
+          System status
+        </button>
+        @if (spend(); as sp) {
+          <span class="small muted spend">LLM today {{ sp }}</span>
+        }
+      </div>
     </nav>
     <p class="tagline small">Competitive intelligence for JFrog</p>
     </div>
   </aside>
   <main id="main" class="content" tabindex="-1">
+    @if (demo()) {
+      <div class="demo-banner small" role="note">
+        <strong>Demo mode:</strong> snapshot from {{ asOf() ?? 'the committed data' }}, no API keys needed.
+        Run with keys for live data.
+        <button type="button" class="link-button" (click)="openStatus()">What's on</button>
+      </div>
+    }
     <router-outlet />
   </main>
 </div>

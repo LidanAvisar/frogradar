@@ -13,6 +13,10 @@
   @if (formOpen()) {
     <section class="fr-panel form-panel" aria-labelledby="new-mission-heading">
       <h2 id="new-mission-heading">New mission</h2>
+      @if (demo()) {
+        <p class="small notice" role="note">Demo mode: new missions need API keys, so starting one is refused here.
+          The finished missions below are viewable. Run with your own keys (<span class="mono">make live</span>) to start one.</p>
+      }
       @if (prefill()?.origin_label) {
         <p class="small muted">Started from: <strong>{{ prefill()?.origin_label }}</strong></p>
       }
@@ -59,7 +63,8 @@
           </div>
         </div>
         <p id="steps-hint" class="small muted">Each sub-question uses about 4 steps (search, read, extract, verify).
-          The agent stops at the budget, the step limit or 10 minutes, whichever comes first.</p>
+          The agent stops at the budget, the step limit or 10 minutes, whichever comes first.
+          A typical mission costs about {{ missionCost() }} (measured); the budget is a hard cap.</p>
 
         @if (submitError()) { <p class="small error" role="alert">{{ submitError() }}</p> }
         <div class="actions">

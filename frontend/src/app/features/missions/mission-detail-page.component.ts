@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import type { MissionDetail, MissionFinding, RadarRefreshOut } from '../../api/models';
 import { ApiService } from '../../core/api.service';
+import { errorMessage } from '../../core/api-error';
 import { dateTime, plural, relationInfo } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
 import { ErrorStateComponent, EmptyStateComponent, SkeletonComponent } from '../../shared/states.component';
@@ -205,7 +206,7 @@ export class MissionDetailPageComponent {
         },
         error: (e) => {
           this.planBusy.set(false);
-          this.actionError.set(typeof e?.error?.detail === 'string' ? e.error.detail : 'The plan could not be approved. Try again.');
+          this.actionError.set(errorMessage(e, 'The plan could not be approved. Try again.'));
         },
       });
   }
@@ -261,7 +262,7 @@ export class MissionDetailPageComponent {
       },
       error: (e) => {
         this.radarBusy.set(false);
-        this.actionError.set(typeof e?.error?.detail === 'string' ? e.error.detail : 'The radar profile could not be refreshed.');
+        this.actionError.set(errorMessage(e, 'The radar profile could not be refreshed.'));
       },
     });
   }

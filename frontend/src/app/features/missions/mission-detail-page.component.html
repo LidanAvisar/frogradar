@@ -90,6 +90,7 @@
                   {{ planBusy() ? 'Approving…' : 'Approve plan and start' }}
                 </button>
               </div>
+              <p class="small muted">Starting the research makes paid LLM calls (about {{ usd(mi.budget_usd) }} at most: the budget is a hard cap).</p>
               @if (draftSteps() > mi.max_steps) {
                 <p class="small notice" role="note">This plan needs about {{ draftSteps() }} steps but the limit is {{ mi.max_steps }}: the last
                   sub-questions may not be researched. Remove one or start a new mission with more steps.</p>

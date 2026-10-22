@@ -34,6 +34,7 @@ import type {
   SignalCorrectIn,
   SignalPage,
   SignalRejectIn,
+  SystemStatus,
 } from '../api/models';
 import type { operations } from '../api/schema';
 
@@ -74,6 +75,10 @@ export class ApiService {
 
   self(): Observable<SelfInfo> {
     return this.http.get<SelfInfo>('/api/self');
+  }
+
+  status(): Observable<SystemStatus> {
+    return this.http.get<SystemStatus>('/api/status');
   }
 
   nav(): Observable<NavCounts> {

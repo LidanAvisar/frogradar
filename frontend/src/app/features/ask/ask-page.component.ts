@@ -8,8 +8,10 @@ import { distinctUntilChanged, map } from 'rxjs';
 
 import type { AskAnswer, AskFeedbackIn } from '../../api/models';
 import { ApiService } from '../../core/api.service';
+import { demoSuggestions, errorMessage } from '../../core/api-error';
 import { AskRecentService } from '../../core/ask-recent.service';
 import { plural } from '../../core/format';
+import { StatusService, usdShort } from '../../core/status.service';
 import { ErrorStateComponent, SkeletonComponent } from '../../shared/states.component';
 import { AnswerCardComponent, type Feedback } from './answer-card.component';
 import { AskFeedbackDialogComponent } from './feedback-dialog.component';
@@ -53,7 +55,13 @@ export class AskPageComponent {
   protected readonly selectedTurn = signal<number | null>(null);
   protected readonly feedback = signal<Partial<Record<number, Feedback>>>({});
   protected readonly draft = signal('');
-  protected readonly starters = STARTERS;
+  private readonly statusSvc = inject(StatusService);
+  protected readonly demo = this.statusSvc.demo;
+  /** Demo mode: the curated questions (answered from the cache); live: a few examples. */
+  protected readonly starters = computed(() => (this.demo() ? this.statusSvc.demoQuestions() : STARTERS));
+  /** Suggestions sent with a demo-mode refusal ("try one of these"). */
+  protected readonly demoChips = signal<string[]>([]);
+  protected readonly askCost = computed(() => usdShort(this.statusSvc.costs()?.ask));
 
   protected readonly selected = computed(() => {
     const list = this.turns();
@@ -62,7 +70,9 @@ export class AskPageComponent {
   });
   protected readonly followups = computed(() => {
     const list = this.turns();
-    return this.pending() ? [] : (list[list.length - 1]?.suggested_followups ?? []);
+    // Demo mode only answers the curated questions, so model-suggested follow-ups would be refused.
+    if (this.pending() || this.demo()) return [];
+    return list[list.length - 1]?.suggested_followups ?? [];
   });
 
   constructor() {
@@ -109,6 +119,7 @@ export class AskPageComponent {
       return;
     }
     this.error.set(null);
+    this.demoChips.set([]);
     this.pending.set(question);
     this.announcement.set('Searching your intelligence…');
     this.api.ask({ question, conversation_id: this.conversationId() }).subscribe({
@@ -127,12 +138,15 @@ export class AskPageComponent {
           this.router.navigate([], { relativeTo: this.route, queryParams: { c: answer.conversation_id } });
         }
         this.recent.refresh();
+        if (!answer.cached) this.statusSvc.refresh(); // today's spend changed
         this.input()?.nativeElement.focus();
       },
       error: (e: HttpErrorResponse) => {
         this.pending.set(null);
-        const detail = typeof e.error?.detail === 'string' ? e.error.detail : null;
-        this.error.set(detail ?? 'The answer could not be created. Check that the API is running and try again.');
+        this.demoChips.set(demoSuggestions(e) ?? []);
+        this.error.set(
+          errorMessage(e, 'The answer could not be created. Check that the API is running and try again.'),
+        );
         this.announcement.set('The question could not be answered.');
       },
     });
