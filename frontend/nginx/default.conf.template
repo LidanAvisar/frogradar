@@ -1,0 +1,46 @@
+# Rendered by the nginx image's envsubst step at start (API_UPSTREAM). Only ${API_UPSTREAM} is set,
+# so nginx's own $variables are left alone.
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+
+    # add_header in a location replaces the server's, so every location includes the snippet.
+    include /etc/nginx/snippets/security-headers.conf;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Docker's DNS: resolve the backend at request time, so nginx starts before it.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $api http://${API_UPSTREAM};
+
+    location /api/ {
+        proxy_pass $api;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 180s;   # Ask and mission calls can take a while in live mode
+    }
+    location = /health { proxy_pass $api; }
+    location /mcp {
+        proxy_pass $api;
+        proxy_set_header Host $http_host;
+        proxy_http_version 1.1;
+        proxy_buffering off;       # streamable HTTP
+        proxy_read_timeout 300s;
+    }
+
+    # Hashed bundles cache forever; index.html never (new builds show up at once).
+    location ~* \.(?:js|css|woff2?|png|svg|ico)$ {
+        expires 1y;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

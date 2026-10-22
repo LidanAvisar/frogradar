@@ -22,6 +22,7 @@ COPY --from=builder --chown=app:app /app /app
 COPY config /app/config
 USER app
 EXPOSE 8000
-# Apply migrations, then serve.
-ENV CONFIG_DIR=/app/config
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Apply migrations, restore the demo snapshot into an empty DB if asked (compose sets
+# SNAPSHOT_RESTORE=if-empty; the image default never touches a DB), then serve.
+ENV CONFIG_DIR=/app/config SNAPSHOT_RESTORE=never
+CMD ["sh", "-c", "alembic upgrade head && if [ \"$SNAPSHOT_RESTORE\" = if-empty ]; then python -m app.demo.snapshot restore --if-empty; fi && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

@@ -4,25 +4,46 @@ AI-powered competitive intelligence for JFrog. A daily pipeline collects industr
 feeds, GitHub, pricing-page changes), enriches and verifies them with LLMs, and stores everything in one
 data model that powers the Morning Brief, battlecards, cited chat, research missions and an MCP server.
 
-> Status: backend pipeline in place (collectors incl. pricing-page diffs with a Wayback baseline, dedup,
-> triage, enrichment, cross-provider verification, confidence, daily scheduler). The UI is next.
-
 ## Quick start
 
-Requirements: Docker, [uv](https://docs.astral.sh/uv/), Node 20 (frontend).
+Requirements: Docker with Compose ≥ 2.24. Nothing else for the demo.
+
+**A) Demo – no API keys, one command**
 
 ```bash
-cp .env.example .env        # fill in API keys (never commit .env)
-make up                     # Postgres + backend (no paid runs); the backend applies migrations on start
-make seed                   # load competitors, sources and capabilities from config/
-curl localhost:8000/health
+make demo          # Postgres + backend (demo mode) + web app → http://localhost:8080
+make demo-down     # stop (make demo-reset: back to the pristine snapshot)
 ```
+
+The demo restores a committed snapshot of real FrogRadar data (as of 21 Oct 2026, 2.2 MB) and pins the
+app's "today" to that date, so the Brief looks the same whenever you open it. No LLM calls are made:
+the curated Ask questions are answered from the LLM cache, other questions get a "try one of these"
+reply, finished research missions are viewable, and analyst actions (approve / correct / reject, radar
+track / dismiss) work against the local demo database.
+
+**B) Live – bring your own keys**
+
+```bash
+cp .env.example .env   # add the keys you have; every key is optional
+make live              # same stack with real providers → http://localhost:8081 (API :8000)
+make pipeline          # fresh data: collect → enrich → verify → brief (paid, ~$0.08 a day)
+```
+
+`make live` fills an empty database from the same snapshot, then prints which keys are present and which
+features are on, off or degraded (also in the UI under System status). Measured costs: a new Ask question
+≈ $0.02 (repeats are cached), a research mission ≈ $0.03 (hard per-mission budget), a daily run ≈ $0.08.
+`LLM_DAILY_BUDGET_USD` (default 2) caps the daily spend. One provider only? See the single-provider
+example in `.env.example` (`ALLOW_SAME_FAMILY_VERIFY=true` starts with a warning: accuracy checks are
+weaker).
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `make up` / `make down` | Start Postgres + backend (never the scheduler) / stop everything incl. the scheduler |
+| `make demo` / `make demo-down` / `make demo-reset` | Demo stack (snapshot, no keys) on :8080 / stop / back to the pristine snapshot |
+| `make live` (= `make up`) / `make down` | Live stack (Postgres + backend + web app on :8081; never the scheduler), prints the key/feature status / stop everything incl. the scheduler |
+| `make status` | Keys present, features enabled / degraded / off (live stack) |
+| `make demo-prime` / `make demo-snapshot` / `make demo-check` | Maintainers: cache the curated Ask answers (paid, `ARGS=--yes`) / export the dev DB as the demo snapshot / replay the demo on a throwaway DB (0 provider calls) |
 | `make db-up` | Start only Postgres and wait until healthy |
 | `make migrate` | Apply Alembic migrations (`backend/app/db/migrations`) |
 | `make seed` | Upsert entities, sources, capabilities from `config/` (safe to re-run) |

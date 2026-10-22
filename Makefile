@@ -1,16 +1,51 @@
-.PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
+.PHONY: up live down logs status demo demo-down demo-reset demo-logs demo-snapshot demo-prime demo-check \
+	db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
 	eval-select eval-embed eval-pairs eval-label eval eval-compare eval-ask eval-gold api-types screenshots \
 	radar radar-backfill radar-recheck mcp mcp-inspector
 
-up:
-	docker compose up -d --build
+DEMO_PORT ?= 8080
+WEB_PORT ?= 8081
+
+# ---------- Run it (README "Quick start") ----------
+
+# A) Demo: snapshot data, no API keys, no .env. Postgres + backend (DEMO_MODE) + web app (nginx).
+demo:
+	docker compose --profile demo up -d --build --wait
+	@echo ""
+	@echo "  FrogRadar demo is running:  http://localhost:$(DEMO_PORT)"
+	@echo "  Snapshot data, no API keys needed. Stop: make demo-down"
+	@echo ""
+
+demo-down:
+	docker compose --profile demo down
+
+# Back to the pristine snapshot (deletes only the demo database volume).
+demo-reset: demo-down
+	docker volume rm "$$(docker compose --profile demo config | sed -n 's/^name: //p')_pgdata-demo" || true
+
+demo-logs:
+	docker compose --profile demo logs -f
+
+# B) Live: your keys from .env (optional; missing keys turn features off). An empty DB is filled
+# from the snapshot first. Prints which keys are present and which features are on.
+live up:
+	docker compose --profile live up -d --build --wait
+	@docker compose --profile live exec -T backend python -m app.core.status || true
+	@echo ""
+	@echo "  FrogRadar is running:  http://localhost:$(WEB_PORT)  (API http://localhost:8000)"
+	@echo "  Fresh data: make pipeline (paid, see the status above). Stop: make down"
+	@echo ""
 
 down:
-	docker compose --profile scheduler down
+	docker compose --profile live --profile scheduler down
 
 logs:
-	docker compose logs -f
+	docker compose --profile live logs -f
+
+# Keys present / features enabled or degraded / today's spend (live stack).
+status:
+	docker compose --profile live exec -T backend python -m app.core.status
 
 # Start only Postgres and wait until it is healthy.
 db-up:
@@ -76,10 +111,16 @@ link: migrate
 dedup-report: migrate
 	cd backend && uv run python -m app.pipeline.run report
 
-# The daily pipeline (LangGraph): collect → embed → dedup → link → triage → enrich → verify → score.
-# Paid (LLM calls). ARGS="--skip collect" / "--force enrich,verify".
-pipeline: migrate
-	cd backend && uv run --env-file ../.env python -m app.pipeline.graph $(ARGS)
+# The daily pipeline (LangGraph): collect → embed → dedup → link → triage → enrich → verify → score
+# → brief → battlecards → radar. Paid (LLM calls; about $0.08 a day on the demo scope). Nodes whose
+# keys are missing are skipped. ARGS="--skip collect" / "--force enrich,verify".
+# Runs on the host with uv if installed, else inside the live backend container (make live first).
+pipeline:
+	@if command -v uv >/dev/null 2>&1; then \
+		$(MAKE) migrate && cd backend && uv run --env-file ../.env python -m app.pipeline.graph $(ARGS); \
+	else \
+		docker compose --profile live exec -T backend python -m app.pipeline.graph $(ARGS); \
+	fi
 
 # Daily brief (1 synthesis + 1 verify call per day; ARGS="--force brief" to regenerate).
 brief: migrate
@@ -101,7 +142,7 @@ wayback-backfill: migrate
 # Daily scheduler (opt-in, paid: runs `make pipeline` every day at DAILY_RUN_CRON, UTC).
 # `make up` never starts it; this does (compose profile "scheduler").
 scheduler-up:
-	docker compose --profile scheduler up -d --build scheduler
+	docker compose --profile live --profile scheduler up -d --build scheduler
 
 scheduler-down:
 	docker compose --profile scheduler stop scheduler
@@ -169,3 +210,18 @@ mcp-inspector: db-up
 	printf '{"mcpServers":{"frogradar":{"command":"uv","args":["--directory","%s/backend","run","--env-file","%s/.env","frogradar-mcp"]}}}' "$(CURDIR)" "$(CURDIR)" > "$$cfg" && \
 	MCP_AUTO_OPEN_ENABLED=false npx -y --legacy-peer-deps -p @modelcontextprotocol/inspector@$(INSPECTOR_VERSION) \
 		mcp-inspector --web --config "$$cfg" --server frogradar
+
+# ---------- Demo snapshot (D77). The snapshot lives in backend/app/demo/snapshot/ (committed). ----------
+# Ask the curated demo questions (config/demo.yaml) with the clock pinned to the snapshot's as-of
+# time, so their answers are in the LLM cache. PAID: about $0.02 per uncached question.
+# Prints the estimate only; ARGS=--yes makes the calls.
+demo-prime: migrate
+	cd backend && uv run --env-file ../.env python -m app.demo.prime $(ARGS)
+
+# Export the dev DB as the demo dataset (raw text stripped). AS_OF=2026-10-21T17:33:00Z to override.
+demo-snapshot: migrate
+	cd backend && uv run python -m app.demo.snapshot export $(if $(AS_OF),--as-of $(AS_OF))
+
+# Restore the snapshot into a throwaway DB and replay the demo (pages, cached Ask, MCP, 0 provider calls).
+demo-check: db-up
+	cd backend && uv run python -m app.demo.check

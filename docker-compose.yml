@@ -1,5 +1,28 @@
+# Two ways to run (README "Quick start"):
+#   make demo  = docker compose --profile demo up -d --build   → http://localhost:8080
+#     Snapshot data, no API keys, no .env needed. Own database (db-demo), never touches the live one.
+#   make live  = docker compose --profile live up -d --build   → http://localhost:8081 (API :8000)
+#     Your keys from .env (optional file: missing keys turn features off, see /api/status).
+#     An empty database is filled from the same snapshot first; `make pipeline` adds fresh data.
+# The daily scheduler is opt-in and paid: make scheduler-up (profile "scheduler").
+# Requires Docker Compose >= 2.24 (optional env_file).
+
+x-backend-build: &backend-build
+  # Repo root as context so the image can include config/ (see .dockerignore).
+  context: .
+  dockerfile: backend/Dockerfile
+
+x-healthcheck-api: &healthcheck-api
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+  interval: 5s
+  timeout: 4s
+  retries: 30
+  start_period: 10s
+
 services:
+  # ---------- live ----------
   db:
+    profiles: ["live", "scheduler"]
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
@@ -7,7 +30,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
       POSTGRES_DB: ${POSTGRES_DB:-frogradar}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,35 +40,54 @@ services:
       retries: 10
 
   backend:
-    build:
-      # Repo root as context so the image can include config/ (see .dockerignore).
-      context: .
-      dockerfile: backend/Dockerfile
+    profiles: ["live", "scheduler"]
+    build: *backend-build
+    image: frogradar-backend:local
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       # Inside the compose network the DB host is "db", not localhost.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-frogradar}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-frogradar}
+      SNAPSHOT_RESTORE: if-empty
+      APP_URL: http://localhost:${WEB_PORT:-8081}
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     volumes:
       # Dev override of the config baked into the image: edit YAML without rebuilding.
       - ./config:/app/config:ro
+    healthcheck: *healthcheck-api
     depends_on:
       db:
+        condition: service_healthy
+
+  web:
+    profiles: ["live"]
+    build:
+      context: frontend
+    image: frogradar-web:local
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: backend:8000
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8081}:8080"
+    depends_on:
+      backend:
         condition: service_healthy
 
   # Daily pipeline run (APScheduler, cron from DAILY_RUN_CRON in .env, UTC). Same image as the
   # backend; the backend container applies migrations on start. One run at a time (advisory lock).
   # OPT-IN: it makes paid LLM calls every day, so it only starts with the "scheduler" profile:
-  #   docker compose --profile scheduler up -d   (make scheduler-up). Plain `make up` never starts it.
+  #   make scheduler-up. `make live` / `make up` never start it.
   scheduler:
     profiles: ["scheduler"]
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    build: *backend-build
+    image: frogradar-backend:local
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-frogradar}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-frogradar}
     command: ["python", "-m", "app.scheduler"]
@@ -55,7 +97,56 @@ services:
       db:
         condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
+
+  # ---------- demo (no keys, no .env, no host ports except the web app) ----------
+  db-demo:
+    profiles: ["demo"]
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: frogradar
+      POSTGRES_PASSWORD: frogradar-demo   # internal network only, no published port
+      POSTGRES_DB: frogradar
+    volumes:
+      - pgdata-demo:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frogradar -d frogradar"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend-demo:
+    profiles: ["demo"]
+    build: *backend-build
+    image: frogradar-backend:local
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://frogradar:frogradar-demo@db-demo:5432/frogradar
+      DEMO_MODE: "true"
+      SNAPSHOT_RESTORE: if-empty
+      APP_URL: http://localhost:${DEMO_PORT:-8080}
+      # Optional: MCP over HTTP at http://localhost:8080/mcp (Bearer token you choose).
+      MCP_TOKEN: ${DEMO_MCP_TOKEN:-}
+    healthcheck: *healthcheck-api
+    depends_on:
+      db-demo:
+        condition: service_healthy
+
+  web-demo:
+    profiles: ["demo"]
+    build:
+      context: frontend
+    image: frogradar-web:local
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: backend-demo:8000
+    ports:
+      - "127.0.0.1:${DEMO_PORT:-8080}:8080"
+    depends_on:
+      backend-demo:
+        condition: service_healthy
 
 volumes:
   pgdata:
+  pgdata-demo:
