@@ -1,0 +1,107 @@
+# Dogfooding: FrogRadar is built, published and scanned with the JFrog Platform it analyzes.
+#   backend + web images → Artifactory (Docker repo), Build Info "frogradar" → Xray build scan.
+# Auth: GitHub OIDC → JFrog access token (no stored credentials). Platform setup: README
+# "Dogfooding" (OIDC integration + identity mapping for this repository, Xray indexing of the build).
+# Repository variables (Settings → Secrets and variables → Actions → Variables), all optional:
+#   JF_URL (default https://frogradar.jfrog.io), JF_OIDC_PROVIDER (default frogradar-github),
+#   DOCKER_REPO (default docker-trial).
+# Actions are pinned to commit SHAs of releases at least 14 days old (supply-chain cooldown).
+name: JFrog build, publish and scan
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC token, exchanged for a short-lived JFrog token
+
+concurrency:
+  group: jfrog-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  JF_URL: ${{ vars.JF_URL || 'https://frogradar.jfrog.io' }}
+  DOCKER_REPO: ${{ vars.DOCKER_REPO || 'docker-trial' }}
+  JFROG_CLI_BUILD_NAME: frogradar
+  JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
+  JFROG_CLI_BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+jobs:
+  build-publish-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JFrog CLI (OIDC)
+        id: jf
+        uses: jfrog/setup-jfrog-cli@68c0efdc951dd2359bbbfa15c48bc67b3ae8e4d6 # v5.2.0
+        with:
+          version: 2.127.0
+          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER || 'frogradar-github' }}
+
+      - name: Registry host and image names
+        id: names
+        run: |
+          host="${JF_URL#https://}"; host="${host%/}"
+          tag="${GITHUB_SHA::12}"
+          echo "host=$host" >> "$GITHUB_OUTPUT"
+          echo "backend=$host/$DOCKER_REPO/frogradar-backend:$tag" >> "$GITHUB_OUTPUT"
+          echo "web=$host/$DOCKER_REPO/frogradar-web:$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Docker login to Artifactory (OIDC token)
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ steps.names.outputs.host }}
+          username: ${{ steps.jf.outputs.oidc-user }}
+          password: ${{ steps.jf.outputs.oidc-token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build and push the backend image
+        id: backend
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.names.outputs.backend }}
+
+      - name: Build and push the web image
+        id: web
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: frontend
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.names.outputs.web }}
+
+      - name: Add both images to the build info
+        env:
+          BACKEND: ${{ steps.names.outputs.backend }}
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+          WEB: ${{ steps.names.outputs.web }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          echo "${BACKEND%:*}@${BACKEND_DIGEST}" > backend-image.txt
+          echo "${WEB%:*}@${WEB_DIGEST}" > web-image.txt
+          jf rt build-docker-create "$DOCKER_REPO" --image-file backend-image.txt
+          jf rt build-docker-create "$DOCKER_REPO" --image-file web-image.txt
+
+      - name: Publish build info
+        run: |
+          jf rt build-collect-env
+          jf rt build-add-git
+          jf rt build-publish
+
+      - name: Xray build scan
+        # Reports vulnerabilities and policy violations of the published build. Not a gate yet
+        # (--fail=false): the known findings are triaged in README "Security".
+        run: jf build-scan --vuln --fail=false
