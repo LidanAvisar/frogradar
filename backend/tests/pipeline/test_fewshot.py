@@ -144,7 +144,9 @@ def test_stages_put_examples_in_prompt(collect_db):
         x for x in llm.calls if x.operation == "triage" and x.title.startswith("Runner images")
     )
     enrich = next(
-        x for x in llm.calls if x.operation == "enrich_signal" and x.title.startswith("Runner images")
+        x
+        for x in llm.calls
+        if x.operation == "enrich_signal" and x.title.startswith("Runner images")
     )
     system_t = triage.messages[0]["content"]
     system_e = enrich.messages[0]["content"]
