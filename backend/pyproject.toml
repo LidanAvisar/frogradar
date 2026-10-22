@@ -11,6 +11,7 @@ dependencies = [
     "httpx>=0.28.1",
     "langgraph>=1.0,<2",
     "litellm>=1.106.0,!=1.82.7,!=1.82.8",
+    "mcp>=2.3,<3",
     "pgvector>=0.5.1",
     "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.1",
@@ -19,6 +20,19 @@ dependencies = [
     "trafilatura>=2.3.1",
     "uvicorn[standard]>=0.54.0",
 ]
+
+[build-system]
+# Only so `uv sync` installs the `frogradar-mcp` entry point locally; the Docker image still uses
+# --no-install-project. Pinned below the 14-day cooldown like the runtime dependencies.
+requires = ["uv_build==0.12.23"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+module-root = ""
+
+[project.scripts]
+frogradar-mcp = "app.mcp.__main__:main"
 
 [dependency-groups]
 dev = [
@@ -37,6 +51,8 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 # Alembic migrations are generated; long column definitions are fine there.
 "app/db/migrations/versions/*" = ["E501"]
+# MCP tool descriptions and prompts are prose for the model; wrapping them hurts readability.
+"app/mcp/server.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -54,4 +70,4 @@ filterwarnings = [
 [tool.uv]
 # Supply-chain cooldown (D33): packages added for LangGraph resolve only to releases at least
 # 14 days old at the time they were added (cssselect/apscheduler/tzlocal added in S7). Move the date forward deliberately when upgrading.
-exclude-newer-package = { langgraph = "2026-10-07", langgraph-sdk = "2026-10-07", langgraph-checkpoint = "2026-10-07", langgraph-prebuilt = "2026-10-07", langchain-core = "2026-10-07", langchain-protocol = "2026-10-07", langsmith = "2026-10-07", orjson = "2026-10-07", ormsgpack = "2026-10-07", xxhash = "2026-10-07", zstandard = "2026-10-07", uuid-utils = "2026-10-07", jsonpatch = "2026-10-07", jsonpointer = "2026-10-07", tenacity = "2026-10-07", requests-toolbelt = "2026-10-07", cssselect = "2026-10-07", apscheduler = "2026-10-07", tzlocal = "2026-10-07" }
+exclude-newer-package = { mcp = "2026-10-08", mcp-types = "2026-10-08", pycparser = "2026-10-08", cryptography = "2026-10-08", pyjwt = "2026-10-08", sse-starlette = "2026-10-08", langgraph = "2026-10-07", langgraph-sdk = "2026-10-07", langgraph-checkpoint = "2026-10-07", langgraph-prebuilt = "2026-10-07", langchain-core = "2026-10-07", langchain-protocol = "2026-10-07", langsmith = "2026-10-07", orjson = "2026-10-07", ormsgpack = "2026-10-07", xxhash = "2026-10-07", zstandard = "2026-10-07", uuid-utils = "2026-10-07", jsonpatch = "2026-10-07", jsonpointer = "2026-10-07", tenacity = "2026-10-07", requests-toolbelt = "2026-10-07", cssselect = "2026-10-07", apscheduler = "2026-10-07", tzlocal = "2026-10-07" }
