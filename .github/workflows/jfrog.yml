@@ -90,8 +90,9 @@ jobs:
           WEB: ${{ steps.names.outputs.web }}
           WEB_DIGEST: ${{ steps.web.outputs.digest }}
         run: |
-          echo "${BACKEND%:*}@${BACKEND_DIGEST}" > backend-image.txt
-          echo "${WEB%:*}@${WEB_DIGEST}" > web-image.txt
+          # Format: <registry>/<repo>/<image>:<tag>@sha256:<digest> (the tag is how jf finds the image)
+          echo "${BACKEND}@${BACKEND_DIGEST}" > backend-image.txt
+          echo "${WEB}@${WEB_DIGEST}" > web-image.txt
           jf rt build-docker-create "$DOCKER_REPO" --image-file backend-image.txt
           jf rt build-docker-create "$DOCKER_REPO" --image-file web-image.txt
 
