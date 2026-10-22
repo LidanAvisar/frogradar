@@ -47,7 +47,8 @@ jobs:
         id: names
         run: |
           host="${JF_URL#https://}"; host="${host%/}"
-          tag="${GITHUB_SHA::12}"
+          # Unique and immutable per run (re-runs never overwrite a pushed tag)
+          tag="${GITHUB_SHA::12}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
           echo "host=$host" >> "$GITHUB_OUTPUT"
           echo "backend=$host/$DOCKER_REPO/frogradar-backend:$tag" >> "$GITHUB_OUTPUT"
           echo "web=$host/$DOCKER_REPO/frogradar-web:$tag" >> "$GITHUB_OUTPUT"
