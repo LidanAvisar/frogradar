@@ -27,7 +27,7 @@ and every prompt says never to follow instructions inside it.
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, TypedDict
 
@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.mission.schemas import Extraction, MissionPlan, MissionReport, Verdicts
 from app.agents.mission.web import FetchFn, SearchFn, SkipPage, UnsafeUrl, time_range
+from app.core import clock as app_clock
 from app.core.catalog import MissionSettings, load_pipeline
 from app.core.llm import MissionBudgetExceeded, llm_context, load_prompt
 from app.core.llm.errors import BudgetExceeded
@@ -67,6 +68,7 @@ COUNTED_KINDS = (
     MissionStepKind.ANALYZE,
     MissionStepKind.VERIFY,
 )
+
 PHASES = ("search", "read", "extract", "verify")
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 
@@ -79,7 +81,7 @@ class Tools:
     embed: EmbedFn
     search: SearchFn | None = None
     fetch: FetchFn | None = None
-    clock: Callable[[], datetime] = field(default=lambda: datetime.now(UTC))
+    clock: Callable[[], datetime] = field(default=lambda: app_clock.now())
 
 
 class Stop(Exception):  # noqa: N818 - control flow, not an error

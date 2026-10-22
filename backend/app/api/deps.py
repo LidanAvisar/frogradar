@@ -1,17 +1,18 @@
 """Shared FastAPI dependencies for the read API."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from app.core import clock
 from app.db.session import get_session
 
 
 def get_now() -> datetime:
-    """Request time; overridden in tests to pin "today"."""
-    return datetime.now(UTC)
+    """Request time (pinned in demo mode, app/core/clock.py); overridden in tests."""
+    return clock.now()
 
 
 DbSession = Annotated[Session, Depends(get_session)]

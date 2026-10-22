@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 from sqlalchemy.orm import sessionmaker
 
+from app.core import clock as app_clock
 from app.core.catalog import load_pipeline
 from app.db.enums import AskSource
 from app.eval.files import eval_dir, results_dir
@@ -92,7 +93,7 @@ def run(
         if not retrieval_only and spent + MARGIN_USD > cap:
             print(f"stop before {q.id}: spent ${spent:.4f}, cap ${cap:.2f}")
             break
-        now = datetime.now(UTC)
+        now = app_clock.now()
         started = time.monotonic()
         captured: list[Retrieval] = []
         with factory() as s:

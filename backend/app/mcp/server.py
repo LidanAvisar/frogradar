@@ -16,7 +16,7 @@ import json
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import HTTPException
@@ -26,6 +26,7 @@ from pydantic import Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core import clock as app_clock
 from app.core.config import get_settings
 from app.core.llm import BudgetExceeded, DemoCacheMiss, LLMError
 from app.db.enums import AskSource, EntityType, Verification
@@ -122,7 +123,7 @@ def build_server(
     """The FrogRadar MCP server. Tests inject a session factory, fake LLM and a pinned clock."""
     open_session = sessions or _default_sessions()
     get_llm = llm or _default_llm
-    clock = now or (lambda: datetime.now(UTC))
+    clock = now or app_clock.now
     app_url = get_settings().app_url.rstrip("/")
     mcp = MCPServer(name="FrogRadar", instructions=INSTRUCTIONS, version="0.1.0")
 
