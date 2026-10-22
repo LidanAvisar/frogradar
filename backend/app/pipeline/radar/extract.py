@@ -21,7 +21,7 @@ from app.db.models import Signal
 from app.pipeline.collectors.discovery import repo_url as make_repo_url
 from app.pipeline.llm_steps import canonical_or_unclustered
 from app.pipeline.radar.normalize import repo_slug
-from app.pipeline.scope import event_time, in_scope
+from app.pipeline.scope import event_time, in_scope, not_stripped
 
 
 @dataclass(frozen=True)
@@ -50,7 +50,7 @@ def _kind(value: str | None) -> RadarKind:
 def observations(session: Session) -> list[Observation]:
     rows = session.execute(
         select(Signal.id, Signal.source_id, Signal.meta, event_time().label("at"))
-        .where(in_scope(), canonical_or_unclustered(), Signal.relevant.is_(True))
+        .where(in_scope(), not_stripped(), canonical_or_unclustered(), Signal.relevant.is_(True))
         .order_by(event_time(), Signal.id)
     ).all()
     out: list[Observation] = []

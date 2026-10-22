@@ -33,7 +33,7 @@ from app.core.catalog import MatchRule
 from app.db.enums import EntityReviewStatus, EntityType
 from app.db.models import Entity, Signal, Source, signal_entities
 from app.pipeline.context import RunContext
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import in_scope, not_stripped
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +193,7 @@ def link_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
         )
         .select_from(Signal)
         .outerjoin(Source, Source.id == Signal.source_id)
-        .where(in_scope())
+        .where(in_scope(), not_stripped())
         .order_by(Signal.id)
     ).all()
     counts = {

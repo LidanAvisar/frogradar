@@ -27,7 +27,7 @@ from app.pipeline.llm_steps import (
 )
 from app.pipeline.prompting import Catalog, SignalInput, triage_messages
 from app.pipeline.schemas import TriageResult
-from app.pipeline.scope import discovery, in_scope
+from app.pipeline.scope import discovery, in_scope, not_stripped
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def triage_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     version = load_prompt("triage").id
     disc_version = load_prompt(DISCOVERY_PROMPT).id
     cfg = ctx.config.triage
-    todo = [in_scope(), canonical_or_unclustered()]
+    todo = [in_scope(), not_stripped(), canonical_or_unclustered()]
     if "triage" not in ctx.force:
         # Each kind of signal is compared with its own prompt's current version.
         current = case((discovery(), disc_version), else_=version)
@@ -105,6 +105,7 @@ def inherit_triage(session: Session) -> int:
         .join(canonical, canonical.id == Signal.dedup_cluster_id)
         .where(
             in_scope(),
+            not_stripped(),
             Signal.id != canonical.id,
             canonical.relevant.is_not(None),
             or_(

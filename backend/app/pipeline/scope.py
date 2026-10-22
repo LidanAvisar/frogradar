@@ -31,6 +31,12 @@ def in_scope() -> ColumnElement[bool]:
     return or_(Signal.source_id.is_(None), active_source)
 
 
+def not_stripped() -> ColumnElement[bool]:
+    """Signals restored from the demo snapshot have no raw_text (D77): the pipeline never
+    re-processes them (embed, link, triage, enrich, verify, radar); their enrichment stays."""
+    return Signal.meta["snapshot_stripped"].astext.is_distinct_from("true")
+
+
 def in_scope_signals() -> Select[tuple[Signal]]:
     """`select(Signal)` limited to in-scope signals; stages add their own filters/order."""
     return select(Signal).where(in_scope())

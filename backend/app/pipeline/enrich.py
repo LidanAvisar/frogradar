@@ -47,7 +47,7 @@ from app.pipeline.schemas import (
     EnrichSchemas,
     enrich_schemas,
 )
-from app.pipeline.scope import discovery, in_scope
+from app.pipeline.scope import discovery, in_scope, not_stripped
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ def enrich_signals(session: Session, ctx: RunContext) -> dict[str, Any]:
     diff_version = load_prompt(DIFF_PROMPT).id
     disc_version = load_prompt(DISCOVERY_PROMPT).id
     cfg = ctx.config.enrich
-    todo = [in_scope(), canonical_or_unclustered(), Signal.relevant.is_(True)]
+    todo = [in_scope(), not_stripped(), canonical_or_unclustered(), Signal.relevant.is_(True)]
     if "enrich" not in ctx.force:
         # Each kind of signal is compared with its own prompt's current version.
         current = case((_page_diff_sql(), diff_version), (discovery(), disc_version), else_=version)
@@ -341,6 +341,7 @@ def inherit_from_canonicals(session: Session) -> int:
         .join(canonical, canonical.id == Signal.dedup_cluster_id)
         .where(
             in_scope(),
+            not_stripped(),
             Signal.id != canonical.id,
             and_(canonical.enriched_at.is_not(None), Signal.relevant.is_(True)),
             stale,

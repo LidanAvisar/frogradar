@@ -597,3 +597,18 @@ def test_backfill_requires_sections_on_today_only(sectioned, collect_db, web, ma
     web.add(URL, _redesigned("pricing_editions_after"))
     with pytest.raises(pd.SectionsMissing):
         backfill_source(collect_db, make_client(), ref, CFG, run_id=_run_id(collect_db), now=NOW)
+
+
+def test_collector_stores_a_new_baseline_after_a_demo_snapshot_restore(
+    pricing, collect_db, web, make_client
+):
+    """Snapshots restored from the demo data have no text (D77): never diff against ''."""
+    _collect(collect_db, web, make_client, "pricing_v1")
+    with collect_db.begin() as s:
+        snap = s.scalars(select(PageSnapshot).where(PageSnapshot.source_id == pricing)).one()
+        snap.text = ""
+        snap.meta = {**snap.meta, "snapshot_stripped": True}
+    report = _collect(collect_db, web, make_client, "pricing_v2")
+    assert report.new == 0 and report.notes == ["baseline snapshot stored"]
+    assert _rows(collect_db, Signal, pricing) == []
+    assert _rows(collect_db, PageSnapshot, pricing)[-1].meta["diff_kind"] == "baseline"

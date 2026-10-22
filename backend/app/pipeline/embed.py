@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Signal
 from app.pipeline.context import RunContext
-from app.pipeline.scope import in_scope
+from app.pipeline.scope import in_scope, not_stripped
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ def embed_signals(
         select(Signal.id, Signal.title, Signal.raw_text, Signal.embedding_model)
         .where(
             in_scope() if where is None else where,
+            not_stripped(),
             or_(Signal.embedding.is_(None), Signal.embedding_model != ctx.embedding_model),
         )
         .order_by(Signal.id)

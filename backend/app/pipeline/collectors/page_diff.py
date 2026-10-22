@@ -81,8 +81,13 @@ class PageDiffCollector:
             if last is not None and last.content_hash == new.content_hash:
                 result.notes.append("unchanged")
                 return result
-            ref_info = snapshots.info(ref) if ref is not None else None
-            ref_text = ref.text if ref is not None else None
+            # A snapshot restored from the demo data has no text (D77): store a new baseline
+            # instead of diffing the live page against an empty one.
+            stripped = ref is not None and (
+                not ref.text or (ref.meta or {}).get("snapshot_stripped")
+            )
+            ref_info = snapshots.info(ref) if ref is not None and not stripped else None
+            ref_text = ref.text if ref is not None and not stripped else None
 
         result.snapshots.append(new)
         if ref_info is None or ref_text is None:
