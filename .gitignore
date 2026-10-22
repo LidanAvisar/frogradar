@@ -221,21 +221,16 @@ __marimo__/
 
 # Local secrets
 .env
-CLAUDE.md
 
 .venv/
 
-# Local-only AI assistant context
-CLAUDE.md
+# Local-only working notes
 docs/PLAN.md
 docs/PROGRESS.md
 docs/DECISIONS.md
 
 # Local scratch
 test_api_keys.py
-
-# Claude Code local settings (per machine)
-.claude/settings.local.json
 
 # Design mockups (local reference only)
 docs/design/

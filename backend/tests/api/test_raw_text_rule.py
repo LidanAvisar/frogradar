@@ -1,4 +1,4 @@
-"""signals.raw_text is never returned by the API (CLAUDE.md rule, D25)."""
+"""signals.raw_text is never returned by the API: raw_text rule (D25)."""
 
 from app.db.enums import FetchMethod
 from app.main import app

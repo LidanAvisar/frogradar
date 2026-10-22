@@ -1,6 +1,6 @@
 """Response models of the read API (/api). The frontend's TypeScript types are generated from these.
 
-Rule (CLAUDE.md, D25): signals.raw_text is never part of a response. No DTO has a raw_text, meta,
+raw_text rule (D25): signals.raw_text is never part of a response. No DTO has a raw_text, meta,
 embedding or content_hash field; prices extracted from a page diff are short tokens, not lines.
 """
 
