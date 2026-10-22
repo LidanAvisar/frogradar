@@ -6,6 +6,7 @@
 
 DEMO_PORT ?= 8080
 WEB_PORT ?= 8081
+API_PORT ?= 8000
 
 # ---------- Run it (README "Quick start") ----------
 
@@ -33,7 +34,7 @@ live up:
 	docker compose --profile live up -d --build --wait
 	@docker compose --profile live exec -T backend python -m app.core.status || true
 	@echo ""
-	@echo "  FrogRadar is running:  http://localhost:$(WEB_PORT)  (API http://localhost:8000)"
+	@echo "  FrogRadar is running:  http://localhost:$(WEB_PORT)  (API http://localhost:$(API_PORT))"
 	@echo "  Fresh data: make pipeline (paid, see the status above). Stop: make down"
 	@echo ""
 
