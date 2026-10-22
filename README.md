@@ -267,8 +267,24 @@ and runs an **Xray build scan**. Actions are pinned to commit SHAs of releases a
 | Backend (Python, 119 runtime packages exported from `uv.lock`) | **13 CVEs, all in `filelock` 3.32.7** (transitive: litellm → huggingface-hub), 1 High, 9 Medium, 3 Low. Every one needs a *second local user* on the same host (AV:L); the container runs one non-root user, and nothing we install uses the vulnerable `ReadWriteLock`. The fix (4.2.1) is 5 days old, inside our 14-day supply-chain cooldown: upgrade on 31 Oct. Secrets: 0. IaC: 0. SAST: 12 Low (CLI error messages, one regex). |
 | Frontend (npm) | 84 findings, most in **build tooling** that never ships (Angular CLI, vite, webpack-dev-server, tar…). The runtime Angular 18.2.14 packages carry 4 Critical/High XSS CVEs in the **i18n** and SVG `<script>` paths: contextual analysis marks the rest Not Applicable, and we checked that FrogRadar uses no i18n, no SVG scripts, no SSR / hydration and no XSRF config. The fix is an upgrade to Angular 20.3+ (Angular 18 is out of support): on the Next list. Secrets: 0. SAST: 0. |
 
-Build Info and the Xray build scan of the published images: see the workflow runs (first run pending the
-platform's OIDC setup).
+**First green run (#3, 22 Oct 2026):** OIDC login → both images pushed to `docker-trial`
+(`frogradar-backend`, `frogradar-web`, tag `<commit>-<run>.<attempt>`, never overwritten) → Build Info `frogradar/3`
+with both images, Git and environment → Xray build scan. **0 policy violations** (security, license, operational
+risk) – no Xray watch or policy is defined yet, so that is not a gate. The vulnerability list (`--vuln`) is the
+useful part, and it points at the **base images**, not FrogRadar's code:
+
+| Image (base) | Unique CVEs | Where |
+|---|---|---|
+| `frogradar-web` (nginx-unprivileged 1.29.3, Alpine 3.22) | 218: 15 Critical, 89 High | OpenSSL 3.5.4, curl / libcurl 8.14.1, nginx 1.29.3, expat, libxml2. The image only serves static files and proxies `/api`; curl isn't used at runtime. |
+| `frogradar-backend` (python:3.12-slim, Debian 12) | 140: 3 Critical, 25 High | glibc, SQLite, zlib, util-linux from Debian; at the Python level only `filelock` (13, see above) and the base image's own `pip` 25.0.1 (7), which the app never runs. |
+
+Next: move to newer base images (a current nginx-unprivileged Alpine and a Debian 13 slim Python), drop `pip` and
+`curl` from the runtime images, then add an Xray watch + policy so the build scan fails on new Critical issues.
+
+Setup notes for this platform: the build permission needs the pattern `frogradar/**` (build info is stored as
+`frogradar/<number>-<timestamp>.json`), and the build must be indexed by name with Xray's v2 API
+(`PUT /xray/api/v2/binMgr/builds` with `{build_name, build_repo}`); a v1 name list or an include pattern was
+accepted but did not index it on Xray 3.157.
 
 ## Now / Next
 
@@ -278,8 +294,8 @@ platform's OIDC setup).
 | Intelligence | Daily brief, battlecards + capability matrix, Competitor Radar, research missions | Predict the next move, "time machine" (state of a competitor on a date), insight fusion across signals |
 | Analysts | Review queue, corrections as few-shot examples, AI vs Analyst scorecard | SSO and roles, undo, re-enrich neighbours of a new correction |
 | Delivery | Web app, MCP server + Skill | Slack digest and bot, sales-ready battlecard export |
-| Platform | Docker Compose, demo snapshot, JFrog CI with OIDC and Xray build scan | Kubernetes (Helm) deployment from Artifactory, mission worker as its own service with resume |
-| Hardening | Supply-chain cooldown, SSRF guard, budget guards | Angular 20+ upgrade, filelock 4.2.1, DNS pinning in the SSRF guard, Xray policy as a CI gate |
+| Platform | Docker Compose, demo snapshot, JFrog CI with OIDC, Build Info and Xray build scan | Kubernetes (Helm) deployment from Artifactory, mission worker as its own service with resume |
+| Hardening | Supply-chain cooldown, SSRF guard, budget guards, Xray build scan in CI | Newer base images (most image CVEs), Angular 20+ upgrade, filelock 4.2.1, DNS pinning in the SSRF guard, Xray policy as a CI gate |
 
 ## Challenges and pitfalls
 
@@ -346,7 +362,8 @@ The ones that shape the product (all 80, D1–D80, each with what we rejected: [
   line can still predict a competitor's behaviour despite the prompt rule.
 - **Missions:** one in-process worker, no resume after a restart; duplicates removed within one sub-question only;
   the SSRF guard resolves DNS separately from the HTTP client (DNS rebinding).
-- **Frontend on Angular 18** (out of support; see the audit above).
+- **Frontend on Angular 18** (out of support) and **older base images** (most of the Xray build-scan CVEs); see
+  Dogfooding above.
 
 ## Stage 2: JFrog security task
 
