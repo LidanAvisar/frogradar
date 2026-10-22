@@ -204,13 +204,15 @@ def radar_docs(session: Session) -> list[Doc]:
     """Open or tracked radar candidates with an accepted profile: name, kind and the statements
     that passed the profile checks."""
     rows = session.scalars(
-        select(RadarCandidate).where(
+        select(RadarCandidate)
+        .where(
             RadarCandidate.merged_into_id.is_(None),
             RadarCandidate.profile_status == ProfileStatus.OK,
             RadarCandidate.status.in_(
                 [RadarStatus.NEW, RadarStatus.WATCHING, RadarStatus.APPROVED]
             ),
         )
+        .order_by(RadarCandidate.id)  # stable order: retrieval must be deterministic (D78)
     ).all()
     product_names = dict(session.execute(select(Entity.slug, Entity.name)).all())
     out = []

@@ -153,11 +153,15 @@ def retrieve(
     n = cfg.candidates
 
     # Signals: vector list (stored embeddings) and full-text list, in SQL.
+    # Exact search on purpose: "+ 0" keeps the planner off the HNSW index. Approximate results
+    # depend on how the index graph was built (random levels) and on the unfiltered rows around
+    # the filtered ones, so the same question could retrieve different documents on another DB
+    # (e.g. a restored demo snapshot) and miss its cached answer. The searchable set is small.
     distance = Signal.embedding.cosine_distance(qvec)
     vec_rows = session.execute(
         select(Signal.id, (1 - distance).label("sim"))
         .where(*conds, Signal.embedding.is_not(None))
-        .order_by(distance, Signal.id)
+        .order_by(distance + 0, Signal.id)
         .limit(n)
     ).all()
     tsq = _or_query(question)
@@ -199,18 +203,21 @@ def retrieve(
                 )
             )
             .where(text("to_tsvector('english', x.t) @@ q.q"))
+            .order_by(text("x.i"))
         ).all()
         other_txt = [(others[int(i) - 1].id, float(r)) for i, r in ranked]
 
     vec = [(f"sig:{r.id}", float(r.sim)) for r in vec_rows] + other_vec
     vec = [v for v in vec if v[1] >= cfg.min_cosine]
-    vec.sort(key=lambda v: -v[1])
+    # Ties broken by document id: the same question must retrieve the same documents in every
+    # process and on every copy of the data, or its cached answer is missed (demo mode, D78).
+    vec.sort(key=lambda v: (-v[1], v[0]))
     txt = [(f"sig:{r.id}", float(r.rank)) for r in txt_rows] + other_txt
-    txt.sort(key=lambda v: -v[1])
+    txt.sort(key=lambda v: (-v[1], v[0]))
     vec, txt = vec[:n], txt[:n]
     cat = [f"sig:{r.id}" for r in cat_rows]
     # Battlecard items of a section the question names, in vector order.
-    order = {d: i for i, (d, _) in enumerate(sorted(other_vec, key=lambda v: -v[1]))}
+    order = {d: i for i, (d, _) in enumerate(sorted(other_vec, key=lambda v: (-v[1], v[0])))}
     sec = sorted(
         (d.id for d in others if d.type == "battlecard" and d.id.split(":")[2] in f.sections),
         key=lambda d: order.get(d, len(order)),
