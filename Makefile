@@ -161,9 +161,11 @@ screenshots:
 mcp: db-up
 	cd backend && uv run --env-file ../.env frogradar-mcp
 
-# MCP Inspector UI against the stdio server (http://localhost:6274). Version pinned past the
-# 14-day cooldown.
-INSPECTOR_VERSION ?= 2.10.0
+# MCP Inspector UI against the stdio server (http://localhost:6274; prints the URL with its token).
+# Pinned past the 14-day cooldown; it writes a Claude-Desktop-style config (paths only, no secrets).
+INSPECTOR_VERSION ?= 2.10.1
 mcp-inspector: db-up
-	npx -y @modelcontextprotocol/inspector@$(INSPECTOR_VERSION) uv --directory $(CURDIR)/backend run --env-file ../.env frogradar-mcp
-
+	cfg="$${TMPDIR:-/tmp}/frogradar-mcp-inspector.json" && \
+	printf '{"mcpServers":{"frogradar":{"command":"uv","args":["--directory","%s/backend","run","--env-file","%s/.env","frogradar-mcp"]}}}' "$(CURDIR)" "$(CURDIR)" > "$$cfg" && \
+	MCP_AUTO_OPEN_ENABLED=false npx -y --legacy-peer-deps -p @modelcontextprotocol/inspector@$(INSPECTOR_VERSION) \
+		mcp-inspector --web --config "$$cfg" --server frogradar

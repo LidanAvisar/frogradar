@@ -40,6 +40,9 @@ curl localhost:8000/health
 | `make battlecards` | Battlecards for due competitors (1 synthesis + 1 verify call each; `ARGS="--force battlecards"`) |
 | `make radar-backfill` | Competitor Radar discovery for the last 90 days: Hacker News, GitHub new repos, CNCF landscape copies (no LLM calls) |
 | `make radar` | Radar step: candidates, emergence score, profiles of the top candidates (paid: bulk + verify; `ARGS="--force radar"`) |
+| `make radar-recheck` | Re-apply the radar profile check rule (partial kept + labelled) to stored profiles (no LLM calls) |
+| `make mcp` | FrogRadar MCP server over stdio (clients like Claude Desktop start it themselves; see "MCP & Skill") |
+| `make mcp-inspector` | MCP Inspector web UI against the stdio server (pinned 2.10.1) |
 | `make pipeline-report` | Quality report of the latest run (`RUN=<id>`): triage, distributions, cost per model, samples |
 | `make wayback-backfill` | Baseline for page_diff sources: Wayback snapshots ~12/6/3 months back + today, diffed in date order (no LLM calls; `SOURCE=` for one) |
 | `make scheduler-up` / `make scheduler-down` | Opt in / out of the daily paid run (`scheduler` compose profile, `DAILY_RUN_CRON`, UTC) |
@@ -660,6 +663,111 @@ statements come back partly verified); the worker is
 in-process (one mission at a time, no resume after a restart); the SSRF check resolves DNS separately from the
 HTTP client (a rebinding host could answer differently).
 
+## MCP & Skill: FrogRadar in Claude, Cursor and other MCP clients (`backend/app/mcp/`, `skills/`)
+
+![MCP Inspector calling get_battlecard("sonatype")](docs/screenshots/mcp-get-battlecard.png)
+
+Anyone at JFrog can ask their assistant about competitors and get cited answers from FrogRadar without opening
+the app. The MCP server is a thin layer over the same queries the app uses (no HTTP calls to our own API, no new
+intelligence logic), built with the official MCP Python SDK (`MCPServer`, the SDK's 2.x name for FastMCP).
+
+| Tool | What it returns | Cost |
+|---|---|---|
+| `whats_new(days=1, min_impact=3, company?)` | ranked signals: title, takeaway, impact, confidence, company, date, source url. An empty window widens to 7, then 30 days, and `note` says so ("No new signals in the last day; showing the last 7 days"), with `newest_signal_at` | free |
+| `search_intel(query, company?, days?)` | hybrid retrieval hits (signals, battlecard items, radar profiles): id, type, short text, url, score | free (one cached query embedding, no language model) |
+| `get_signal(id)` | summary, why JFrog cares, verified evidence quote, impact, confidence, source url | free |
+| `get_battlecard(company)` | positioning, strengths, weaknesses, opportunities and blind spots with numbered citations, capability matrix (JFrog vs competitor + evidence link), capabilities without evidence | free |
+| `pricing_changes(company?, days=90)` | verified before → after prices per pricing-page change, else summary + verified quote | free |
+| `radar(limit=10, relation?)` | new players: what it is, relation to JFrog + products, check label, score, why notable, app link | free |
+| `ask(question)` | the checked RAG answer (points with citations, what it means for JFrog, or not enough evidence) | **paid**, about $0.02 per new question; daily budget guard and LLM cache; stored as an `mcp` conversation |
+
+Resources: `frogradar://brief/today` (top story, developments, pricing watch) and `frogradar://battlecards`.
+Prompts: `morning_brief` and `competitor_briefing(company)`.
+
+Rules: outputs are built from the API's DTOs, so `raw_text` and mission page excerpts never leave the server
+(tested with a sentinel on every tool and resource). Every item carries its source url. Lists are capped at 25
+items, text fields at 600 characters, and a response at about 24 KB (`truncated: true`). Unknown companies get the
+list of valid slugs.
+
+### Connect a local client (stdio)
+
+Start Postgres (`make db-up`) and keep `.env` with the provider keys (needed for `ask` and the `search_intel`
+query embedding). The client starts the server itself.
+
+**Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
+`%APPDATA%\Claude\claude_desktop_config.json` (Windows), then restart Claude Desktop.
+
+```json
+{
+  "mcpServers": {
+    "frogradar": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/frogradar/backend", "run", "--env-file", "/absolute/path/to/frogradar/.env", "frogradar-mcp"]
+    }
+  }
+}
+```
+
+If Claude Desktop can't find `uv`, use its full path (`which uv`, e.g. `/opt/homebrew/bin/uv`).
+
+**Cursor:** `.cursor/mcp.json` in a project (or `~/.cursor/mcp.json` for all projects):
+
+```json
+{
+  "mcpServers": {
+    "frogradar": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/frogradar/backend", "run", "--env-file", "/absolute/path/to/frogradar/.env", "frogradar-mcp"]
+    }
+  }
+}
+```
+
+Other ways to run it: `make mcp` (stdio in a terminal) and `make mcp-inspector` (MCP Inspector web UI, pinned
+2.10.1).
+
+### Shared server (streamable HTTP + token)
+
+Set `MCP_TOKEN` in `.env` (e.g. `openssl rand -hex 32`) and restart the backend: the API serves MCP at
+`http://<host>:8000/mcp`. Every request needs `Authorization: Bearer <MCP_TOKEN>` (constant-time check, 401
+otherwise). Without `MCP_TOKEN` the route is not mounted and the backend logs an error; the rest of the API still
+starts. Add the host name clients use to `MCP_ALLOWED_HOSTS` (DNS-rebinding protection) when exposing it beyond
+localhost. Client config (Cursor and other clients that speak streamable HTTP):
+
+```json
+{
+  "mcpServers": {
+    "frogradar": {
+      "url": "http://localhost:8000/mcp",
+      "headers": { "Authorization": "Bearer <MCP_TOKEN>" }
+    }
+  }
+}
+```
+
+### The Skill (`skills/frogradar-ci-analyst/SKILL.md`)
+
+A Skill (Anthropic format: `name`, `description`, instructions) that teaches the assistant to use these tools for
+CI work: a morning brief, a competitor briefing before a sales call, updating a battlecard after a launch, and
+"is this new tool a threat?". It tells the assistant to cite every source url, keep vendor-claim and "Partly
+verified" labels, say plainly when FrogRadar has no evidence (never fill gaps from general knowledge as if it
+were FrogRadar data), prefer the free tools over `ask`, and suggest a research mission for gaps.
+
+Install:
+- **Claude Code:** `cp -r skills/frogradar-ci-analyst ~/.claude/skills/` (or `.claude/skills/` in a project).
+- **Claude Desktop / claude.ai:** `cd skills && zip -r frogradar-ci-analyst.zip frogradar-ci-analyst`, then
+  upload the zip under Settings → Capabilities → Skills.
+
+**Verified with the MCP Inspector (2026-10-22, stdio, dev DB):** tools listed
+([screenshot](docs/screenshots/mcp-inspector-tools.png)); `whats_new` returned 5 signals from the last day
+([screenshot](docs/screenshots/mcp-whats-new.png)); `get_battlecard("sonatype")` 14 sources and the matrix in
+10.7 KB; `radar()` GitGuardian, PatchWave, Primod, Code Genome Project, Void, Vercel
+([screenshot](docs/screenshots/mcp-radar.png)). One paid `ask`, $0.022 (Sonnet $0.018 + gpt-5.4-mini check
+$0.004): "Does Sonatype offer reachability analysis, and how does it compare with JFrog's contextual analysis?"
+→ yes, 5 cited points (Java/JVM, JavaScript, .NET; no container targets; call-path evidence Java only) and what it
+means for JFrog, built from the S15 mission findings and the regenerated battlecard
+([screenshot](docs/screenshots/mcp-ask.png)).
+
 ## Synthesis: daily brief and battlecards (`backend/app/pipeline/synthesis/`)
 
 Two pipeline nodes after `score`, on the synthesis model. The pattern: **the LLM proposes, code verifies**.
@@ -863,6 +971,9 @@ responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
 - **Good citizenship:** robots.txt and per-host delays for every fetch, an identifying User-Agent, no logins, no
   paywall bypassing, no imitation of browser fingerprints.
 - **No authentication yet:** write endpoints record the analyst name from the request (see Known limitations).
+- **MCP over HTTP** (`/mcp`) is off unless `MCP_TOKEN` is set, needs `Authorization: Bearer <MCP_TOKEN>`
+  (constant-time compare) and checks the Host header against `MCP_ALLOWED_HOSTS`. The stdio server runs with the
+  local user's rights and reads the same database; MCP outputs never include collected page text.
 
 ## Design decisions
 
@@ -941,6 +1052,7 @@ Each line: what we chose – why – what we rejected.
 - **D71 Research missions: plan gate, LangGraph loop, in-process worker** – the plan waits for the analyst; per sub-question search (own knowledge + Tavily) → read → extract (bulk, quote checked in code) → verify (other provider) → report citing kept findings only; budget, max steps, wall clock and Stop checked before every counted step, a limit jumps to a no-LLM report; one worker thread, interrupted missions failed on startup – rejected an autonomous tool-calling loop (unbounded cost, no plan review), a task queue service (Celery/Redis for one job type) and LangGraph checkpoints (resume not needed yet).
 - **D72 SSRF guard on every hop** – scheme, credentials, port and every resolved address checked before each request (page, robots.txt, redirects), plus size / time / redirect / content-type caps; blocked URLs are step notes – rejected a domain allow-list (missions must reach new vendors) and checking only the first URL (redirects reach internal hosts).
 - **D74 One verification rule for missions and radar profiles** – `partial` is kept and labelled "Partly verified" with the verifier's note, never high confidence; only `unsupported` is dropped; a radar profile is rejected only when "what it is" is dropped; stored profiles moved with `make radar-recheck` from the stored verdicts – rejected re-verifying every profile (cost, and a new sample of the same verdicts) and keeping the stricter radar-only rule.
+- **D75 MCP server as a thin, capped lens** – official MCP Python SDK (`MCPServer`, FastMCP's 2.x name); tools call the existing query / retrieval / Ask functions directly; outputs from the API DTOs (no raw_text), every item with its source url, 25 items / 600 chars / ~24 KB caps; `whats_new` widens an empty window and says so; only `ask` is paid (budget guard, cache, conversations stored as `mcp`); stdio entry point + token-gated streamable HTTP at /mcp (not mounted without `MCP_TOKEN`) – rejected calling our REST API from the MCP server (a second hop and no auth), the standalone `fastmcp` package (a second framework), and an open HTTP endpoint.
 - **D73 Findings become signals only when an analyst approves** – a verified finding is a candidate; approve creates a source-less signal with `mission_id` (approved, its verification, checked quote, company + capability links) or links the existing signal; partly verified stays labelled and capped at medium confidence; radar findings join the candidate's mentions – rejected auto-publishing verified findings and re-running enrichment on them.
 - **D64 Material for overlays only** – MatDialog + MatSnackBar (focus trap and return, live announcements) with `mat.core()` and Material's CSS variables mapped to our tokens; form controls stay native – rejected a full Material theme and Material form fields.
 
