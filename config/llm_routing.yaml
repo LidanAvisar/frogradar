@@ -1,8 +1,9 @@
 # Which model handles which task. LiteLLM model ids ("provider/model").
 # Validated by app/core/catalog.py (LLMRoutingFile). Env vars override the model ids:
 #   LLM_MODEL_BULK, LLM_MODEL_SYNTHESIS, LLM_MODEL_VERIFY, EMBEDDING_MODEL
-# Rule: the verify provider must differ from both bulk and synthesis providers
-# (a second model family checks the writer's work).
+# Rule: the verify provider must differ from both bulk and synthesis providers (a second model
+# family checks the writer's work). Single-provider setups: ALLOW_SAME_FAMILY_VERIFY=true starts
+# anyway with a warning (accuracy checks are weaker).
 # thinking: default | off | low | medium | high – model reasoning per task. default sends nothing
 #   (the model's own default); off disables it explicitly. Part of the LLM cache key.
 # Model ids checked against LiteLLM's model registry on 2026-10-20.
@@ -40,3 +41,13 @@ embedding:
 #   pricing:
 #     openai/some-new-model: {input_per_mtok_usd: 0.5, output_per_mtok_usd: 2.0}
 pricing: {}
+
+# Measured costs with this routing (USD; dev DB llm_calls, 2026-10-21/22). Shown next to paid actions
+# in the UI and in the README. Re-measure after changing models or prompts.
+cost_estimates_usd:
+  ask: 0.023       # new Ask question: synthesis answer + verify, measured $0.020–0.027 (repeats: $0)
+  mission: 0.03    # research mission plan → report (two runs: $0.0296, $0.0298; hard cap per mission)
+  # Daily run on the demo scope: ~5 news items (triage $0.0003, enrich+verify $0.0033 when relevant),
+  # ~15 discovery items (~$0.0006 avg), brief + check ~$0.025, two battlecards weekly (~$0.014/day),
+  # radar profiles ~$0.01.
+  daily_run: 0.08

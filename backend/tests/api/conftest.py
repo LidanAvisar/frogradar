@@ -11,7 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api.ask import require_ask_keys
 from app.api.deps import get_now
+from app.api.missions import require_mission_keys
 from app.db.enums import (
     EntityReviewStatus,
     EntityType,
@@ -40,6 +42,9 @@ def client(db_session: Session) -> Iterator[TestClient]:
     )
     app.dependency_overrides[get_session] = lambda: db_session
     app.dependency_overrides[get_now] = lambda: NOW
+    # Tests run without provider keys; the LLM is faked, so the key pre-checks are skipped.
+    app.dependency_overrides[require_ask_keys] = lambda: None
+    app.dependency_overrides[require_mission_keys] = lambda: None
     yield TestClient(app)
     app.dependency_overrides.clear()
 

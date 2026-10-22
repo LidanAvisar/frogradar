@@ -14,6 +14,7 @@ from app.agents.mission.service import approve_plan
 from app.agents.mission.worker import get_worker
 from app.api.ask import get_llm
 from app.api.deps import get_now
+from app.api.missions import require_mission_keys
 from app.db.enums import (
     FeedbackTarget,
     MissionOrigin,
@@ -60,6 +61,7 @@ def client(s: Session, worker: FakeWorker, llm: ScriptedLLM) -> Iterator[TestCli
     app.dependency_overrides[get_session] = lambda: s
     app.dependency_overrides[get_now] = lambda: NOW
     app.dependency_overrides[get_worker] = lambda: worker
+    app.dependency_overrides[require_mission_keys] = lambda: None  # no provider keys in tests
     app.dependency_overrides[get_llm] = lambda: LLMFns(complete=llm, embed=FakeEmbed())
     yield TestClient(app)
     app.dependency_overrides.clear()

@@ -1080,6 +1080,29 @@
         "title": "ConfidenceOut",
         "type": "object"
       },
+      "CostEstimatesOut": {
+        "properties": {
+          "ask": {
+            "title": "Ask",
+            "type": "number"
+          },
+          "daily_run": {
+            "title": "Daily Run",
+            "type": "number"
+          },
+          "mission": {
+            "title": "Mission",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ask",
+          "mission",
+          "daily_run"
+        ],
+        "title": "CostEstimatesOut",
+        "type": "object"
+      },
       "Coverage": {
         "properties": {
           "capabilities_known": {
@@ -1316,6 +1339,40 @@
           "side"
         ],
         "title": "EvidenceOut",
+        "type": "object"
+      },
+      "FeatureOut": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "enabled",
+              "degraded",
+              "off",
+              "demo"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "state"
+        ],
+        "title": "FeatureOut",
         "type": "object"
       },
       "FieldRate": {
@@ -2547,6 +2604,43 @@
           "counted"
         ],
         "title": "MissionStepOut",
+        "type": "object"
+      },
+      "ModelKeyOut": {
+        "properties": {
+          "env_vars": {
+            "description": "Env var names LiteLLM needs (names only, no values)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Env Vars",
+            "type": "array"
+          },
+          "key_present": {
+            "title": "Key Present",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "model",
+          "provider",
+          "key_present",
+          "env_vars"
+        ],
+        "title": "ModelKeyOut",
         "type": "object"
       },
       "NavCounts": {
@@ -5043,6 +5137,96 @@
         "title": "SourceOut",
         "type": "object"
       },
+      "StatusOut": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Demo snapshot's as-of time (ISO), demo mode only",
+            "title": "As Of"
+          },
+          "cost_estimates_usd": {
+            "$ref": "#/components/schemas/CostEstimatesOut"
+          },
+          "daily_budget_usd": {
+            "title": "Daily Budget Usd",
+            "type": "number"
+          },
+          "demo_questions": {
+            "description": "Ask questions demo mode answers (demo only)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Demo Questions",
+            "type": "array"
+          },
+          "extra_keys": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Extra Keys",
+            "type": "object"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureOut"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "demo",
+              "live"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelKeyOut"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "same_family_verify": {
+            "title": "Same Family Verify",
+            "type": "boolean"
+          },
+          "spend_today_usd": {
+            "title": "Spend Today Usd",
+            "type": "number"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "as_of",
+          "models",
+          "extra_keys",
+          "features",
+          "same_family_verify",
+          "warnings",
+          "spend_today_usd",
+          "daily_budget_usd",
+          "cost_estimates_usd",
+          "demo_questions"
+        ],
+        "title": "StatusOut",
+        "type": "object"
+      },
       "StoryRowOut": {
         "properties": {
           "citations": {
@@ -5355,6 +5539,9 @@
           },
           "404": {
             "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
           },
           "422": {
             "description": "Unprocessable Entity"
@@ -7084,6 +7271,27 @@
         "summary": "Reject",
         "tags": [
           "review"
+        ]
+      }
+    },
+    "/api/status": {
+      "get": {
+        "operationId": "get_system_status_api_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get System Status",
+        "tags": [
+          "status"
         ]
       }
     },

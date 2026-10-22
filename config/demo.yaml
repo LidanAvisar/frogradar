@@ -1,0 +1,14 @@
+# Demo mode (DEMO_MODE=true, `make demo`): the Ask questions the demo answers. Each one is answered by
+# the normal Ask flow from the LLM cache in the committed snapshot (no API keys, $0). Other questions
+# get a friendly "demo mode: try one of these" reply.
+# Changing this list: run `make demo-prime` (paid, live keys: about $0.02 per new question), then
+# `make demo-snapshot` and `make demo-check`.
+ask_questions:
+  - What changed in Sonatype's pricing this year?
+  - Who launched a package firewall?
+  - What supply-chain security incidents happened recently?
+  - What are Sonatype's weaknesses compared to JFrog?
+  - What new tools or startups have appeared that could compete with Xray or Curation?
+  - Does Sonatype offer reachability analysis, and how does it compare with JFrog's contextual analysis?
+  # Honesty example: the data can't answer this, and the answer says so.
+  - Did Cloudsmith raise funding this year?

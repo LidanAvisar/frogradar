@@ -4,6 +4,7 @@ pipeline, discovery).
 Each file maps to a Pydantic model with extra="forbid", so typos fail loudly at load time.
 """
 
+import logging
 import re
 from datetime import date
 from functools import lru_cache
@@ -22,6 +23,8 @@ from pydantic import (
 
 from app.core.config import get_settings
 from app.db.enums import FetchMethod, Relationship, Segment, SourceKind
+
+logger = logging.getLogger(__name__)
 
 Slug = Annotated[str, Field(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$", max_length=100)]
 Url = Annotated[str, Field(pattern=r"^https?://\S+$")]
@@ -265,20 +268,46 @@ class ModelPricing(_Strict):
     output_per_mtok_usd: Annotated[float, Field(ge=0)] = 0.0
 
 
+class CostEstimates(_Strict):
+    """Measured costs with the default routing (USD), shown next to paid actions."""
+
+    ask: Annotated[float, Field(ge=0)] = 0.0  # one new Ask question (answer + verify)
+    mission: Annotated[float, Field(ge=0)] = 0.0  # one research mission (plan → report)
+    daily_run: Annotated[float, Field(ge=0)] = 0.0  # one daily pipeline run on the demo scope
+
+
 class LLMRoutingFile(_Strict):
     tasks: TaskRoutes
     embedding: EmbeddingRoute
     # Fallback prices for models LiteLLM doesn't know (USD per 1M tokens).
     pricing: dict[str, ModelPricing] = Field(default_factory=dict)
+    cost_estimates_usd: CostEstimates = Field(default_factory=CostEstimates)
+    # Set from ALLOW_SAME_FAMILY_VERIFY (env): a single-provider setup starts with a warning.
+    allow_same_family_verify: bool = False
+
+    @property
+    def same_family_verify(self) -> bool:
+        writers = {self.tasks.bulk.provider, self.tasks.synthesis.provider}
+        return self.tasks.verify.provider in writers
 
     @model_validator(mode="after")
     def _check(self) -> Self:
         verify = self.tasks.verify.provider
         writers = {self.tasks.bulk.provider, self.tasks.synthesis.provider}
         if verify in writers:
+            if self.allow_same_family_verify:
+                logger.warning(
+                    "verify provider '%s' is the same family as the writers %s "
+                    "(ALLOW_SAME_FAMILY_VERIFY=true): accuracy checks are weaker",
+                    verify,
+                    sorted(writers),
+                )
+                return self
             raise ValueError(
                 f"verify provider '{verify}' must differ from the bulk and synthesis "
-                f"providers {sorted(writers)}"
+                f"providers {sorted(writers)} (a second model family checks the writer). "
+                "For a single-provider setup set ALLOW_SAME_FAMILY_VERIFY=true "
+                "(starts with a warning: accuracy checks are weaker)"
             )
         return self
 
@@ -745,6 +774,8 @@ def _llm_routing(config_dir: Path) -> LLMRoutingFile:
                 tasks[task]["model"] = override
         if s.embedding_model and isinstance(data.get("embedding"), dict):
             data["embedding"]["model"] = s.embedding_model
+        if s.allow_same_family_verify:
+            data["allow_same_family_verify"] = True
     return _validate(LLMRoutingFile, config_dir, name, data)
 
 

@@ -230,6 +230,37 @@ def _run_locked(
     return run
 
 
+class NotRunnable(RuntimeError):
+    """Demo mode, or the bulk model's key is missing: the pipeline doesn't start."""
+
+
+def key_skips() -> frozenset[str]:
+    """Nodes to skip for missing keys (app.core.status), so a run never fails on a missing key.
+
+    Raises NotRunnable in demo mode or without the bulk key (nothing useful could run).
+    """
+    from app.core.status import get_status
+
+    if get_settings().demo_mode:
+        raise NotRunnable("demo mode: the pipeline does not run on the snapshot (make live)")
+    st = get_status()
+    missing = {m.tier: m for m in st.models if not m.key_present}
+    if "bulk" in missing:
+        raise NotRunnable(f"no key for the bulk model ({', '.join(missing['bulk'].env_vars)})")
+    skip: set[str] = set()
+    if "embedding" in missing:
+        skip |= {"embed", "dedup"}
+    if "verify" in missing:
+        skip |= {"verify"}
+    if "synthesis" in missing:
+        skip |= {"brief", "battlecards"}
+    if "verify" in missing or "synthesis" in missing:
+        skip |= {"radar"}  # profiles need both the writer and the checker
+    if skip:
+        logger.warning("missing keys: skipping %s", ", ".join(sorted(skip)))
+    return frozenset(skip)
+
+
 def _names(value: str, allowed: frozenset[str] | tuple[str, ...]) -> frozenset[str]:
     names = frozenset(v.strip() for v in value.split(",") if v.strip())
     unknown = names - set(allowed)
@@ -248,11 +279,16 @@ def main(argv: list[str] | None = None) -> int:
 
     from app.db.session import get_engine
 
+    try:
+        skip = args.skip | key_skips()
+    except NotRunnable as e:
+        print(f"not started: {e}", file=sys.stderr)
+        return 2
     factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
     try:
         run = run_pipeline(
             factory,
-            skip=args.skip,
+            skip=skip,
             force=args.force,
             trigger=RunTrigger.SCHEDULED if args.scheduled else RunTrigger.MANUAL,
         )

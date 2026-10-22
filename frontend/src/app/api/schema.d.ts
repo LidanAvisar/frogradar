@@ -526,6 +526,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get System Status */
+        get: operations["get_system_status_api_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -931,6 +948,15 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** CostEstimatesOut */
+        CostEstimatesOut: {
+            /** Ask */
+            ask: number;
+            /** Daily Run */
+            daily_run: number;
+            /** Mission */
+            mission: number;
+        };
         /** Coverage */
         Coverage: {
             /** Capabilities Known */
@@ -1018,6 +1044,23 @@ export interface components {
              * @description True = found verbatim in the source; unverified quotes are not shown as quotes
              */
             verified: boolean;
+        };
+        /** FeatureOut */
+        FeatureOut: {
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "degraded" | "off" | "demo";
         };
         /** FieldRate */
         FieldRate: {
@@ -1458,6 +1501,22 @@ export interface components {
             step_no: number;
             /** Summary */
             summary: string;
+        };
+        /** ModelKeyOut */
+        ModelKeyOut: {
+            /**
+             * Env Vars
+             * @description Env var names LiteLLM needs (names only, no values)
+             */
+            env_vars: string[];
+            /** Key Present */
+            key_present: boolean;
+            /** Model */
+            model: string;
+            /** Provider */
+            provider: string;
+            /** Tier */
+            tier: string;
         };
         /** NavCounts */
         NavCounts: {
@@ -2326,6 +2385,41 @@ export interface components {
              */
             trust: number;
         };
+        /** StatusOut */
+        StatusOut: {
+            /**
+             * As Of
+             * @description Demo snapshot's as-of time (ISO), demo mode only
+             */
+            as_of: string | null;
+            cost_estimates_usd: components["schemas"]["CostEstimatesOut"];
+            /** Daily Budget Usd */
+            daily_budget_usd: number;
+            /**
+             * Demo Questions
+             * @description Ask questions demo mode answers (demo only)
+             */
+            demo_questions: string[];
+            /** Extra Keys */
+            extra_keys: {
+                [key: string]: boolean;
+            };
+            /** Features */
+            features: components["schemas"]["FeatureOut"][];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "demo" | "live";
+            /** Models */
+            models: components["schemas"]["ModelKeyOut"][];
+            /** Same Family Verify */
+            same_family_verify: boolean;
+            /** Spend Today Usd */
+            spend_today_usd: number;
+            /** Warnings */
+            warnings: string[];
+        };
         /** StoryRowOut */
         StoryRowOut: {
             /** Citations */
@@ -2462,6 +2556,13 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3555,6 +3656,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_system_status_api_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusOut"];
                 };
             };
         };

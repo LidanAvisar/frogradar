@@ -51,6 +51,7 @@ from app.api.schemas import (
     RadarRefreshOut,
 )
 from app.core.catalog import load_pipeline
+from app.core.config import get_settings
 from app.core.llm import BudgetExceeded
 from app.db.enums import FindingStatus, MissionOrigin, MissionStatus, Verification
 from app.db.models import (
@@ -66,6 +67,28 @@ from app.db.models import (
 
 router = APIRouter(prefix="/api/missions", tags=["missions"])
 Worker = Annotated[MissionWorker, Depends(get_worker)]
+
+
+def require_mission_keys() -> None:
+    """New missions / plan approval without the keys they need: 503 with the reason."""
+    from app.core.status import get_status
+
+    if get_settings().demo_mode:
+        return
+    feature = get_status().feature("missions")
+    if feature.state == "off":
+        raise HTTPException(503, f"Research missions are off: {feature.reason}.")
+
+
+def require_live_mode() -> None:
+    """Demo mode never starts missions: 409 with a clear message."""
+    from app.demo.questions import DEMO_MISSION_MESSAGE
+
+    if get_settings().demo_mode:
+        raise HTTPException(409, {"demo": True, "message": DEMO_MISSION_MESSAGE})
+
+
+MissionsEnabled = [Depends(require_live_mode), Depends(require_mission_keys)]
 
 
 def _bad(e: Exception) -> HTTPException:
@@ -265,7 +288,7 @@ def get_prefill(
     )  # fmt: skip
 
 
-@router.post("", response_model=MissionDetailOut, status_code=201)
+@router.post("", response_model=MissionDetailOut, status_code=201, dependencies=MissionsEnabled)
 def post_mission(body: MissionCreateIn, session: DbSession, worker: Worker) -> MissionDetailOut:
     try:
         m = create_mission(
@@ -303,7 +326,7 @@ def get_mission(mission_id: int, session: DbSession) -> MissionDetailOut:
     return _detail(session, _get(session, mission_id))
 
 
-@router.post("/{mission_id}/plan", response_model=MissionDetailOut)
+@router.post("/{mission_id}/plan", response_model=MissionDetailOut, dependencies=MissionsEnabled)
 def post_plan(
     mission_id: int, body: MissionPlanIn, session: DbSession, worker: Worker
 ) -> MissionDetailOut:

@@ -37,11 +37,19 @@ def parse_cron(expr: str) -> CronTrigger:
 
 
 def daily_job(factory: sessionmaker[Session], run: Callable[..., object] | None = None) -> str:
-    """One scheduled run. Returns "ran", "locked" or "failed" (never raises: keep the loop)."""
+    """One scheduled run: "ran", "locked", "skipped" or "failed" (never raises: keep the loop)."""
+    skip: frozenset[str] = frozenset()
     if run is None:
+        from app.pipeline.graph import NotRunnable, key_skips
         from app.pipeline.graph import run_pipeline as run
+
+        try:
+            skip = key_skips()
+        except NotRunnable as e:
+            logger.warning("daily run skipped: %s", e)
+            return "skipped"
     try:
-        result = run(factory, trigger=RunTrigger.SCHEDULED)
+        result = run(factory, trigger=RunTrigger.SCHEDULED, **({"skip": skip} if skip else {}))
     except PipelineLocked:
         logger.warning("daily run skipped: another pipeline run is in progress")
         return "locked"
