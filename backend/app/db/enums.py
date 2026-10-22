@@ -139,6 +139,7 @@ class ReasonCode(StrEnum):
 class AskSource(StrEnum):
     UI = "ui"  # asked by an analyst (API / UI)
     EVAL = "eval"  # created by `make eval-ask`; hidden from Recent questions
+    MCP = "mcp"  # asked through the MCP server's ask tool; hidden from Recent questions
 
 
 class RadarKind(StrEnum):
