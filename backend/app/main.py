@@ -1,6 +1,6 @@
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,12 +18,13 @@ from app.api.signals import router as signals_router
 from app.core.config import get_settings
 from app.db.checks import EmbeddingDimMismatch, assert_embedding_dim_matches_db
 from app.db.session import get_engine
+from app.mcp.http import mount_mcp
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Log loudly on a config/DB mismatch, but still start: /health must stay reachable.
     try:
         with get_engine().connect() as conn:
@@ -40,7 +41,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         except SQLAlchemyError as e:
             logger.warning("mission worker not started, DB unavailable: %s", type(e).__name__)
             worker = None
-    yield
+    async with AsyncExitStack() as stack:
+        mcp_server = getattr(app.state, "mcp", None)
+        if mcp_server is not None:  # the /mcp route needs its session manager running
+            await stack.enter_async_context(mcp_server.session_manager.run())
+        yield
     if worker is not None:
         worker.stop()
 
@@ -56,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(ask_router)
     app.include_router(review_router)
     app.include_router(missions_router)
+    app.state.mcp = mount_mcp(app, get_settings())
     return app
 
 

@@ -1,7 +1,7 @@
 .PHONY: up down logs db-up migrate seed test test-live lint llm-smoke collect backfill \
 	embed dedup link dedup-report brief battlecards pipeline pipeline-report wayback-backfill scheduler-up scheduler-down scheduler-logs \
 	eval-select eval-embed eval-pairs eval-label eval eval-compare eval-ask eval-gold api-types screenshots \
-	radar radar-backfill radar-recheck
+	radar radar-backfill radar-recheck mcp mcp-inspector
 
 up:
 	docker compose up -d --build
@@ -155,3 +155,15 @@ api-types:
 # Needs the backend on :8000 and `ng serve` on :4200 (FRONTEND_URL to override).
 screenshots:
 	cd frontend && node scripts/screenshots.mjs
+
+# FrogRadar MCP server over stdio (Claude Desktop / Cursor / Inspector run this command themselves).
+# Needs Postgres (make db-up); keys from .env for `ask` and the search_intel query embedding.
+mcp: db-up
+	cd backend && uv run --env-file ../.env frogradar-mcp
+
+# MCP Inspector UI against the stdio server (http://localhost:6274). Version pinned past the
+# 14-day cooldown.
+INSPECTOR_VERSION ?= 2.10.0
+mcp-inspector: db-up
+	npx -y @modelcontextprotocol/inspector@$(INSPECTOR_VERSION) uv --directory $(CURDIR)/backend run --env-file ../.env frogradar-mcp
+

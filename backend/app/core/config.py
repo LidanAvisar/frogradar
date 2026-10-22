@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     # In-process mission worker thread, started with the API (off in tests / CLI tools).
     mission_worker: bool = True
 
+    # MCP server (S16, D75). The HTTP transport at /mcp is mounted only when MCP_TOKEN is
+    # set; clients send `Authorization: Bearer <MCP_TOKEN>`. mcp_allowed_hosts: Host header values
+    # allowed (DNS-rebinding protection), comma list; add the shared host name to expose it.
+    mcp_token: str = ""
+    mcp_allowed_hosts: str = "127.0.0.1:*,localhost:*,[::1]:*"
+    # Links into the web app in MCP tool output (radar profiles, battlecards).
+    app_url: str = "http://localhost:4200"
+
     # Scheduler service (app/scheduler.py): standard 5-field cron, evaluated in UTC.
     daily_run_cron: str = "0 6 * * *"
 
