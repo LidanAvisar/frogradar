@@ -222,7 +222,17 @@ def build_server(
             cfg = cfg.model_copy(
                 update={"k": min(12, cfg.max_docs), "max_docs": max(12, cfg.max_docs)}
             )
-            found = retrieve(s, query, f, embed=get_llm().embed, cfg=cfg)
+            try:
+                found = retrieve(s, query, f, embed=get_llm().embed, cfg=cfg)
+            except BudgetExceeded as e:
+                raise ToolError(
+                    f"FrogRadar's LLM budget is reached; try again tomorrow ({e})."
+                ) from None
+            except LLMError as e:
+                raise ToolError(
+                    "search_intel could not embed the query (is the embedding API key set in the "
+                    f"server's environment?): {type(e).__name__}. Use whats_new or get_battlecard instead."
+                ) from None
             hits = [
                 SearchHit(
                     id=h.doc.id,
@@ -428,7 +438,7 @@ def build_server(
                 not_enough_evidence=out.not_enough_evidence,
                 intro=out.intro,
                 points=[
-                    Cited(text=cut(f"{p.lead} {p.text}") or "", citations=p.citations)
+                    Cited(text=cut(f"{p.lead}: {p.text}") or "", citations=p.citations)
                     for p in out.points
                 ],  # fmt: skip
                 meaning_for_jfrog=Cited(

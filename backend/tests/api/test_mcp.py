@@ -260,3 +260,19 @@ def test_http_transport_requires_the_token():
         ok = client.post("/mcp", json=body, headers={**headers, "authorization": "Bearer s3cret"})
         assert ok.status_code == 200, ok.text
         assert "FrogRadar" in ok.text
+
+
+def test_search_intel_explains_a_failed_embedding(db_session, build):
+    from app.core.llm import ProviderError
+
+    def broken(texts):  # noqa: ANN001, ANN202
+        raise ProviderError("no key")
+
+    @contextmanager
+    def sessions():  # noqa: ANN202
+        yield db_session
+
+    build.signal("x")
+    srv = build_server(sessions=sessions, llm=lambda: LLMFns(complete=_fake_llm(), embed=broken),
+                       now=lambda: NOW)  # fmt: skip
+    assert "could not embed the query" in error(srv, "search_intel", query="firewall")
