@@ -40,6 +40,8 @@ from app.db.models import (
 from app.pipeline.context import CompleteFn, EmbedFn, RunContext
 from app.pipeline.hashing import content_hash
 from app.pipeline.normalize import canonical_url
+from app.pipeline.scope import not_mission, visible
+from app.pipeline.score import band as score_band
 
 ACTIVE = (MissionStatus.QUEUED, MissionStatus.PLANNING, MissionStatus.RUNNING)
 CONFIDENCE_VALUE = {FindingConfidence.HIGH: 0.85, FindingConfidence.MEDIUM: 0.65,
@@ -312,7 +314,12 @@ def approve_finding(
     if src.kind == MissionSourceKind.KB and src.signal_id is not None:
         signal_id = src.signal_id  # already intelligence: link, don't duplicate
     else:
-        signal_id = _new_signal(session, m, f, now, embed)
+        vector, model = _embed_finding(m, f, embed)
+        existing = _existing_signal(session, f, vector, model)
+        if existing is not None:
+            signal_id = existing  # the same story is already a signal: link, don't duplicate (D82)
+        else:
+            signal_id = _new_signal(session, m, f, now, vector, model)
     f.status = FindingStatus.APPROVED
     f.signal_id = signal_id
     f.reviewed_by = (analyst.strip() or "analyst")[:100]
@@ -322,8 +329,52 @@ def approve_finding(
     return signal_id
 
 
+def _embedding_text(f: MissionFinding) -> str:
+    return f"{f.statement[:300]}\n{f.statement}"  # the new signal's title + summary
+
+
+def _embed_finding(m: Mission, f: MissionFinding,
+                   embed: EmbedFn | None) -> tuple[list[float] | None, str | None]:  # fmt: skip
+    if embed is None:
+        return None, None
+    try:
+        with llm_context(mission_id=m.id):
+            res = embed([_embedding_text(f)])
+        return list(res.vectors[0]), res.model
+    except Exception:  # noqa: BLE001 - full-text search still finds it; embed later
+        return None, None
+
+
+def _existing_signal(session: Session, f: MissionFinding, vector: list[float] | None,
+                     model: str | None) -> int | None:  # fmt: skip
+    """A visible signal that already tells this finding's story (D82), else None:
+    1. a collected signal (not another finding) of the same page: one page often yields several
+       distinct findings, so findings are never matched to each other by URL;
+    2. any visible signal whose embedding reaches dedup.cross_source_threshold (needs an
+       embedding: without one, e.g. in demo mode, only the URL check runs)."""
+    url = canonical_url(f.source.url)
+    same_page = session.scalar(
+        select(Signal.id)
+        .where(visible(), not_mission(), Signal.canonical_url == url)
+        .order_by(Signal.id)
+        .limit(1)
+    )
+    if same_page is not None:
+        return same_page
+    if vector is None:
+        return None
+    threshold = load_pipeline().dedup.cross_source_threshold
+    distance = Signal.embedding.cosine_distance(vector)
+    return session.scalar(
+        select(Signal.id)
+        .where(visible(), Signal.embedding_model == model, distance <= 1 - threshold)
+        .order_by(distance, Signal.id)
+        .limit(1)
+    )
+
+
 def _new_signal(session: Session, m: Mission, f: MissionFinding, now: datetime,
-                embed: EmbedFn | None) -> int:  # fmt: skip
+                vector: list[float] | None, model: str | None) -> int:  # fmt: skip
     src = f.source
     meta = f.meta or {}
     try:
@@ -333,7 +384,7 @@ def _new_signal(session: Session, m: Mission, f: MissionFinding, now: datetime,
     confidence = CONFIDENCE_VALUE[f.confidence]
     if f.verification != Verification.SUPPORTED:
         confidence = min(confidence, CONFIDENCE_VALUE[FindingConfidence.MEDIUM])
-    band = "high" if confidence >= 0.8 else "medium" if confidence >= 0.6 else "low"
+    band = score_band(confidence, load_pipeline().score)
     summary = f.statement
     sig = Signal(
         source_id=None,
@@ -378,14 +429,9 @@ def _new_signal(session: Session, m: Mission, f: MissionFinding, now: datetime,
         session.execute(
             insert(signal_capabilities).values(signal_id=sig.id, capability_id=m.capability_id)
         )
-    if embed is not None:
-        try:
-            with llm_context(mission_id=m.id):
-                res = embed([f"{sig.title}\n{summary}"])
-            sig.embedding = res.vectors[0]
-            sig.embedding_model = res.model
-        except Exception:  # noqa: BLE001 - full-text search still finds it; embed later
-            pass
+    if vector is not None:
+        sig.embedding = vector
+        sig.embedding_model = model
     return sig.id
 
 
@@ -395,7 +441,9 @@ def reject_finding(session: Session, f: MissionFinding, analyst: str, now: datet
         raise MissionInputError(f"Finding {f.id} can't be rejected ({f.status}).")
     if f.status == FindingStatus.APPROVED and f.signal_id is not None:
         sig = session.get(Signal, f.signal_id)
-        if sig is not None and sig.mission_id == f.mission_id:
+        # Only the signal this finding created: a finding linked to an existing signal (KB source
+        # or the same story, D82) leaves that signal alone.
+        if sig is not None and sig.mission_id == f.mission_id and _created_by(sig, f):
             sig.status = ReviewStatus.REJECTED  # leaves visible() like any rejected signal
         m = session.get(Mission, f.mission_id)
         if m is not None and m.radar_candidate_id is not None:
@@ -406,6 +454,10 @@ def reject_finding(session: Session, f: MissionFinding, analyst: str, now: datet
     f.reviewed_by = (analyst.strip() or "analyst")[:100]
     f.reviewed_at = now
     _feedback(session, f, FeedbackAction.REJECT, analyst, reason, comment)
+
+
+def _created_by(sig: Signal, f: MissionFinding) -> bool:
+    return (sig.meta or {}).get("finding_id") == f.id
 
 
 def radar_snapshot(cand: RadarCandidate) -> dict[str, Any]:

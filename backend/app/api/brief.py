@@ -40,7 +40,7 @@ from app.api.schemas import (
 from app.core.catalog import load_discovery
 from app.db.enums import FetchMethod, ReportKind, Verification
 from app.db.models import Entity, PipelineRun, Report, Signal, Source, signal_entities
-from app.pipeline.scope import in_scope, not_discovery
+from app.pipeline.scope import in_scope, not_discovery, not_mission
 from app.pipeline.synthesis.inputs import display_title
 
 router = APIRouter(prefix="/api", tags=["brief"])
@@ -79,6 +79,7 @@ def get_brief(
     # fetched_at is used only when the source gave no publish date.
     is_new = (
         visible(),
+        not_mission(),  # findings have no publish date: fetched today is not news today (D82)
         Signal.relevant.is_(True),
         Signal.verification != Verification.UNSUPPORTED,
         event_time() >= now - timedelta(hours=24),

@@ -318,7 +318,7 @@ All pitfalls: [docs/DESIGN.md](docs/DESIGN.md#pitfalls-learned-the-hard-way).
 
 ## Design decisions
 
-The ones that shape the product (all 80, D1–D80, each with what we rejected: [docs/DESIGN.md](docs/DESIGN.md)):
+The ones that shape the product (all 82, D1–D82, each with what we rejected: [docs/DESIGN.md](docs/DESIGN.md)):
 
 - **The LLM proposes, code verifies.** Quotes, citations, prices, entity slugs and confidence are checked or computed
   in code; a model from another vendor checks the claims.
@@ -327,7 +327,9 @@ The ones that shape the product (all 80, D1–D80, each with what we rejected: [
 - **Triage favours recall**; dedup favours precision (a duplicate shown twice is cheaper than a hidden launch).
 - **Collected text is analysis input only.** Users see a summary, a short quote and the link; `raw_text` never
   leaves the server (tested on every endpoint and MCP tool) and is stripped from the demo snapshot.
-- **Missions have a plan gate and hard limits** instead of an open-ended tool-calling loop.
+- **Missions have a plan gate and hard limits** instead of an open-ended tool-calling loop. Approved findings are
+  intelligence, not news: they feed battlecards, Ask and the signal feed but never rank in the Brief, and a finding
+  that repeats an existing signal is linked to it instead of duplicated.
 - **Discovery is conservative:** nothing becomes a tracked competitor without an analyst; the radar score is a
   transparent formula, not an LLM "threat score".
 - **Everything configurable, nothing hidden:** competitors, sources, capabilities, model routing, score weights and
@@ -378,7 +380,7 @@ and Build Info): [LidanAvisar/jfrog_task – docs/STAGE2.md](https://github.com/
 | [docs/PIPELINE.md](docs/PIPELINE.md) | Collectors, page diffs and the Wayback baseline, dedup and entity linking, triage / enrich / verify / confidence, synthesis, Competitor Radar |
 | [docs/FEATURES.md](docs/FEATURES.md) | Every screen and its API, analyst loop, Ask, research missions (with two paid runs), MCP server and Skill setup |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Eval set, silver labels, results v1 → v2, limits, gold labels |
-| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D80 and the full pitfalls list |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D82 and the full pitfalls list |
 
 ```
 backend/   FastAPI app (api, core, db, pipeline, agents, rag, mcp, demo) + tests

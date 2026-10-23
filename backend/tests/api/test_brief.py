@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from app.db.enums import FetchMethod, Relationship, ReportKind, RunStatus, RunTrigger, Verification
 from app.db.models import PipelineRun, Report
+from app.pipeline.scope import ranked
 from tests.api.conftest import NOW
 
 
@@ -64,6 +65,27 @@ def test_top_excludes_unshowable_signals(client, build):
 
     ids = set(ranking(brief(client)))
     assert ids == {shown.id, partial.id, canonical.id}
+
+
+def test_mission_findings_never_rank_or_count_as_new(client, build):
+    """Approved research findings have no publish date: by fetch time they would look like
+    today's top news (the same story twice in the Top 5). They stay in the signal feed (D82)."""
+    news = build.signal("news", impact=3, confidence=0.8)
+    finding = build.signal("finding", impact=5, confidence=0.85, published=False,
+                           fetched_hours_ago=1, meta={"kind": "mission"})  # fmt: skip
+    finding.source_id = None
+    build.s.flush()
+
+    data = brief(client)
+    assert ranking(data) == [news.id]
+    assert finding.id not in [i["id"] for i in data["since_yesterday"]]
+    # One ranking for the Brief, the daily brief's input and MCP whats_new.
+    since = NOW - timedelta(days=7)
+    assert build.s.scalars(ranked(since, NOW)).all() == [news]
+    # Still intelligence: the signal feed and detail show it.
+    items = client.get("/api/signals").json()["items"]
+    assert finding.id in [i["id"] for i in items]
+    assert client.get(f"/api/signals/{finding.id}").status_code == 200
 
 
 def test_since_yesterday_uses_publish_date(client, build):

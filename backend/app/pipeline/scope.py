@@ -74,6 +74,17 @@ def not_discovery() -> ColumnElement[bool]:
     return Signal.meta["kind"].astext.is_distinct_from("discovery")
 
 
+# ---------- research-mission findings (D73, D82) ----------
+
+
+def not_mission() -> ColumnElement[bool]:
+    """Not an approved research-mission finding (meta.kind = "mission"). Findings are research,
+    not news: they have no publish date, so by fetch time they would look like today's news.
+    They stay in battlecards, Ask / RAG, the signal feed and the mission screen, but not in the
+    Brief's ranking, "Since yesterday", the daily brief's input or the MCP whats_new tool (D82)."""
+    return Signal.meta["kind"].astext.is_distinct_from("mission")
+
+
 # ---------- what screens and synthesis may use ----------
 
 
@@ -107,12 +118,14 @@ def event_time() -> ColumnElement[datetime]:
 
 
 def ranked(since: datetime, until: datetime) -> Select[tuple[Signal]]:
-    """Usable, scored signals of a window, best first: impact × confidence, then newest.
-    One ranking for the Brief's Top 5 (API) and the daily brief's input (pipeline)."""
+    """Usable, scored news signals of a window, best first: impact × confidence, then newest.
+    One ranking for the Brief's Top 5 (API) and the daily brief's input (pipeline). Research-mission
+    findings are not news and never rank here (D82)."""
     return (
         select(Signal)
         .where(
             usable(),
+            not_mission(),
             Signal.impact.is_not(None),
             Signal.confidence.is_not(None),
             event_time() >= since,
