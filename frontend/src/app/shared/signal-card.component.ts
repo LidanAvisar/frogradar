@@ -67,7 +67,7 @@ export class SignalCardComponent {
   });
   /** The enriched one-line takeaway; older signals fall back to the first sentence of "why". */
   protected readonly takeaway = computed(
-    () => this.signal().takeaway || firstSentence(this.signal().why_jfrog_cares, 400),
+    () => this.signal().takeaway || firstSentence(this.signal().why_jfrog_cares),
   );
   protected readonly category = computed(() => categoryLabel(this.signal().category));
   protected readonly date = computed(() => shortDate(this.signal().published_at));

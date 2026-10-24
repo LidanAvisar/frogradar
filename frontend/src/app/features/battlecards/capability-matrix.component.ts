@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import type { MatrixRow } from '../../api/models';
 import { firstSentence, segmentLabel, shortDate } from '../../core/format';
+import { ClampTextComponent } from '../../shared/clamp-text.component';
 import { LevelBadgeComponent } from '../../shared/level-badge.component';
 
 interface Group {
@@ -17,11 +18,14 @@ interface Group {
  * level links to its evidence signal. Capabilities where the competitor's level is unknown are folded
  * into a "without evidence yet" disclosure (JFrog's level and an Investigate link per row that starts a research mission).
  * Tables scroll horizontally inside their own box on narrow screens (focusable, labelled region).
+ * Text is never sliced: each note is its full first sentence and the evidence its full title + date,
+ * wrapping; a long note is clamped to 3 lines and a long evidence title to 2 (the date stays visible
+ * below), each with a "more" toggle (fr-clamp-text).
  */
 @Component({
   selector: 'fr-capability-matrix',
   standalone: true,
-  imports: [LevelBadgeComponent, NgTemplateOutlet, RouterLink],
+  imports: [ClampTextComponent, LevelBadgeComponent, NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (known().length) {
@@ -43,6 +47,7 @@ interface Group {
       <div class="scroll" role="region" tabindex="0" [attr.aria-label]="'Capability matrix' + label + ', JFrog vs ' + competitor() + ' (scrolls sideways)'">
         <table>
           <caption class="visually-hidden">Capability levels of JFrog and {{ competitor() }}, {{ caption }}</caption>
+          <colgroup><col class="c-cap" /><col class="c-jfrog" /><col class="c-comp" /><col class="c-ev" /></colgroup>
           <thead>
             <tr>
               <th scope="col">Capability</th>
@@ -65,16 +70,17 @@ interface Group {
                   <td>
                     <fr-level-badge [level]="r.jfrog.level" />
                     @if (r.jfrog.note && r.jfrog.level !== 'unknown') {
-                      <span class="note" [attr.title]="r.jfrog.note">{{ short(r.jfrog.note) }}</span>
+                      <fr-clamp-text class="note" [text]="sentence(r.jfrog.note)" />
                     }
                   </td>
                   <td>
                     <fr-level-badge [level]="r.competitor.level" />
-                    @if (r.competitor.note) { <span class="note" [attr.title]="r.competitor.note">{{ short(r.competitor.note) }}</span> }
+                    @if (r.competitor.note) { <fr-clamp-text class="note" [text]="sentence(r.competitor.note)" /> }
                   </td>
                   <td class="evidence">
                     @if (r.competitor.evidence; as ev) {
-                      <a [href]="ev.url" target="_blank" rel="noopener noreferrer" [attr.title]="ev.title">{{ evidenceText(ev.title, ev.published_at) }}</a>
+                      <fr-clamp-text class="ev-title" [text]="ev.title" [href]="ev.url" [lines]="2" />
+                      @if (ev.published_at) { <span class="ev-date">{{ date(ev.published_at) }}</span> }
                     } @else {
                       <a class="investigate" routerLink="/missions"
                          [queryParams]="{ entity_slug: competitorSlug(), capability_slug: r.capability.slug }"
@@ -91,14 +97,17 @@ interface Group {
   `,
   styles: [`
     .scroll { overflow-x: auto; margin-top: var(--fr-gap-sm); border-radius: var(--fr-radius-control); }
-    table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14px; }
+    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+    col.c-cap { width: 22%; }
+    col.c-jfrog, col.c-comp { width: 27%; }
+    col.c-ev { width: 24%; }
     thead th {
       text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--fr-border);
       font-size: var(--fr-text-eyebrow); letter-spacing: 0.04em; text-transform: uppercase;
       color: var(--fr-muted); font-weight: 600;
     }
     td, tbody th { padding: 12px 10px; border-bottom: 1px solid var(--fr-divider); vertical-align: top; text-align: left; }
-    .cap { font-weight: 500; color: var(--fr-ink); width: 34%; }
+    .cap { font-weight: 500; color: var(--fr-ink); overflow-wrap: anywhere; }
     .segment th {
       padding: 14px 10px 6px; font-size: var(--fr-text-eyebrow); font-weight: 700;
       letter-spacing: var(--fr-ls-eyebrow); text-transform: uppercase; color: var(--fr-muted);
@@ -107,7 +116,8 @@ interface Group {
     tr.changed { background: var(--fr-changed-bg); }
     .changed-tag { display: block; font-size: 12px; font-weight: 600; color: var(--fr-changed-fg); }
     .note { display: block; font-size: var(--fr-text-small); color: var(--fr-muted); line-height: 1.4; margin-top: 2px; }
-    .evidence a { font-size: var(--fr-text-small); }
+    .evidence a, .ev-title { font-size: var(--fr-text-small); overflow-wrap: anywhere; }
+    .ev-date { display: block; font-size: var(--fr-text-small); color: var(--fr-muted); margin-top: 2px; }
     .none-known { margin-top: var(--fr-gap-sm); }
     .rest { margin-top: var(--fr-gap); }
     .rest summary {
@@ -146,14 +156,12 @@ export class CapabilityMatrixComponent {
     return out;
   }
 
-  protected short(note: string): string {
-    // Short label; the full note is the cell's tooltip.
-    const s = firstSentence(note, 200).replace(/\s*[:(].*$/, '');
-    return s.length > 48 ? `${s.slice(0, 47).trimEnd()}…` : s;
+  /** The note's full first sentence (never sliced; a long one is clamped by fr-clamp-text). */
+  protected sentence(note: string): string {
+    return firstSentence(note);
   }
 
-  protected evidenceText(title: string, date: string | null | undefined): string {
-    const t = title.length > 48 ? `${title.slice(0, 47).trimEnd()}…` : title;
-    return date ? `${t} · ${shortDate(date)}` : t;
+  protected date(iso: string): string {
+    return shortDate(iso);
   }
 }

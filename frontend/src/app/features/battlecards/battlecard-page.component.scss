@@ -80,25 +80,10 @@
   color: var(--fr-ink);
 }
 
-.grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--fr-gap-lg);
-  align-items: flex-start;
-}
-
+/* Full width: the matrix has four text columns and needs the room. */
 .matrix {
-  flex: 999 1 560px;
   min-width: 0;
   padding: var(--fr-card-pad-tight) var(--fr-card-pad);
-}
-
-.side {
-  flex: 1 1 300px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--fr-gap);
 }
 
 .section-head {

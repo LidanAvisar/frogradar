@@ -99,6 +99,39 @@ describe('BattlecardPageComponent', () => {
     expect(investigate.getAttribute('href')).toContain('/missions?entity_slug=sonatype&capability_slug=');
   });
 
+  it('puts the JFrog opportunities above a full-width matrix, then strengths / weaknesses and the timeline', async () => {
+    const el = await render(card());
+    const order = Array.from(el.querySelectorAll('h2[id]')).map((h) => h.id);
+    expect(order).toEqual(['opp-heading', 'blind-heading', 'matrix-heading', 'str-heading', 'weak-heading', 'timeline-heading']);
+    expect(el.querySelector('aside.side')).toBeNull();
+    expect(el.querySelector('.for-jfrog')?.getAttribute('aria-label')).toBe('For JFrog');
+  });
+
+  it('shows full notes and evidence titles in the matrix, never sliced', async () => {
+    const longTitle = 'Sonatype Repository Firewall now blocks malicious packages in Nexus Repository Pro and Self-Hosted editions';
+    const el = await render(card({
+      matrix: [{
+        capability: { slug: 'oci-registry', name: 'OCI / Docker registry', segment: 'artifact_management' },
+        jfrog: { level: 'full', note: 'Artifactory docs: OCI repositories (plus Docker repositories). Second sentence.', source: null },
+        competitor: { level: 'partial', note: 'Nexus Repository Self-Hosted supports Docker (proxy, hosted and group repositories).',
+                      evidence: { id: 2, title: longTitle, url: 'https://x.test/2', published_at: '2026-10-14T00:00:00Z' }, last_verified_at: null },
+        changed_recently: false,
+      }],
+    }));
+    const row = el.querySelector('fr-capability-matrix tbody tr')!;
+    const notes = Array.from(row.querySelectorAll('fr-clamp-text')).map((n) => n.textContent?.replace(/\s+/g, ' ').trim());
+    expect(notes[0]).toContain('Artifactory docs: OCI repositories (plus Docker repositories).');
+    expect(notes[0]).not.toContain('Second sentence');
+    expect(notes[1]).toContain('Nexus Repository Self-Hosted supports Docker (proxy, hosted and group repositories).');
+    const ev = row.querySelector<HTMLAnchorElement>('.evidence fr-clamp-text a.text')!;
+    expect(ev.textContent?.trim()).toBe(longTitle); // full title, clamped to 2 lines by CSS
+    expect(ev.getAttribute('href')).toBe('https://x.test/2');
+    expect(ev.style.getPropertyValue('--fr-clamp-lines')).toBe('2');
+    expect(row.querySelector('.evidence .ev-date')?.textContent?.trim()).toBe('14 Oct 2026');
+    expect(row.textContent).not.toContain('…');
+    expect(row.querySelector('fr-clamp-text .text')?.getAttribute('title')).toContain('Artifactory docs: OCI repositories');
+  });
+
   it('shows an empty state for a competitor without a card', async () => {
     const el = await render(card({ report_id: null, generated_at: null, positioning: null, strengths: [], opportunities_for_jfrog: [], citations: [] }));
     expect(el.textContent).toContain('No battlecard for Sonatype yet');

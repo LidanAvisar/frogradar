@@ -32,7 +32,7 @@ import { SectionCardComponent } from '../../shared/section-card.component';
                 <span class="score mono" [attr.aria-label]="'Emergence score ' + scoreText(item.score)">{{ scoreText(item.score) }}</span>
               </div>
               @if (item.line) {
-                <p class="line small">{{ item.line }}</p>
+                <p class="line small" [attr.title]="item.line">{{ item.line }}</p>
               }
               <p class="meta small muted">{{ item.sources_count }} {{ item.sources_count === 1 ? 'source' : 'sources' }}</p>
             </li>

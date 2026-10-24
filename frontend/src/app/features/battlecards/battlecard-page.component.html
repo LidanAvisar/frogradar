@@ -79,32 +79,30 @@
           </div>
         </section>
 
-        <div class="grid">
-          <section class="fr-panel matrix" aria-labelledby="matrix-heading">
-            <div class="section-head">
-              <h2 id="matrix-heading">Capability matrix</h2>
-              <span class="small muted">Every cell links to its evidence. No evidence → unknown.</span>
-            </div>
-            @if (c.matrix.length) {
-              <fr-capability-matrix [rows]="c.matrix" [competitor]="c.entity.name" [competitorSlug]="c.entity.slug" />
-            } @else {
-              <fr-empty-state title="No capabilities mapped" message="This competitor has no segments in the capability taxonomy." />
-            }
-          </section>
+        @if (hasCard()) {
+          <div class="pair for-jfrog" role="group" aria-label="For JFrog">
+            <section class="fr-panel list-card" aria-labelledby="opp-heading">
+              <h2 id="opp-heading" class="opp">Opportunities for JFrog</h2>
+              <ng-container *ngTemplateOutlet="items; context: { $implicit: sections()?.opportunities, empty: 'No opportunities listed.' }" />
+            </section>
+            <section class="fr-panel list-card" aria-labelledby="blind-heading">
+              <h2 id="blind-heading" class="blind">Blind spots to check</h2>
+              <ng-container *ngTemplateOutlet="items; context: { $implicit: sections()?.blindSpots, empty: 'No blind spots listed.' }" />
+            </section>
+          </div>
+        }
 
-          @if (hasCard()) {
-            <aside class="side" aria-label="For JFrog">
-              <section class="fr-panel list-card" aria-labelledby="opp-heading">
-                <h2 id="opp-heading" class="opp">Opportunities for JFrog</h2>
-                <ng-container *ngTemplateOutlet="items; context: { $implicit: sections()?.opportunities, empty: 'No opportunities listed.' }" />
-              </section>
-              <section class="fr-panel list-card" aria-labelledby="blind-heading">
-                <h2 id="blind-heading" class="blind">Blind spots to check</h2>
-                <ng-container *ngTemplateOutlet="items; context: { $implicit: sections()?.blindSpots, empty: 'No blind spots listed.' }" />
-              </section>
-            </aside>
+        <section class="fr-panel matrix" aria-labelledby="matrix-heading">
+          <div class="section-head">
+            <h2 id="matrix-heading">Capability matrix</h2>
+            <span class="small muted">Every cell links to its evidence. No evidence → unknown.</span>
+          </div>
+          @if (c.matrix.length) {
+            <fr-capability-matrix [rows]="c.matrix" [competitor]="c.entity.name" [competitorSlug]="c.entity.slug" />
+          } @else {
+            <fr-empty-state title="No capabilities mapped" message="This competitor has no segments in the capability taxonomy." />
           }
-        </div>
+        </section>
 
         @if (hasCard()) {
           <div class="pair">

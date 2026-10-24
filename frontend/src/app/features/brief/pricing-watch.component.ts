@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import type { PricingItem } from '../../api/models';
 import { firstSentence, shortDate } from '../../core/format';
+import { ClampTextComponent } from '../../shared/clamp-text.component';
 import { CompanyChipComponent } from '../../shared/company-chip.component';
 import { EmptyStateComponent } from '../../shared/states.component';
 import { EvidenceQuoteComponent } from '../../shared/evidence-quote.component';
@@ -12,13 +13,7 @@ import { SourceLinkComponent } from '../../shared/source-link.component';
 @Component({
   selector: 'fr-pricing-watch',
   standalone: true,
-  imports: [
-    CompanyChipComponent,
-    EmptyStateComponent,
-    EvidenceQuoteComponent,
-    SectionCardComponent,
-    SourceLinkComponent,
-  ],
+  imports: [ClampTextComponent, CompanyChipComponent, EmptyStateComponent, EvidenceQuoteComponent, SectionCardComponent, SourceLinkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <fr-section-card heading="Pricing watch" headingId="pricing-watch-heading">
@@ -48,7 +43,7 @@ import { SourceLinkComponent } from '../../shared/source-link.component';
                   }
                 </ul>
               } @else {
-                <p class="summary small">{{ sentence(item.signal.summary) }}</p>
+                <fr-clamp-text class="summary small" [text]="sentence(item.signal.summary)" />
                 <fr-evidence-quote [evidence]="item.signal.evidence" [compact]="true" />
               }
               <div class="notes small muted">
@@ -99,7 +94,7 @@ export class PricingWatchComponent {
   }
 
   protected sentence(text: string | null | undefined): string {
-    return firstSentence(text, 200);
+    return firstSentence(text);
   }
 
   protected beforeNote(origin: string | null | undefined, at: string | null | undefined): string {

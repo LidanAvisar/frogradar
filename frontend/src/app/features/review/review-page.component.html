@@ -51,7 +51,7 @@
                 <li>
                   <button type="button" class="row" [class.current]="i === index()" [attr.aria-current]="i === index() ? 'true' : null" (click)="select(i)">
                     <span class="mono impact">{{ s.impact ?? '–' }}</span>
-                    <span class="row-title">{{ s.title }}</span>
+                    <span class="row-title" [attr.title]="s.title">{{ s.title }}</span>
                     @if (s.review) { <span class="fr-pill tone-green">{{ s.review.status === 'rejected' ? 'Rejected' : s.review.edited_fields?.length ? 'Edited' : 'Approved' }}</span> }
                   </button>
                 </li>

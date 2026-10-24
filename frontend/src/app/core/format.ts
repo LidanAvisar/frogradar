@@ -55,11 +55,11 @@ export function verificationLabel(v: string): string {
 }
 
 /** First sentence, capped, for one-line views. */
-export function firstSentence(text: string | null | undefined, max = 180): string {
+/** The first sentence, whole: display text is never sliced (long text is clamped with CSS). */
+export function firstSentence(text: string | null | undefined): string {
   if (!text) return '';
   const m = text.match(/^.*?[.!?](\s|$)/);
-  const s = (m ? m[0] : text).trim();
-  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+  return (m ? m[0] : text).trim();
 }
 
 /** "supply_chain_security" → "Supply chain security" */

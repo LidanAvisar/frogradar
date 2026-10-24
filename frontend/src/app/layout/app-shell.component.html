@@ -42,7 +42,7 @@
               <li>
                 <a class="recent-link" routerLink="/ask" [queryParams]="{ c: c.id }"
                    [class.current]="c.id === currentAsk()" [attr.aria-current]="c.id === currentAsk() ? 'page' : null">
-                  <span class="clamp">{{ c.title }}</span>
+                  <span class="clamp" [attr.title]="c.title">{{ c.title }}</span>
                 </a>
               </li>
             }
