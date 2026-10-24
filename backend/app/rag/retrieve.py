@@ -21,7 +21,7 @@ from sqlalchemy.types import Text
 from app.core.catalog import AskSettings
 from app.db.models import Signal, signal_entities
 from app.pipeline.context import EmbedFn
-from app.pipeline.scope import event_time, usable
+from app.pipeline.scope import event_time, not_mission, usable
 from app.rag.documents import Doc, battlecard_docs, radar_docs, signal_docs
 from app.rag.filters import Filters
 
@@ -97,6 +97,8 @@ def _signal_conditions(f: Filters) -> list[Any]:
         conds.append(event_time() >= f.since)
     if f.until:
         conds.append(event_time() < f.until)
+    if f.since or f.until:
+        conds.append(not_mission())  # undated research is not "this week" (D82)
     return conds
 
 

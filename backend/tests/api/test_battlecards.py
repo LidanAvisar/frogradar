@@ -94,6 +94,17 @@ def test_battlecard_shape(client, build):
     assert cov["capabilities_total"] == 2
 
 
+def test_timeline_marks_research_findings(client, build):
+    _world(build)
+    sonatype = build.s.scalar(select(Entity).where(Entity.slug == "sonatype"))
+    finding = build.signal("Docs describe reachability", impact=4, published=False,
+                           fetched_hours_ago=1, meta={"kind": "mission"})  # fmt: skip
+    build.link(finding, sonatype)
+    timeline = client.get("/api/entities/sonatype/battlecard").json()["timeline"]
+    assert timeline[0]["id"] == finding.id and timeline[0]["research"] is True
+    assert not any(t["research"] for t in timeline[1:])
+
+
 def test_no_card_yet_still_returns_matrix_and_timeline(client, build):
     build.entity("snyk", "Snyk", relationship=Relationship.COMPETITOR)
     data = client.get("/api/entities/snyk/battlecard").json()

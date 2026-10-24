@@ -86,6 +86,10 @@ def test_mission_findings_never_rank_or_count_as_new(client, build):
     items = client.get("/api/signals").json()["items"]
     assert finding.id in [i["id"] for i in items]
     assert client.get(f"/api/signals/{finding.id}").status_code == 200
+    # A date window (the Brief's tiles link to one) is about news: undated research is left out.
+    for params in ({"window": "24h"}, {"since": (NOW - timedelta(days=2)).isoformat()}):
+        windowed = client.get("/api/signals", params=params).json()["items"]
+        assert [i["id"] for i in windowed] == [news.id]
 
 
 def test_since_yesterday_uses_publish_date(client, build):

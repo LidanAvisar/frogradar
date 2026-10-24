@@ -326,6 +326,9 @@ class TimelineItem(BaseModel):
     category: SignalCategory | None
     impact: int | None
     url: str
+    research: bool = Field(
+        description="Research-mission finding: dated when found, not a competitor's move (D82)"
+    )
 
 
 class Coverage(BaseModel):

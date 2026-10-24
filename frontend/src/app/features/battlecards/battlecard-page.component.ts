@@ -103,9 +103,10 @@ export class BattlecardPageComponent {
     };
   });
 
-  /** Newest high-impact signal (the timeline is newest first). */
+  /** Newest high-impact collected signal (the timeline is newest first). Research-mission findings are
+   * dated when they were found, so they are research, not the competitor's latest move (D82). */
   protected readonly latestMove = computed<TimelineItem | null>(
-    () => this.card()?.timeline.find((t) => (t.impact ?? 0) >= HIGH_IMPACT) ?? null,
+    () => this.card()?.timeline.find((t) => !t.research && (t.impact ?? 0) >= HIGH_IMPACT) ?? null,
   );
   protected readonly coverage = computed(() => {
     const c = this.card()?.coverage;

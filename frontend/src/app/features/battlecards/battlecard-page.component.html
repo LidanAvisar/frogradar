@@ -141,7 +141,7 @@
         <section class="fr-panel" aria-labelledby="timeline-heading">
           <div class="section-head">
             <h2 id="timeline-heading">Strategy timeline</h2>
-            <span class="small muted">Newest first · from blog posts, releases and pricing-page history</span>
+            <span class="small muted">Newest first · from blog posts, releases, pricing-page history and research missions</span>
           </div>
           @if (timeline().length === 0) {
             <fr-empty-state title="No signals yet" [message]="'Nothing about ' + c.entity.name + ' was collected and verified yet.'" />
@@ -152,7 +152,7 @@
                   <span class="when mono">{{ monthYear(t.date) }}</span>
                   <a class="what" [href]="t.url" target="_blank" rel="noopener noreferrer">{{ t.title }}</a>
                   <span class="small muted">
-                    {{ categoryLabel(t.category) }}@if (t.impact) { · impact {{ t.impact }} }@if ((t.impact ?? 0) >= highImpact) {<span class="visually-hidden"> (high impact)</span>}
+                    @if (t.research) {Research finding · }{{ categoryLabel(t.category) }}@if (t.impact) { · impact {{ t.impact }} }@if ((t.impact ?? 0) >= highImpact) {<span class="visually-hidden"> (high impact)</span>}
                   </span>
                 </li>
               }

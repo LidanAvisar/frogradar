@@ -156,7 +156,7 @@ def build_server(
         ] = None,
     ) -> WhatsNew:
         from app.api.queries import to_outs
-        from app.pipeline.scope import event_time, usable
+        from app.pipeline.scope import event_time, not_mission, usable
 
         with open_session() as s:
             ids = _family(s, resolve_company(s, company)) if company else None
@@ -169,7 +169,9 @@ def build_server(
                 rows = _ranked(s, t - timedelta(days=w), t, min_impact, ids)
                 if rows:
                     break
-            newest_q = select(func.max(event_time())).where(usable(), Signal.impact >= min_impact)
+            newest_q = select(func.max(event_time())).where(
+                usable(), not_mission(), Signal.impact >= min_impact
+            )
             if ids is not None:
                 newest_q = newest_q.where(Signal.id.in_(select(signal_entities.c.signal_id).where(
                     signal_entities.c.entity_id.in_(ids))))  # fmt: skip

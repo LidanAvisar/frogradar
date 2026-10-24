@@ -141,6 +141,9 @@ def test_only_usable_signals_and_checked_battlecard_items(client, build, db_sess
         "bc:sonatype:weaknesses:1"
     ]  # the item citing an unsupported signal is out
     assert bc[0].url == "/battlecards/sonatype" and bc[0].cites == (w["text_only"].id,)
+    assert (
+        bc[0].title == "Sonatype battlecard · Weakness: Firewall only in Pro+ editions."
+    )  # never cut
 
 
 def test_battlecard_items_need_enough_evidence(client, build, db_session, card_threshold):
@@ -174,6 +177,18 @@ def test_time_filter_drops_old_signals_and_undated_battlecard_items(client, buil
     assert f"sig:{w['text_only'].id}" not in ids  # 40 days old
     assert not [i for i in ids if i.startswith("bc:")]
     assert [i for i in ids if i.startswith("radar:")]  # first seen 3 days ago
+
+
+def test_time_filter_drops_undated_research_findings(client, build, db_session):
+    _world(build, db_session)
+    finding = build.signal("Package firewall finding", embedding=vec(1.0), published=False,
+                           fetched_hours_ago=1, meta={"kind": "mission"},
+                           summary="A package firewall.")  # fmt: skip
+    for q in ("Package firewall news this month", Q):
+        f = infer_filters(db_session, q, NOW)
+        ids = _ids(retrieve(db_session, q, f, embed=_embed(), cfg=AskSettings(), now=NOW))
+        # Undated research is not "this month" (D82); without a window it is intelligence.
+        assert (f"sig:{finding.id}" in ids) == (f.window is None)
 
 
 def test_company_inference_edge_cases(client, build, db_session):

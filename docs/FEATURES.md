@@ -67,11 +67,11 @@ All three reuse the Brief's components and tokens; every claim links to its sour
   ![Signals filtered, 1440 px](screenshots/signals-filtered-1440.png)
 - **Battlecard (`/battlecards/:slug`; `/battlecards` opens the top competitor):** switcher (competitors below the
   card threshold are grouped under "Not enough evidence yet"), relationship and segments, three tiles (positioning, latest move = newest
-  impact 4-5 signal, coverage), the capability matrix (JFrog level from config vs the competitor's level from
+  collected impact 4-5 signal, never a research finding (D82), coverage), the capability matrix (JFrog level from config vs the competitor's level from
   evidence, each a symbol and a word, evidence link per cell, "Changed recently"; capabilities where the
   competitor's level is unknown are folded into "N capabilities without evidence yet", each with JFrog's level and
   an Investigate link that starts a research mission "Does <competitor> offer <capability>?"; scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
-  numbering across the card, and the strategy timeline newest first. A competitor with fewer than 5 signals about it
+  numbering across the card, and the strategy timeline newest first (research findings labelled). A competitor with fewer than 5 signals about it
   (last 180 days, D86) gets a "Not enough evidence on X yet" panel instead of the card: the count against the
   threshold and what would fill it (an active source in `config/sources.yaml`, a research mission); the matrix and
   timeline still show, each with its evidence.

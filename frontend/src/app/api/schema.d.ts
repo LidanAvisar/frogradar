@@ -2542,6 +2542,11 @@ export interface components {
             id: number;
             /** Impact */
             impact: number | null;
+            /**
+             * Research
+             * @description Research-mission finding: dated when found, not a competitor's move (D82)
+             */
+            research: boolean;
             /** Title */
             title: string;
             /** Url */

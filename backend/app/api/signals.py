@@ -11,6 +11,7 @@ from app.api.queries import (
     entity_and_products,
     event_time,
     is_page_diff,
+    not_mission,
     signals_query,
     to_outs,
     visible,
@@ -84,6 +85,10 @@ def list_signals(
         conds.append(event_time() >= since)
     if until:
         conds.append(event_time() <= until)
+    if window or since or until:
+        # Research findings have no publish date: fetched this week is not news this week (D82),
+        # so a date window leaves them out, as the Brief's tiles that link here do.
+        conds.append(not_mission())
     tsquery = None
     if q and q.strip():
         tsquery = func.websearch_to_tsquery("english", q.strip())

@@ -108,8 +108,12 @@ def test_whats_new_widens_an_empty_window_and_says_so(server, build):
     assert [i["title"] for i in out["items"]] == ["Older news"]
     assert out["newest_signal_at"].startswith((NOW - timedelta(days=4)).date().isoformat())
     build.signal("Ancient", impact=4, hours_ago=24 * 50)
+    finding = build.signal("Research finding", impact=5, published=False, fetched_hours_ago=1,
+                           meta={"kind": "mission"})  # fmt: skip
     empty = call(server, "whats_new", min_impact=5)
     assert empty["items"] == [] and empty["window_days"] == 30
+    # The impact-5 research finding was fetched an hour ago, but it is not news (D82).
+    assert finding.id and empty["newest_signal_at"] is None
     assert empty["note"].startswith("No signals with impact ≥ 5 in the last 30 days")
 
 

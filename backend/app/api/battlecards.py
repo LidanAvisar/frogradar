@@ -262,6 +262,7 @@ def _timeline(session: DbSession, entity_ids: list[int]) -> list[TimelineItem]:
             category=s.category,
             impact=s.impact,
             url=s.url,
+            research=(s.meta or {}).get("kind") == "mission",
         )
         for s in rows
     ]

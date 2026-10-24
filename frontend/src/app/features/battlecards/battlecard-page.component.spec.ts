@@ -37,8 +37,9 @@ function card(overrides: Partial<Battlecard> = {}): Battlecard {
       },
     ],
     timeline: [
-      { id: 9, date: '2026-10-20T00:00:00Z', title: 'Minor post', category: 'other', impact: 2, url: 'https://x.test/9' },
-      { id: 2, date: '2026-10-14T00:00:00Z', title: 'Firewall in Pro+', category: 'pricing_change', impact: 4, url: 'https://x.test/2' },
+      { id: 11, date: '2026-10-21T00:00:00Z', title: 'Docs describe reachability', category: 'feature_update', impact: 4, url: 'https://x.test/11', research: true },
+      { id: 9, date: '2026-10-20T00:00:00Z', title: 'Minor post', category: 'other', impact: 2, url: 'https://x.test/9', research: false },
+      { id: 2, date: '2026-10-14T00:00:00Z', title: 'Firewall in Pro+', category: 'pricing_change', impact: 4, url: 'https://x.test/2', research: false },
     ],
     coverage: { signals: 13, high_impact: 5, sources: 2, capabilities_known: 1, capabilities_total: 2, first_signal_at: null, last_signal_at: null },
     ...overrides,
@@ -71,7 +72,9 @@ describe('BattlecardPageComponent', () => {
     expect(el.textContent).toContain('Supply-chain security');
     const tiles = el.querySelectorAll('.tile');
     expect(tiles[0].querySelector('sup a')?.textContent).toBe('1');
-    expect(tiles[1].querySelector('a')?.textContent).toBe('Firewall in Pro+'); // impact 4, not the newer impact-2 post
+    // Impact 4, not the newer impact-2 post, and not the newer research finding (D82).
+    expect(tiles[1].querySelector('a')?.textContent).toBe('Firewall in Pro+');
+    expect(el.querySelector('.timeline li')?.textContent).toContain('Research finding');
     expect(tiles[2].textContent).toContain('13 signals tracked');
     // Citation numbers continue in reading order: positioning [1], opportunities [3] → 2, strengths [2, 1] → 3, 1.
     expect(Array.from(el.querySelectorAll('.list-card sup a')).map((a) => a.textContent)).toEqual(['2', '3', '1']);

@@ -30,6 +30,7 @@ from app.pipeline.scope import (  # noqa: F401 - re-exported for the routers
     SHOWN_VERIFICATIONS,
     canonical,
     event_time,
+    not_mission,
     ranked,
     reviewable,
     usable,

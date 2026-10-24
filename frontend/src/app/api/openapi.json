@@ -5428,6 +5428,11 @@
             ],
             "title": "Impact"
           },
+          "research": {
+            "description": "Research-mission finding: dated when found, not a competitor's move (D82)",
+            "title": "Research",
+            "type": "boolean"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -5443,7 +5448,8 @@
           "title",
           "category",
           "impact",
-          "url"
+          "url",
+          "research"
         ],
         "title": "TimelineItem",
         "type": "object"
