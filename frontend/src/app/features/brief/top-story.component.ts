@@ -23,7 +23,7 @@ interface Row {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="story" aria-labelledby="top-story-title">
-      <p class="eyebrow label">Top story today</p>
+      <p class="eyebrow label">{{ label() }}</p>
       <h2 id="top-story-title" class="title">
         {{ story().title }}@for (c of titleCites(); track c.ref.id) {<sup class="cite"><a [href]="c.ref.url" target="_blank" rel="noopener noreferrer" [attr.title]="c.ref.title" [attr.aria-label]="'Source ' + c.n + ': ' + c.ref.title">{{ c.n }}</a></sup>}
       </h2>
@@ -94,6 +94,8 @@ interface Row {
 })
 export class TopStoryComponent {
   readonly story = input.required<TopStory>();
+  /** "Top story today", or the latest available day's date when the Brief is stale. */
+  readonly label = input('Top story today');
 
   /** Citation numbers in order of first use across the title and the rows. */
   private readonly numbers = computed(() => {

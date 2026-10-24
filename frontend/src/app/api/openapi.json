@@ -797,6 +797,12 @@
       },
       "BriefOut": {
         "properties": {
+          "as_of": {
+            "description": "End of every window on this page: now, or the newest available signal's time when nothing ranks in the window (stale)",
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
           "developments": {
             "description": "Other developments: the next ranked signals, without the top story's",
             "items": {
@@ -840,6 +846,11 @@
             "title": "Since Yesterday",
             "type": "array"
           },
+          "stale": {
+            "description": "Nothing new in the window: the Brief shows the latest available day (as_of)",
+            "title": "Stale",
+            "type": "boolean"
+          },
           "stats": {
             "$ref": "#/components/schemas/BriefStats"
           },
@@ -859,6 +870,8 @@
         },
         "required": [
           "generated_at",
+          "as_of",
+          "stale",
           "window",
           "stats",
           "top_story",
@@ -1360,8 +1373,7 @@
             "enum": [
               "enabled",
               "degraded",
-              "off",
-              "demo"
+              "off"
             ],
             "title": "State",
             "type": "string"
@@ -5139,32 +5151,12 @@
       },
       "StatusOut": {
         "properties": {
-          "as_of": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Demo snapshot's as-of time (ISO), demo mode only",
-            "title": "As Of"
-          },
           "cost_estimates_usd": {
             "$ref": "#/components/schemas/CostEstimatesOut"
           },
           "daily_budget_usd": {
             "title": "Daily Budget Usd",
             "type": "number"
-          },
-          "demo_questions": {
-            "description": "Ask questions demo mode answers (demo only)",
-            "items": {
-              "type": "string"
-            },
-            "title": "Demo Questions",
-            "type": "array"
           },
           "extra_keys": {
             "additionalProperties": {
@@ -5179,14 +5171,6 @@
             },
             "title": "Features",
             "type": "array"
-          },
-          "mode": {
-            "enum": [
-              "demo",
-              "live"
-            ],
-            "title": "Mode",
-            "type": "string"
           },
           "models": {
             "items": {
@@ -5212,8 +5196,6 @@
           }
         },
         "required": [
-          "mode",
-          "as_of",
           "models",
           "extra_keys",
           "features",
@@ -5221,8 +5203,7 @@
           "warnings",
           "spend_today_usd",
           "daily_budget_usd",
-          "cost_estimates_usd",
-          "demo_questions"
+          "cost_estimates_usd"
         ],
         "title": "StatusOut",
         "type": "object"
@@ -5539,9 +5520,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict"
           },
           "422": {
             "description": "Unprocessable Entity"

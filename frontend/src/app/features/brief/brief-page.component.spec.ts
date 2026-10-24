@@ -84,6 +84,31 @@ describe('BriefPageComponent', () => {
     expect(Object.keys(localStorage).some((k) => k.includes('expand'))).toBeFalse();
   });
 
+  it('stale data: shows the latest available day with its date, not "today"', () => {
+    respond(
+      briefFixture({
+        generated_at: '2026-11-15T09:00:00Z',
+        as_of: '2026-10-21T17:30:00Z',
+        stale: true,
+        top_story: storyFixture(),
+      }),
+    );
+    expect(el.textContent).toContain('LATEST INTELLIGENCE · WEDNESDAY · 21 OCTOBER 2026');
+    expect(el.querySelector('.stale')?.textContent).toContain('Nothing newer yet: this is the latest available day (21 Oct 2026)');
+    expect(el.querySelector('.stale')?.textContent).toContain('make pipeline');
+    expect(el.querySelector('fr-top-story')?.textContent).toContain('Top story · 21 Oct 2026');
+    expect(el.querySelector('fr-top-story')?.textContent).not.toContain('Top story today');
+    expect(el.querySelector('#since-yesterday-heading')?.textContent).toContain('On 21 Oct 2026');
+    const tiles = Array.from(el.querySelectorAll<HTMLAnchorElement>('a.tile'));
+    expect(tiles.map((t) => t.getAttribute('aria-label'))).toEqual([
+      '3 new signals, on 21 Oct 2026',
+      '2 high impact that day, new, impact 4-5',
+      '1 price change, 7 days to 21 Oct 2026',
+    ]);
+    expect(tiles[0].getAttribute('href')).toBe('/signals'); // Signals windows end now: no empty "last 24h" list
+    expect(tiles[2].getAttribute('href')).toBe('/signals?kind=page_diff');
+  });
+
   it('leads with the top story card', () => {
     respond(briefFixture({ top_story: storyFixture() }));
     const story = el.querySelector('fr-top-story')!;

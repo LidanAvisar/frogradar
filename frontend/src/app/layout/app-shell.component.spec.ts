@@ -6,7 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 
 import { AskRecentService } from '../core/ask-recent.service';
 import { StatusService } from '../core/status.service';
-import { demoStatusFixture, statusFixture } from '../testing/status-fixture';
+import { statusFixture } from '../testing/status-fixture';
 import { AppShellComponent } from './app-shell.component';
 
 @Component({ standalone: true, template: '' })
@@ -92,21 +92,18 @@ describe('AppShellComponent status', () => {
     });
   });
 
-  it('shows the demo banner with the snapshot date only in demo mode, and today\'s spend in live mode', () => {
+  it("shows today's spend and turns the status dot amber while a core feature is limited", () => {
     const fixture = TestBed.createComponent(AppShellComponent);
     const el: HTMLElement = fixture.nativeElement;
     const status = TestBed.inject(StatusService);
-    status.status.set(statusFixture());
+    status.status.set(statusFixture()); // ask off
     fixture.detectChanges();
-    expect(el.querySelector('.demo-banner')).toBeNull();
     expect(el.querySelector('.spend')?.textContent).toContain('$0.03 of $2.00');
+    expect(el.querySelector('.dot.limited')).not.toBeNull();
+    expect(el.textContent).not.toContain('Demo');
 
-    status.status.set(demoStatusFixture());
+    status.status.set(statusFixture({ features: [{ name: 'ask', label: 'Free-form Ask', state: 'enabled', reason: '' }] }));
     fixture.detectChanges();
-    const banner = el.querySelector('.demo-banner')?.textContent ?? '';
-    expect(banner).toContain('Demo mode:');
-    expect(banner).toContain('21 Oct 2026');
-    expect(banner).toContain('no API keys needed');
-    expect(el.querySelector('.spend')).toBeNull();
+    expect(el.querySelector('.dot.limited')).toBeNull();
   });
 });

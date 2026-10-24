@@ -7,7 +7,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
 import { askFixture } from '../../testing/fixtures';
-import { DEMO_QUESTIONS, demoStatusFixture } from '../../testing/status-fixture';
+import { statusFixture } from '../../testing/status-fixture';
 import { StatusService } from '../../core/status.service';
 import { AskPageComponent } from './ask-page.component';
 
@@ -114,24 +114,17 @@ describe('AskPageComponent', () => {
     flush();
   }));
 
-  it('demo mode: offers the curated questions and turns a refusal into clickable suggestions', async () => {
+  it('says why Ask is off when a key it needs is missing, and the cost of a question otherwise', async () => {
     const h = await open();
-    TestBed.inject(StatusService).status.set(demoStatusFixture());
+    const status = TestBed.inject(StatusService);
+    status.status.set(statusFixture()); // ask off: needs OPENAI_API_KEY
     h.detectChanges();
-    const starters = Array.from(el(h).querySelectorAll('.intro .chip-btn')).map((b) => b.textContent?.trim());
-    expect(starters).toEqual(DEMO_QUESTIONS);
-    expect(el(h).querySelector('.cost')?.textContent).toContain('from the snapshot');
+    expect(el(h).querySelector('.notice')?.textContent).toContain('Ask is off: needs OPENAI_API_KEY');
+    expect(el(h).textContent).not.toContain('Demo');
 
-    type(h, 'What is the weather?');
-    http.expectOne('/api/ask').flush(
-      { detail: { demo: true, message: 'Demo mode answers a few curated questions.', suggestions: DEMO_QUESTIONS } },
-      { status: 409, statusText: 'Conflict' },
-    );
+    status.status.set(statusFixture({ features: [{ name: 'ask', label: 'Free-form Ask', state: 'enabled', reason: '' }] }));
     h.detectChanges();
-    expect(el(h).querySelector('#ask-error')?.textContent).toContain('Demo mode answers a few curated questions.');
-    const chips = el(h).querySelectorAll<HTMLButtonElement>('[aria-label="Questions the demo answers"] .chip-btn');
-    expect(chips.length).toBe(2);
-    chips[1].click();
-    expect(http.expectOne('/api/ask').request.body.question).toBe(DEMO_QUESTIONS[1]);
+    expect(el(h).querySelector('.notice')).toBeNull();
+    expect(el(h).querySelector('.cost')?.textContent).toContain('A new question costs about $0.02');
   });
 });

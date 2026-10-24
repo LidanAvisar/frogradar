@@ -23,12 +23,10 @@ from app.api.schemas import (
     AskIn,
     AskOut,
 )
-from app.core.config import get_settings
-from app.core.llm import BudgetExceeded, DemoCacheMiss, LLMError, complete, embed
+from app.core.llm import BudgetExceeded, LLMError, complete, embed
 from app.core.status import get_status
 from app.db.enums import FeedbackAction, FeedbackTarget, ReasonCode
 from app.db.models import AskConversation, AskTurn, Feedback
-from app.demo.questions import DEMO_ASK_MESSAGE, demo_questions, match_demo_question
 from app.rag.service import AskInputError, LLMFns, ask, stored_answer
 
 router = APIRouter(prefix="/api/ask", tags=["ask"])
@@ -45,9 +43,7 @@ Llm = Annotated[LLMFns, Depends(get_llm)]
 
 
 def require_ask_keys() -> None:
-    """Live mode: answer 503 with the reason when the keys Ask needs are missing (never crash)."""
-    if get_settings().demo_mode:
-        return  # demo mode answers the curated questions from the cache
+    """Answer 503 with the reason when the keys Ask needs are missing (never crash)."""
     feature = get_status().feature("ask")
     if feature.state == "off":
         raise HTTPException(503, f"Free-form Ask is off: {feature.reason}.")
@@ -56,20 +52,11 @@ def require_ask_keys() -> None:
 @router.post(
     "",
     response_model=AskOut,
-    responses={404: {}, 409: {}, 422: {}, 429: {}, 502: {}, 503: {}},
+    responses={404: {}, 422: {}, 429: {}, 502: {}, 503: {}},
     dependencies=[Depends(require_ask_keys)],
 )
 def post_ask(body: AskIn, session: DbSession, now: Now, llm: Llm) -> AskOut:
     question, conversation_id = body.question, body.conversation_id
-    if get_settings().demo_mode:
-        # Only the curated questions have cached answers; ask them as a new conversation so the
-        # prompt (no history) matches the cached one. Nothing is written for other questions.
-        curated = match_demo_question(question)
-        if curated is None:
-            raise HTTPException(
-                409, {"demo": True, "message": DEMO_ASK_MESSAGE, "suggestions": demo_questions()}
-            )
-        question, conversation_id = curated, None
     try:
         return ask(session, question, conversation_id=conversation_id, llm=llm, now=now)
     except AskInputError as e:
@@ -77,10 +64,6 @@ def post_ask(body: AskIn, session: DbSession, now: Now, llm: Llm) -> AskOut:
         raise HTTPException(code, str(e)) from None
     except BudgetExceeded as e:
         raise HTTPException(429, f"LLM budget reached, try again tomorrow: {e}") from None
-    except DemoCacheMiss:
-        raise HTTPException(
-            503, {"demo": True, "message": DEMO_ASK_MESSAGE, "suggestions": demo_questions()}
-        ) from None
     except LLMError as e:
         raise HTTPException(502, f"The language model failed: {type(e).__name__}") from None
 
@@ -107,7 +90,7 @@ def list_conversations(
         .order_by(AskConversation.updated_at.desc(), AskConversation.id.desc())
         .limit(limit * 5)
     ).all()
-    # The same question asked again (a repeat, or a cached demo question) is listed once: latest.
+    # The same question asked again (a repeat) is listed once: latest.
     seen: set[str] = set()
     out: list[AskConversationOut] = []
     for c, n in rows:

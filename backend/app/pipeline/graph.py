@@ -231,18 +231,16 @@ def _run_locked(
 
 
 class NotRunnable(RuntimeError):
-    """Demo mode, or the bulk model's key is missing: the pipeline doesn't start."""
+    """The bulk model's key is missing: the pipeline doesn't start."""
 
 
 def key_skips() -> frozenset[str]:
     """Nodes to skip for missing keys (app.core.status), so a run never fails on a missing key.
 
-    Raises NotRunnable in demo mode or without the bulk key (nothing useful could run).
+    Raises NotRunnable without the bulk key (nothing useful could run).
     """
     from app.core.status import get_status
 
-    if get_settings().demo_mode:
-        raise NotRunnable("demo mode: the pipeline does not run on the snapshot (make live)")
     st = get_status()
     missing = {m.tier: m for m in st.models if not m.key_present}
     if "bulk" in missing:

@@ -63,8 +63,6 @@ def production_tools() -> tuple[Tools, Callable[[], None]]:
     from app.core.llm import complete, embed
 
     settings = get_settings()
-    if settings.demo_mode:  # defense in depth: no web search or page fetches in demo mode
-        return Tools(complete=complete, embed=embed), lambda: None
     cfg = load_pipeline().missions
     fetch, close = page_fetcher(settings, cfg)
     tools = Tools(

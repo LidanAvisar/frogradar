@@ -6,7 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import type { Brief, Signal } from '../../api/models';
 import { ApiService } from '../../core/api.service';
 import { BriefViewService } from '../../core/brief-view.service';
-import { eyebrowDate } from '../../core/format';
+import { eyebrowDate, shortDate } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
 import { IconComponent } from '../../shared/icon.component';
 import { type SignalCardAction, SignalCardComponent } from '../../shared/signal-card.component';
@@ -56,7 +56,14 @@ export class BriefPageComponent implements OnInit {
     const s = this.state();
     return s.status === 'ready' ? s.brief : null;
   });
-  protected readonly dateLine = computed(() => eyebrowDate(this.brief()?.generated_at ?? new Date().toISOString()));
+  /** Nothing new in the window: the Brief shows the latest available day (as_of) with its date. */
+  protected readonly stale = computed(() => this.brief()?.stale ?? false);
+  protected readonly asOfShort = computed(() => shortDate(this.brief()?.as_of));
+  protected readonly dateLine = computed(() => {
+    const b = this.brief();
+    const date = eyebrowDate(b?.as_of ?? b?.generated_at ?? new Date().toISOString());
+    return b?.stale ? `LATEST INTELLIGENCE · ${date}` : date;
+  });
   protected readonly story = computed(() => this.brief()?.top_story ?? null);
   private readonly actions = inject(SignalActionsService);
   /** Analyst actions on top of the loaded brief (optimistic; a rejected card disappears). */
@@ -66,14 +73,21 @@ export class BriefPageComponent implements OnInit {
   protected readonly allExpanded = computed(() => this.view.allExpanded(this.devIds()));
   /** Stat tiles: each opens the Signals list with the matching filter. */
   protected readonly tiles = computed(() => {
-    const st = this.brief()?.stats;
-    if (!st) return [];
+    const b = this.brief();
+    const st = b?.stats;
+    if (!b || !st) return [];
+    // Stale: the counts are for the latest available day; the Signals windows end now, so the
+    // links open the newest signals instead of an empty "last 24 hours" list.
+    const day = shortDate(b.as_of);
+    const win = (w: string) => (b.stale ? {} : { since: w });
     return [
       { n: st.new_signals, label: st.new_signals === 1 ? 'new signal' : 'new signals',
-        hint: 'since yesterday', params: { since: '24h' } },
-      { n: st.high_impact, label: 'high impact today', hint: 'new, impact 4-5', params: { since: '24h', min_impact: 4 } },
+        hint: b.stale ? `on ${day}` : 'since yesterday', params: win('24h') },
+      { n: st.high_impact, label: b.stale ? 'high impact that day' : 'high impact today', hint: 'new, impact 4-5',
+        params: { ...win('24h'), min_impact: 4 } },
       { n: st.price_changes, label: st.price_changes === 1 ? 'price change' : 'price changes',
-        hint: `last ${st.price_change_days} days`, params: { kind: 'page_diff', since: `${st.price_change_days}d` } },
+        hint: b.stale ? `${st.price_change_days} days to ${day}` : `last ${st.price_change_days} days`,
+        params: { kind: 'page_diff', ...win(`${st.price_change_days}d`) } },
     ];
   });
   protected readonly skeletons = [1, 2, 3];

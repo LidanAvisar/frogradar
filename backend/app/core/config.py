@@ -25,16 +25,11 @@ class Settings(BaseSettings):
     embedding_model: str = ""
 
     # LLM gateway (app/core/llm).
-    demo_mode: bool = False  # serve LLM calls from llm_cache only; never call a provider
-    # Pin the app's "now" (API, MCP, Ask, missions) to an ISO datetime. Empty = wall clock, or the
-    # snapshot as-of date in demo mode (app/core/clock.py). DEMO_AS_OF overrides that date.
-    pin_now: str = ""
-    demo_as_of: str = ""
-    # Restore the demo snapshot at container start: "if-empty" (compose) or "never" (image default).
-    snapshot_restore: str = "never"
     # Allow the verify model to come from the same provider as the writers (weaker checks; warns).
     allow_same_family_verify: bool = False
-    llm_daily_budget_usd: float = 2.0  # BudgetExceeded once today's (UTC) spend reaches this
+    # Hard daily cap on LLM spend, checked before every paid call: BudgetExceeded once today's
+    # (UTC) spend reaches it.
+    llm_daily_budget_usd: float = 2.0
     llm_timeout_s: float = 60.0  # per provider request
     llm_max_retries: int = 3  # retries on rate limits / 5xx / timeouts (not on 4xx)
     llm_backoff_base_s: float = 1.0  # first backoff delay; doubles per retry (capped at 30s)

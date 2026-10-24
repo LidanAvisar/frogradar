@@ -242,7 +242,7 @@
   overflow: hidden;
 }
 
-/* System status (sidebar) and the demo banner. */
+/* System status (sidebar). */
 .system {
   display: flex;
   flex-direction: column;
@@ -274,33 +274,7 @@
   border-radius: 50%;
   background: var(--fr-accent);
 
-  &.demo {
+  &.limited {
     background: var(--fr-claim-border);
-  }
-}
-
-.demo-banner {
-  padding: 8px var(--fr-content-pad-x);
-  border-bottom: 1px solid var(--fr-claim-border);
-  background: var(--fr-claim-bg);
-  color: var(--fr-claim-fg);
-  line-height: 1.4;
-}
-
-.link-button {
-  margin-left: 4px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-@media (max-width: 720px) {
-  .demo-banner {
-    padding: 8px var(--fr-content-pad-x-phone);
   }
 }

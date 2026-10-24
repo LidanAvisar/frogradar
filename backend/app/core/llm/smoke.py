@@ -43,10 +43,6 @@ def _row(task: str, model: str, status: str, call: LLMCall | None) -> str:
 def main() -> int:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     gw = get_gateway()
-    if gw.settings.demo_mode:
-        print("DEMO_MODE is on: providers are never called. Unset it to run the smoke test.")
-        return 1
-
     prompt = load_prompt("smoke")
     routing = gw.routing
     header = ("task", "model", "status", "latency", "tokens", "cost")

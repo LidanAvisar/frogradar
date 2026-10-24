@@ -14,7 +14,7 @@ latest: [`…enrich_signal.v2…verify_signal.v2.md`](../eval/results/2026-10-21
 
 **How the set was built**
 - **40 signals**, stratified from the full catalog of 1,057 (fixed seed, `app/eval/select.py`): 19 from the 3
-  demo sources and 21 from inactive sources that the pipeline never processed; items the pipeline had kept and
+  active sources and 21 from inactive sources that the pipeline never processed; items the pipeline had kept and
   dropped; one per category where possible; 3 pricing-page diffs; the known hard cases (#50, #77, #1005, #1053,
   #1055).
 - **Silver labels** (`eval/silver_labels.csv`, `label_source` column): relevant, category, impact, primary entity.
@@ -104,7 +104,7 @@ What it shows:
 format as the silver set (label = the analyst's value, else the model's value the analyst approved;
 `label_source = analyst:<name> approve|edit|reject`). Rejections for other reasons (duplicate, outdated) are left
 out. `make eval ARGS="--labels eval/gold_labels.csv"` runs the same pass against them, so human-verified
-accuracy sits next to the silver agreement. There is one gold label so far (the S14 demo correction).
+accuracy sits next to the silver agreement. There is one gold label so far (the S14 example correction).
 
 **Re-running and comparing:** `make eval-select eval-pairs eval-embed eval-label eval` rebuilds everything
 (paid steps print calls and cost first; `ARGS=--estimate` prints only). After a prompt change, `make eval` writes

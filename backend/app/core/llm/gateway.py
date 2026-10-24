@@ -1,6 +1,6 @@
 """LLMGateway: the one path every LLM and embedding call in FrogRadar goes through.
 
-Per call: route the task to a model → cache lookup → (demo mode stops here) → budget check →
+Per call: route the task to a model → cache lookup → budget check →
 provider call with retries → validate against the Pydantic schema (retrying with the error) →
 llm_calls row for every attempt → cache the validated result.
 
@@ -23,7 +23,7 @@ from app.core.catalog import LLMRoutingFile, load_llm_routing
 from app.core.config import Settings, get_settings
 from app.core.llm import cache, ledger, structured
 from app.core.llm.context import current_context
-from app.core.llm.errors import DemoCacheMiss, LLMError, StructuredOutputError, scrub
+from app.core.llm.errors import LLMError, StructuredOutputError, scrub
 from app.core.llm.ledger import CallRecord
 from app.core.llm.pricing import compute_cost
 from app.core.llm.provider import LiteLLMProvider, describe
@@ -114,8 +114,8 @@ class LLMGateway:
 
         _debug_prompt(operation, messages)
 
-        # 1. Cache (always consulted in demo mode).
-        if use_cache or self.settings.demo_mode:
+        # 1. Cache.
+        if use_cache:
             start = time.perf_counter()
             with self._session_factory() as s, s.begin():
                 hit = cache.get_many(s, [key]).get(key)
@@ -133,13 +133,6 @@ class LLMGateway:
             if obj is not None:
                 _log(rec)
                 return obj
-
-        # 2. Demo mode never reaches a provider.
-        if self.settings.demo_mode:
-            self._write(record(success=False, error="demo cache miss"))
-            raise DemoCacheMiss(
-                f"DEMO_MODE: no cached response for operation {operation!r} (key {key[:12]}…)"
-            )
 
         use_schema = structured.supports_schema(route.model)
         fmt = structured.response_format(response_model) if use_schema else None
@@ -277,7 +270,7 @@ class LLMGateway:
             )
 
         # 1. Cache.
-        if use_cache or self.settings.demo_mode:
+        if use_cache:
             start = time.perf_counter()
             with self._session_factory() as s, s.begin():
                 hits = cache.get_many(s, list(dict.fromkeys(keys)))
@@ -298,12 +291,7 @@ class LLMGateway:
         # Unique texts still missing, in first-seen order.
         missing = {k: t for k, t in zip(keys, texts, strict=True) if k not in vectors}
 
-        # 2. Demo mode never reaches a provider.
-        if missing and self.settings.demo_mode:
-            self._write(record(success=False, error=f"demo cache miss ({len(missing)} texts)"))
-            raise DemoCacheMiss(f"DEMO_MODE: {len(missing)} text(s) not in the embedding cache")
-
-        # 3. Provider, in batches.
+        # 2. Provider, in batches.
         items = list(missing.items())
         for i in range(0, len(items), EMBED_BATCH_SIZE):
             batch = items[i : i + EMBED_BATCH_SIZE]

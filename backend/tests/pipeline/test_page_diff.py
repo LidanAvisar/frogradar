@@ -599,10 +599,8 @@ def test_backfill_requires_sections_on_today_only(sectioned, collect_db, web, ma
         backfill_source(collect_db, make_client(), ref, CFG, run_id=_run_id(collect_db), now=NOW)
 
 
-def test_collector_stores_a_new_baseline_after_a_demo_snapshot_restore(
-    pricing, collect_db, web, make_client
-):
-    """Snapshots restored from the demo data have no text (D77): never diff against ''."""
+def test_collector_stores_a_new_baseline_after_a_seed_load(pricing, collect_db, web, make_client):
+    """Page snapshots loaded from the seed data have no text (D77): never diff against ''."""
     _collect(collect_db, web, make_client, "pricing_v1")
     with collect_db.begin() as s:
         snap = s.scalars(select(PageSnapshot).where(PageSnapshot.source_id == pricing)).one()

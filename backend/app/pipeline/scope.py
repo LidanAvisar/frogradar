@@ -32,7 +32,7 @@ def in_scope() -> ColumnElement[bool]:
 
 
 def not_stripped() -> ColumnElement[bool]:
-    """Signals restored from the demo snapshot have no raw_text (D77): the pipeline never
+    """Signals loaded from the seed data (make seed) have no raw_text (D77, D83): the pipeline never
     re-processes them (embed, link, triage, enrich, verify, radar); their enrichment stays."""
     return Signal.meta["snapshot_stripped"].astext.is_distinct_from("true")
 

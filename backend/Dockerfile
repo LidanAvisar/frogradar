@@ -17,12 +17,13 @@ ENV LITELLM_MODE=PRODUCTION LITELLM_LOCAL_MODEL_COST_MAP=True
 RUN groupadd --system app && useradd --system --gid app --no-create-home app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
-# Default config baked in, so the image runs on its own (Artifactory, demo mode).
+# Default config baked in, so the image runs on its own (e.g. pulled from Artifactory).
 # Owned by root = read-only for the app user. docker-compose mounts ./config over it in dev.
 COPY config /app/config
 USER app
 EXPOSE 8000
-# Apply migrations, restore the demo snapshot into an empty DB if asked (compose sets
-# SNAPSHOT_RESTORE=if-empty; the image default never touches a DB), then serve.
-ENV CONFIG_DIR=/app/config SNAPSHOT_RESTORE=never
-CMD ["sh", "-c", "alembic upgrade head && if [ \"$SNAPSHOT_RESTORE\" = if-empty ]; then python -m app.demo.snapshot restore --if-empty; fi && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Check the required model keys (one clear message if one is missing), apply migrations, upsert
+# competitors / sources / capabilities from config/ (idempotent), then serve. Seed data is loaded
+# only on request (make seed).
+ENV CONFIG_DIR=/app/config
+CMD ["sh", "-c", "python -m app.core.preflight && alembic upgrade head && python -m app.db.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

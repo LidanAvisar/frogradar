@@ -273,7 +273,7 @@ class CostEstimates(_Strict):
 
     ask: Annotated[float, Field(ge=0)] = 0.0  # one new Ask question (answer + verify)
     mission: Annotated[float, Field(ge=0)] = 0.0  # one research mission (plan → report)
-    daily_run: Annotated[float, Field(ge=0)] = 0.0  # one daily pipeline run on the demo scope
+    daily_run: Annotated[float, Field(ge=0)] = 0.0  # one daily pipeline run on the active sources
 
 
 class LLMRoutingFile(_Strict):

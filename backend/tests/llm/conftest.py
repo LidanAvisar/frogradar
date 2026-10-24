@@ -122,7 +122,6 @@ def fake_litellm(monkeypatch: pytest.MonkeyPatch) -> FakeLiteLLM:
 
 def settings_for(**overrides: Any) -> Settings:
     values: dict[str, Any] = {
-        "demo_mode": False,
         "llm_daily_budget_usd": 100.0,
         "llm_max_retries": 3,
         "llm_backoff_base_s": 0.01,

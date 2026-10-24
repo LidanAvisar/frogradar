@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core import clock as app_clock
 from app.core.config import get_settings
-from app.core.llm import BudgetExceeded, DemoCacheMiss, LLMError
+from app.core.llm import BudgetExceeded, LLMError
 from app.db.enums import AskSource, EntityType, Verification
 from app.db.models import Entity, RadarCandidate, Signal, signal_entities
 from app.mcp import shape
@@ -430,8 +430,6 @@ def build_server(
                 raise ToolError(
                     f"FrogRadar's LLM budget is reached; try again tomorrow ({e})."
                 ) from None
-            except DemoCacheMiss:
-                raise ToolError("Demo mode answers only questions it has seen before.") from None
             except LLMError as e:
                 raise ToolError(f"The language model failed ({type(e).__name__}).") from None
             return AskAnswer(

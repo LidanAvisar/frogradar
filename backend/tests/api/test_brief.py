@@ -315,3 +315,41 @@ def test_dropped_suggested_move_keeps_the_story(client, build):
     build.s.flush()
     story = brief(client)["top_story"]
     assert story["source"] == "daily_brief" and story["suggested_move"] is None
+
+
+def _daily_brief(build, created_at, title: str, signal_id: int) -> None:  # noqa: ANN001
+    story = _story(title=(title, [signal_id]), what_happened=("What.", [signal_id]),
+                   why_it_matters_for_jfrog=("Why.", [signal_id]))  # fmt: skip
+    build.s.add(Report(kind=ReportKind.DAILY_BRIEF, created_at=created_at,
+                       content={"top_story": story}))  # fmt: skip
+
+
+def test_old_data_shows_the_latest_available_day_with_its_date(client, build):
+    """Nothing in the 7-day window (e.g. only older seed data): the Brief is anchored on the newest
+    rankable signal and says so (stale), instead of an empty page or old news as today's (D83)."""
+    older = build.signal("older", hours_ago=24 * 30, impact=3)
+    newest = build.signal("newest", hours_ago=24 * 20, impact=4)
+    same_day = build.signal("same day", hours_ago=24 * 20 + 3, impact=2)
+    _daily_brief(build, NOW - timedelta(days=20), "Old story", newest.id)
+    build.s.flush()
+
+    data = brief(client)
+    assert data["stale"] is True
+    assert data["as_of"].startswith((NOW - timedelta(days=20)).date().isoformat())
+    assert data["generated_at"].startswith(NOW.date().isoformat())
+    assert ranking(data) == [newest.id, same_day.id]  # the 7 days up to the anchor
+    assert older.id not in ranking(data)
+    # The daily brief of that day is the top story (it is within 24h of the anchor).
+    assert data["top_story"]["source"] == "daily_brief"
+    # "Since yesterday" is the anchor's day.
+    assert {i["id"] for i in data["since_yesterday"]} <= {newest.id, same_day.id}
+
+
+def test_a_daily_brief_older_than_a_day_is_never_todays_top_story(client, build):
+    a = build.signal("fresh", hours_ago=2, impact=4)
+    _daily_brief(build, NOW - timedelta(days=3), "Three days old", a.id)
+    build.s.flush()
+
+    data = brief(client)
+    assert data["stale"] is False
+    assert data["top_story"]["source"] == "top_signal"

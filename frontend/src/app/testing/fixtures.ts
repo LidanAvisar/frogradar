@@ -29,6 +29,8 @@ export function signalFixture(overrides: Partial<RankedSignal> = {}): RankedSign
 export function briefFixture(overrides: Partial<Brief> = {}): Brief {
   return {
     generated_at: '2026-10-21T08:00:00Z',
+    as_of: '2026-10-21T08:00:00Z',
+    stale: false,
     window: { days: 7, since: '2026-10-14T08:00:00Z' },
     stats: { new_signals: 3, high_impact: 2, price_changes: 1, price_change_days: 7 },
     top_story: null,

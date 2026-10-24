@@ -351,7 +351,7 @@ def _existing_signal(session: Session, f: MissionFinding, vector: list[float] | 
     1. a collected signal (not another finding) of the same page: one page often yields several
        distinct findings, so findings are never matched to each other by URL;
     2. any visible signal whose embedding reaches dedup.cross_source_threshold (needs an
-       embedding: without one, e.g. in demo mode, only the URL check runs)."""
+       embedding: without one, e.g. without an embedding key, only the URL check runs)."""
     url = canonical_url(f.source.url)
     same_page = session.scalar(
         select(Signal.id)

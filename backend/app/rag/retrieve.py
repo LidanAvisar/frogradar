@@ -155,8 +155,8 @@ def retrieve(
     # Signals: vector list (stored embeddings) and full-text list, in SQL.
     # Exact search on purpose: "+ 0" keeps the planner off the HNSW index. Approximate results
     # depend on how the index graph was built (random levels) and on the unfiltered rows around
-    # the filtered ones, so the same question could retrieve different documents on another DB
-    # (e.g. a restored demo snapshot) and miss its cached answer. The searchable set is small.
+    # the filtered ones, so the same question could retrieve different documents on another copy
+    # of the data (e.g. a seeded DB) and miss its cached answer. The searchable set is small.
     distance = Signal.embedding.cosine_distance(qvec)
     vec_rows = session.execute(
         select(Signal.id, (1 - distance).label("sim"))
@@ -210,7 +210,7 @@ def retrieve(
     vec = [(f"sig:{r.id}", float(r.sim)) for r in vec_rows] + other_vec
     vec = [v for v in vec if v[1] >= cfg.min_cosine]
     # Ties broken by document id: the same question must retrieve the same documents in every
-    # process and on every copy of the data, or its cached answer is missed (demo mode, D78).
+    # process and on every copy of the data, or its cached answer is missed (D78).
     vec.sort(key=lambda v: (-v[1], v[0]))
     txt = [(f"sig:{r.id}", float(r.rank)) for r in txt_rows] + other_txt
     txt.sort(key=lambda v: (-v[1], v[0]))

@@ -13,17 +13,15 @@ from sqlalchemy import select
 
 from app.core.llm import (
     BudgetExceeded,
-    DemoCacheMiss,
     LLMError,
     MissionBudgetExceeded,
     ProviderError,
     StructuredOutputError,
     llm_context,
 )
-from app.core.llm.provider import LiteLLMProvider
 from app.db.enums import RunTrigger
 from app.db.models import LLMCache, LLMCall, Mission, PipelineRun
-from tests.llm.conftest import routing_with, settings_for
+from tests.llm.conftest import routing_with
 
 pytestmark = pytest.mark.db
 
@@ -338,45 +336,10 @@ def test_mission_budget_exceeded(make_gateway, fake_litellm, llm_db, monkeypatch
     assert len(fake_litellm.calls) == 1
 
 
-# ---------- demo mode ----------
+# ---------- cache ----------
 
 
-@pytest.fixture
-def forbidden_litellm(monkeypatch):
-    """litellm.completion / embedding mocks that fail the test if anything calls them."""
-    completion = MagicMock(side_effect=AssertionError("litellm.completion called in demo mode"))
-    embedding = MagicMock(side_effect=AssertionError("litellm.embedding called in demo mode"))
-    monkeypatch.setattr(litellm, "completion", completion)
-    monkeypatch.setattr(litellm, "embedding", embedding)
-    return completion, embedding
-
-
-def test_demo_mode_never_calls_providers(make_gateway, forbidden_litellm, llm_db):
-    completion, embedding = forbidden_litellm
-    gw = make_gateway(demo_mode=True)
-
-    with pytest.raises(DemoCacheMiss, match="enrich_signal"):
-        gw.complete("bulk", "enrich_signal", MSGS, Answer)
-    with pytest.raises(DemoCacheMiss):
-        gw.complete("bulk", "enrich_signal", MSGS, Answer, use_cache=False)
-    with pytest.raises(DemoCacheMiss):
-        gw.embed(["hello"])
-    # Defense in depth: the provider layer refuses on its own too.
-    provider = LiteLLMProvider(settings_for(demo_mode=True))
-    with pytest.raises(DemoCacheMiss):
-        provider.complete(
-            model="m", messages=MSGS, max_tokens=10, temperature=0, response_format=None
-        )
-    with pytest.raises(DemoCacheMiss):
-        provider.embed(model="m", texts=["x"], dimensions=8)
-
-    completion.assert_not_called()
-    embedding.assert_not_called()
-    rows = _rows(llm_db)
-    assert len(rows) == 3 and all(not r.success and "demo cache miss" in r.error for r in rows)
-
-
-def test_demo_mode_serves_from_cache(make_gateway, fake_litellm, monkeypatch):
+def test_repeated_calls_are_served_from_the_cache(make_gateway, fake_litellm, monkeypatch):
     _schema_support(monkeypatch, True)
     fake_litellm.queue(GOOD)
     make_gateway().complete("bulk", "enrich_signal", MSGS, Answer)
@@ -384,9 +347,9 @@ def test_demo_mode_serves_from_cache(make_gateway, fake_litellm, monkeypatch):
     monkeypatch.setattr(litellm, "completion", MagicMock(side_effect=AssertionError))
     monkeypatch.setattr(litellm, "embedding", MagicMock(side_effect=AssertionError))
 
-    demo = make_gateway(demo_mode=True)
-    assert demo.complete("bulk", "enrich_signal", MSGS, Answer).score == 4
-    assert len(demo.embed(["hello"]).vectors) == 1
+    again = make_gateway()
+    assert again.complete("bulk", "enrich_signal", MSGS, Answer).score == 4
+    assert len(again.embed(["hello"]).vectors) == 1
 
 
 # ---------- context ----------

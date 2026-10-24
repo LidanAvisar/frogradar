@@ -5,17 +5,17 @@ import { EmptyStateComponent } from '../../shared/states.component';
 import { ImpactBadgeComponent } from '../../shared/impact-badge.component';
 import { SectionCardComponent } from '../../shared/section-card.component';
 
-/** Signals published in the last 24 hours, highest impact first. */
+/** Signals published in the last 24 hours (or on the latest available day), highest impact first. */
 @Component({
   selector: 'fr-since-yesterday',
   standalone: true,
   imports: [EmptyStateComponent, ImpactBadgeComponent, SectionCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <fr-section-card heading="What changed since yesterday" headingId="since-yesterday-heading">
+    <fr-section-card [heading]="day() ? 'On ' + day() : 'What changed since yesterday'" headingId="since-yesterday-heading">
       <span card-meta class="mono small muted">{{ items().length }}</span>
       @if (items().length === 0) {
-        <fr-empty-state title="Nothing new" message="No relevant signals were published in the last 24 hours." />
+        <fr-empty-state title="Nothing new" [message]="day() ? 'No relevant signals were published that day.' : 'No relevant signals were published in the last 24 hours.'" />
       } @else {
         <ul class="list">
           @for (item of items(); track item.id) {
@@ -45,4 +45,6 @@ import { SectionCardComponent } from '../../shared/section-card.component';
 })
 export class SinceYesterdayComponent {
   readonly items = input.required<SinceYesterdayItem[]>();
+  /** Stale Brief: the latest available day ("21 Oct 2026"); null = the last 24 hours. */
+  readonly day = input<string | null>(null);
 }

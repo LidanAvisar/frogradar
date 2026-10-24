@@ -1,9 +1,7 @@
-/** Reading FastAPI error bodies: `detail` is a string, or {message, suggestions, demo} in demo mode. */
+/** Reading FastAPI error bodies: `detail` is a string, or an object with a `message`. */
 
-interface DemoDetail {
-  demo?: boolean;
+interface DetailObject {
   message?: string;
-  suggestions?: string[];
 }
 
 function detailOf(e: unknown): unknown {
@@ -14,17 +12,8 @@ function detailOf(e: unknown): unknown {
 export function errorMessage(e: unknown, fallback: string): string {
   const detail = detailOf(e);
   if (typeof detail === 'string') return detail;
-  if (detail && typeof detail === 'object' && typeof (detail as DemoDetail).message === 'string') {
-    return (detail as DemoDetail).message as string;
+  if (detail && typeof detail === 'object' && typeof (detail as DetailObject).message === 'string') {
+    return (detail as DetailObject).message as string;
   }
   return fallback;
-}
-
-/** Demo-mode refusal: its suggestions (possibly empty), or null for any other error. */
-export function demoSuggestions(e: unknown): string[] | null {
-  const detail = detailOf(e);
-  if (detail && typeof detail === 'object' && (detail as DemoDetail).demo) {
-    return (detail as DemoDetail).suggestions ?? [];
-  }
-  return null;
 }

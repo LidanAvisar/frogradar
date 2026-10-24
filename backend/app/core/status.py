@@ -1,10 +1,11 @@
 """Which API keys are present and which features they enable (startup log, /api/status, CLI).
 
-Only booleans and env var names leave this module, never key values. A missing key never crashes the
-app: the feature is reported as off or degraded with a reason, and its endpoints answer with that
-reason instead of failing inside a provider call.
+Only booleans and env var names leave this module, never key values. The required keys (the
+providers of the four model tiers) are checked before the app starts (app.core.preflight); an
+optional key that is missing turns only its feature off or degraded, with a reason, and its
+endpoints answer with that reason instead of failing inside a provider call.
 
-    python -m app.core.status      # print the table (make live does this)
+    python -m app.core.status      # print the table (make up / make status do this)
 """
 
 from __future__ import annotations
@@ -16,13 +17,12 @@ from typing import Literal
 
 import litellm
 
-from app.core import clock
 from app.core.catalog import LLMRoutingFile, load_llm_routing
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-State = Literal["enabled", "degraded", "off", "demo"]
+State = Literal["enabled", "degraded", "off"]
 TIERS = ("bulk", "synthesis", "verify", "embedding")
 
 
@@ -45,8 +45,6 @@ class Feature:
 
 @dataclass
 class Status:
-    mode: Literal["demo", "live"]
-    as_of: str | None
     models: list[ModelKey]
     extra_keys: dict[str, bool]
     features: list[Feature]
@@ -55,6 +53,10 @@ class Status:
 
     def feature(self, name: str) -> Feature:
         return next(f for f in self.features if f.name == name)
+
+    def missing_required(self) -> list[str]:
+        """Env var names of the model keys that are missing (required to start)."""
+        return _missing({m.tier: m for m in self.models}, *TIERS)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -107,7 +109,7 @@ def _need(missing: list[str]) -> str:
     return "needs " + " and ".join(missing)
 
 
-def _live_features(models: dict[str, ModelKey], extra: dict[str, bool]) -> list[Feature]:
+def _features(models: dict[str, ModelKey], extra: dict[str, bool]) -> list[Feature]:
     f: list[Feature] = []
 
     # Daily pipeline: bulk is required; the rest degrades it.
@@ -158,22 +160,6 @@ def _live_features(models: dict[str, ModelKey], extra: dict[str, bool]) -> list[
     return f
 
 
-def _demo_features(extra: dict[str, bool]) -> list[Feature]:
-    return [
-        Feature("pipeline", "Daily pipeline", "off", "demo mode: snapshot data, no collection"),
-        Feature("embeddings", "Embeddings and dedup", "off", "demo mode"),
-        Feature("ask", "Ask", "demo", "the curated demo questions, answered from the cache"),
-        Feature("missions", "Research missions", "demo", "finished missions are viewable"),
-        Feature("analyst", "Analyst actions (review, radar)", "enabled", "saved in the local DB"),
-        Feature(
-            "mcp_http",
-            "MCP over HTTP (/mcp)",
-            "enabled" if extra["MCP_TOKEN"] else "off",
-            "" if extra["MCP_TOKEN"] else "needs MCP_TOKEN",
-        ),
-    ]
-
-
 def get_status() -> Status:
     s = get_settings()
     routing = load_llm_routing()
@@ -190,36 +176,23 @@ def get_status() -> Status:
             f"Verify uses the same model family as the writers ({routing.tasks.verify.provider}): "
             "accuracy checks are weaker (ALLOW_SAME_FAMILY_VERIFY=true)."
         )
-    pinned = clock.pinned_now()
-    if s.demo_mode:
-        features = _demo_features(extra)
-        as_of = clock.snapshot_as_of()
-    else:
-        features = _live_features(by_tier, extra)
-        as_of = None
-    if s.pin_now and not s.demo_mode:
-        warnings.append(f"PIN_NOW is set: the app's date is pinned to {pinned.isoformat()}.")
     return Status(
-        mode="demo" if s.demo_mode else "live",
-        as_of=as_of.isoformat() if as_of else None,
         models=models,
         extra_keys=extra,
-        features=features,
+        features=_features(by_tier, extra),
         same_family_verify=routing.same_family_verify,
         warnings=warnings,
     )
 
 
 def format_table(st: Status) -> str:
-    lines = [f"FrogRadar – {st.mode} mode" + (f" (data as of {st.as_of})" if st.as_of else "")]
-    if st.mode == "live":
-        lines.append("Keys:")
-        for m in st.models:
-            mark = "ok     " if m.key_present else "MISSING"
-            hint = "" if m.key_present else f"  ({', '.join(m.env_vars)})"
-            lines.append(f"  {mark} {m.tier:<10} {m.model}{hint}")
-        for name, ok in st.extra_keys.items():
-            lines.append(f"  {'ok     ' if ok else 'missing'} {name}")
+    lines = ["FrogRadar", "Keys (present or missing; values are never shown):"]
+    for m in st.models:
+        mark = "ok     " if m.key_present else "MISSING"
+        hint = "" if m.key_present else f"  ({', '.join(m.env_vars)})"
+        lines.append(f"  {mark} {m.tier:<10} {m.model}{hint}")
+    for name, ok in st.extra_keys.items():
+        lines.append(f"  {'ok     ' if ok else 'missing'} {name} (optional)")
     lines.append("Features:")
     for f in st.features:
         lines.append(f"  {f.state:<9} {f.label}" + (f" – {f.reason}" if f.reason else ""))

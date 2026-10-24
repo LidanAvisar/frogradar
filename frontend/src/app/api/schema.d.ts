@@ -840,6 +840,12 @@ export interface components {
         /** BriefOut */
         BriefOut: {
             /**
+             * As Of
+             * Format: date-time
+             * @description End of every window on this page: now, or the newest available signal's time when nothing ranks in the window (stale)
+             */
+            as_of: string;
+            /**
              * Developments
              * @description Other developments: the next ranked signals, without the top story's
              */
@@ -864,6 +870,11 @@ export interface components {
              * @description New in the last 24h, without the signals already shown above
              */
             since_yesterday: components["schemas"]["SinceYesterdayItem"][];
+            /**
+             * Stale
+             * @description Nothing new in the window: the Brief shows the latest available day (as_of)
+             */
+            stale: boolean;
             stats: components["schemas"]["BriefStats"];
             top_story: components["schemas"]["TopStoryOut"] | null;
             window: components["schemas"]["BriefWindow"];
@@ -1060,7 +1071,7 @@ export interface components {
              * State
              * @enum {string}
              */
-            state: "enabled" | "degraded" | "off" | "demo";
+            state: "enabled" | "degraded" | "off";
         };
         /** FieldRate */
         FieldRate: {
@@ -2387,30 +2398,15 @@ export interface components {
         };
         /** StatusOut */
         StatusOut: {
-            /**
-             * As Of
-             * @description Demo snapshot's as-of time (ISO), demo mode only
-             */
-            as_of: string | null;
             cost_estimates_usd: components["schemas"]["CostEstimatesOut"];
             /** Daily Budget Usd */
             daily_budget_usd: number;
-            /**
-             * Demo Questions
-             * @description Ask questions demo mode answers (demo only)
-             */
-            demo_questions: string[];
             /** Extra Keys */
             extra_keys: {
                 [key: string]: boolean;
             };
             /** Features */
             features: components["schemas"]["FeatureOut"][];
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "demo" | "live";
             /** Models */
             models: components["schemas"]["ModelKeyOut"][];
             /** Same Family Verify */
@@ -2556,13 +2552,6 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Conflict */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };

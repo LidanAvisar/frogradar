@@ -24,7 +24,7 @@ row with per-source counts (new / updated / duplicate / failed / too old) and er
 **History limits.** RSS feeds only list their most recent items (often 10–50), so a backfill can't reach further
 back than the feed does; GitHub releases page back as far as `--since`. The collect/backfill report says per
 source whether it covered the whole window or "only back to <date>". First 90-day backfill over the full catalog
-(2026-10-20, before the demo scope was narrowed):
+(2026-10-20, before the source scope was narrowed):
 
 | Coverage | Sources |
 |---|---|
@@ -105,7 +105,7 @@ After collection, three steps run on in-scope signals (each `step(session, RunCo
    need a capital letter and the title or 3+ mentions; products win over their parent company. Primary = the
    source's own entity or named in the title; otherwise a mention. The LLM confirms/corrects links in enrichment.
 
-First run on the demo scope (56 signals, $0.00043 for embeddings): no cross-source duplicates – the closest
+First run on the active sources (56 signals, $0.00043 for embeddings): no cross-source duplicates – the closest
 cross-source pair is 0.63, so the three sources don't report the same news yet; the most similar same-source
 pair (two GitHub Copilot deprecation notices, 0.89) stays apart as intended. 43 entity links, at most 3 per
 signal. `make dedup-report` shows the pairs and the similarity distribution for calibration.

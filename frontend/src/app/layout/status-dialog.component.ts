@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 
-import { StatusService, asOfLabel, usdShort } from '../core/status.service';
+import { StatusService, usdShort } from '../core/status.service';
 
-const TONE: Record<string, string> = { enabled: 'tone-green', degraded: 'tone-yellow', off: 'tone-red', demo: 'tone-blue' };
+const TONE: Record<string, string> = { enabled: 'tone-green', degraded: 'tone-yellow', off: 'tone-red' };
 
-/** System status: mode, keys present (never values), features, today's LLM spend, costs. */
+/** System status: keys present (never values), features, today's LLM spend, costs. */
 @Component({
   selector: 'fr-status-dialog',
   standalone: true,
@@ -16,13 +16,8 @@ const TONE: Record<string, string> = { enabled: 'tone-green', degraded: 'tone-ye
     <mat-dialog-content class="body">
       @if (status(); as s) {
         <p class="small">
-          @if (s.mode === 'demo') {
-            <strong>Demo mode</strong>: snapshot from {{ asOfDate() }}, no API keys, no LLM calls.
-            Run <code>make live</code> with your keys for live data.
-          } @else {
-            <strong>Live mode</strong>: LLM spend today {{ usd(s.spend_today_usd) }} of
-            {{ usd(s.daily_budget_usd) }} (LLM_DAILY_BUDGET_USD).
-          }
+          LLM spend today {{ usd(s.spend_today_usd) }} of {{ usd(s.daily_budget_usd) }}
+          (daily cap, LLM_DAILY_BUDGET_USD in .env).
         </p>
         <section aria-labelledby="st-features">
           <h3 id="st-features" class="eyebrow">Features</h3>
@@ -35,26 +30,24 @@ const TONE: Record<string, string> = { enabled: 'tone-green', degraded: 'tone-ye
             }
           </ul>
         </section>
-        @if (s.mode === 'live') {
-          <section aria-labelledby="st-keys">
-            <h3 id="st-keys" class="eyebrow">Keys (present or missing, never shown)</h3>
-            <ul class="rows">
-              @for (m of s.models; track m.tier) {
-                <li>
-                  <span class="fr-pill" [class]="'fr-pill ' + (m.key_present ? 'tone-green' : 'tone-red')">{{ m.key_present ? 'ok' : 'missing' }}</span>
-                  <span><strong>{{ m.tier }}</strong> <span class="mono small">{{ m.model }}</span>
-                    @if (!m.key_present) { <span class="muted"> – {{ m.env_vars.join(', ') }}</span> }</span>
-                </li>
-              }
-              @for (k of extraKeys(); track k.name) {
-                <li>
-                  <span class="fr-pill" [class]="'fr-pill ' + (k.ok ? 'tone-green' : '')">{{ k.ok ? 'ok' : 'not set' }}</span>
-                  <span class="mono small">{{ k.name }}</span>
-                </li>
-              }
-            </ul>
-          </section>
-        }
+        <section aria-labelledby="st-keys">
+          <h3 id="st-keys" class="eyebrow">Keys (present or missing, never shown)</h3>
+          <ul class="rows">
+            @for (m of s.models; track m.tier) {
+              <li>
+                <span class="fr-pill" [class]="'fr-pill ' + (m.key_present ? 'tone-green' : 'tone-red')">{{ m.key_present ? 'ok' : 'missing' }}</span>
+                <span><strong>{{ m.tier }}</strong>&nbsp;<span class="mono small">{{ m.model }}</span>
+                  @if (!m.key_present) { <span class="muted"> – {{ m.env_vars.join(', ') }}</span> }</span>
+              </li>
+            }
+            @for (k of extraKeys(); track k.name) {
+              <li>
+                <span class="fr-pill" [class]="'fr-pill ' + (k.ok ? 'tone-green' : '')">{{ k.ok ? 'ok' : 'not set' }}</span>
+                <span class="mono small">{{ k.name }}</span> <span class="muted small">(optional)</span>
+              </li>
+            }
+          </ul>
+        </section>
         @for (w of s.warnings; track w) {
           <p class="small warn" role="note">{{ w }}</p>
         }
@@ -95,11 +88,6 @@ export class StatusDialogComponent {
 
   protected tone(state: string): string {
     return `fr-pill ${TONE[state] ?? ''}`;
-  }
-
-  protected asOfDate(): string {
-    const v = this.svc.asOf();
-    return v ? asOfLabel(v) : 'the snapshot';
   }
 
   protected extraKeys(): { name: string; ok: boolean }[] {

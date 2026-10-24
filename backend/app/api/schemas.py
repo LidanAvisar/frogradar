@@ -192,6 +192,13 @@ class BriefStats(BaseModel):
 
 class BriefOut(BaseModel):
     generated_at: datetime
+    as_of: datetime = Field(
+        description="End of every window on this page: now, or the newest available signal's "
+        "time when nothing ranks in the window (stale)"
+    )
+    stale: bool = Field(
+        description="Nothing new in the window: the Brief shows the latest available day (as_of)"
+    )
     window: BriefWindow
     stats: BriefStats
     top_story: TopStoryOut | None

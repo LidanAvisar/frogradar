@@ -14,7 +14,7 @@ import litellm
 from litellm import exceptions as lx
 
 from app.core.config import Settings
-from app.core.llm.errors import DemoCacheMiss, ProviderError, scrub
+from app.core.llm.errors import ProviderError, scrub
 
 # Keep LiteLLM quiet: no debug banners, no request/header logging, no retries of its own.
 litellm.suppress_debug_info = True
@@ -110,11 +110,6 @@ class LiteLLMProvider:
         self.settings = settings
         self._sleep = sleep
 
-    def _refuse_in_demo_mode(self, what: str) -> None:
-        # Defense in depth: the gateway already serves demo mode from the cache only.
-        if self.settings.demo_mode:
-            raise DemoCacheMiss(f"DEMO_MODE is on; refusing to call the provider for {what}")
-
     def _with_retries(self, what: str, call: Callable[[], Any], on_error: OnError | None) -> Any:
         attempts = self.settings.llm_max_retries + 1
         for attempt in range(1, attempts + 1):
@@ -151,7 +146,6 @@ class LiteLLMProvider:
         on_error: OnError | None = None,
         thinking: str = "default",
     ) -> CompletionResult:
-        self._refuse_in_demo_mode(f"completion with {model}")
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
@@ -189,7 +183,6 @@ class LiteLLMProvider:
         dimensions: int,
         on_error: OnError | None = None,
     ) -> EmbeddingBatch:
-        self._refuse_in_demo_mode(f"embedding with {model}")
         kwargs: dict[str, Any] = {
             "model": model,
             "input": texts,

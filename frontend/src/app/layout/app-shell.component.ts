@@ -8,7 +8,7 @@ import type { NavCounts } from '../api/models';
 import { AskRecentService } from '../core/ask-recent.service';
 import { NavCountsService } from '../core/nav-counts.service';
 import { PreferencesService } from '../core/preferences.service';
-import { StatusService, asOfLabel, usdShort } from '../core/status.service';
+import { StatusService, usdShort } from '../core/status.service';
 import { IconComponent } from '../shared/icon.component';
 
 interface NavItem {
@@ -33,6 +33,8 @@ const NAV: NavItem[] = [
  * Sidebar navigation + main content area. At phone width the sidebar becomes a top bar and the
  * nav opens from a Menu button (closes on navigation and on Escape).
  */
+const CORE_FEATURES = ['pipeline', 'embeddings', 'ask', 'missions'];
+
 @Component({
   selector: 'fr-app-shell',
   standalone: true,
@@ -53,14 +55,13 @@ export class AppShellComponent {
   private readonly statusSvc = inject(StatusService);
   private readonly dialog = inject(MatDialog);
   protected readonly status = this.statusSvc.status;
-  protected readonly demo = this.statusSvc.demo;
-  protected readonly asOf = computed(() => {
-    const v = this.statusSvc.asOf();
-    return v ? asOfLabel(v) : null;
-  });
+  /** A core feature is off or degraded (e.g. an optional key is missing): the status dot turns amber. */
+  protected readonly limited = computed(() =>
+    (this.status()?.features ?? []).some((f) => CORE_FEATURES.includes(f.name) && f.state !== 'enabled'),
+  );
   protected readonly spend = computed(() => {
     const s = this.status();
-    return s && s.mode === 'live' ? `${usdShort(s.spend_today_usd)} of ${usdShort(s.daily_budget_usd)}` : null;
+    return s ? `${usdShort(s.spend_today_usd)} of ${usdShort(s.daily_budget_usd)}` : null;
   });
 
   protected readonly menuOpen = signal(false);

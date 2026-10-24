@@ -2,6 +2,12 @@
   <header class="header">
     <div class="intro">
       <p class="eyebrow mono date">{{ dateLine() }}</p>
+      @if (stale()) {
+        <p class="stale small" role="note">
+          Nothing newer yet: this is the latest available day ({{ asOfShort() }}). Run the pipeline
+          (<span class="mono">make pipeline</span>) for today's news, or <span class="mono">make scheduler-up</span> for daily updates.
+        </p>
+      }
       <h1 class="visually-hidden">Morning Brief</h1>
       @if (tiles().length) {
         <ul class="tiles" aria-label="Today in numbers">
@@ -30,7 +36,7 @@
   </header>
 
   @if (story(); as st) {
-    <fr-top-story [story]="st" />
+    <fr-top-story [story]="st" [label]="stale() ? 'Top story · ' + asOfShort() : 'Top story today'" />
   }
 
   @if (!executive()) {
@@ -40,7 +46,7 @@
         <div class="section-title">
           <h2 id="dev-heading">Other developments</h2>
           @if (brief(); as b) {
-            <span class="small muted">Last {{ b.window.days }} days, ranked by impact × confidence</span>
+            <span class="small muted">{{ b.stale ? b.window.days + ' days to ' + asOfShort() : 'Last ' + b.window.days + ' days' }}, ranked by impact × confidence</span>
           }
         </div>
         @if (devIds().length) {
@@ -87,7 +93,7 @@
       @if (brief(); as b) {
         <fr-pricing-watch [items]="b.pricing_watch" />
         <fr-radar-teaser [items]="b.radar ?? []" />
-        <fr-since-yesterday [items]="b.since_yesterday">
+        <fr-since-yesterday [items]="b.since_yesterday" [day]="b.stale ? asOfShort() : null">
           <p class="filtered small muted">
             <span class="mono">{{ b.filtered_not_relevant }}</span>
             {{ b.filtered_not_relevant === 1 ? 'item' : 'items' }} filtered as not relevant this week

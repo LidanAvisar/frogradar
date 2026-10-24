@@ -13,9 +13,12 @@
   @if (formOpen()) {
     <section class="fr-panel form-panel" aria-labelledby="new-mission-heading">
       <h2 id="new-mission-heading">New mission</h2>
-      @if (demo()) {
-        <p class="small notice" role="note">Demo mode: new missions need API keys, so starting one is refused here.
-          The finished missions below are viewable. Run with your own keys (<span class="mono">make live</span>) to start one.</p>
+      @if (limitation(); as f) {
+        <p class="small notice" role="note">
+          @if (f.state === 'off') { New missions are off: {{ f.reason }}. }
+          @else { Limited: {{ f.reason }}. }
+          Add the key to .env and run <span class="mono">make up</span> again. Finished missions stay viewable.
+        </p>
       }
       @if (prefill()?.origin_label) {
         <p class="small muted">Started from: <strong>{{ prefill()?.origin_label }}</strong></p>

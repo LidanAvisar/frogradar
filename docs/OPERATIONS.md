@@ -8,13 +8,13 @@ How to run, configure and maintain FrogRadar. Quick start: [README](../README.md
 
 | Command | What it does |
 |---|---|
-| `make demo` / `make demo-down` / `make demo-reset` | Demo stack (snapshot, no keys) on :8080 / stop / back to the pristine snapshot |
-| `make live` (= `make up`) / `make down` | Live stack (Postgres + backend + web app on :8081; never the scheduler), prints the key/feature status / stop everything incl. the scheduler |
-| `make status` | Keys present, features enabled / degraded / off (live stack) |
-| `make demo-prime` / `make demo-snapshot` / `make demo-check` | Maintainers: cache the curated Ask answers (paid, `ARGS=--yes`) / export the dev DB as the demo snapshot / replay the demo on a throwaway DB (0 provider calls) |
+| `make up` / `make down` | Postgres + backend + web app on :8080 (API on 127.0.0.1:8000; never the scheduler). Checks the required keys first (one message naming a missing key), then prints the key/feature status / stop everything incl. the scheduler |
+| `make seed` | Load the committed intelligence into the fresh database of the running stack (no LLM calls; refuses a database in use) |
+| `make status` / `make logs` | Keys present, features enabled / degraded / off, today's spend / follow the logs |
+| `make seed-export` | Maintainers: export the dev DB as the seed data (raw text stripped, no `llm_cache`; `AS_OF=` to override the as-of time) |
 | `make db-up` | Start only Postgres and wait until healthy |
 | `make migrate` | Apply Alembic migrations (`backend/app/db/migrations`) |
-| `make seed` | Upsert entities, sources, capabilities from `config/` (safe to re-run) |
+| `make seed-config` | Upsert entities, sources, capabilities from `config/` (safe to re-run; the backend container also does it at every start) |
 | `make test` | Backend tests, incl. migrations and seed on a real throwaway Postgres DB (LLM calls faked) |
 | `make test-live` | Tests marked `live`: real provider calls (needs keys in `.env`, costs < 1 cent). The only way they run. |
 | `make llm-smoke` | One tiny call per LLM tier + one embedding; prints model, latency, tokens, cost |
@@ -24,7 +24,7 @@ How to run, configure and maintain FrogRadar. Quick start: [README](../README.md
 | `make dedup` | Semantic dedup into clusters (no LLM calls) |
 | `make link` | Rule-based entity linking from names/aliases in `competitors.yaml` (no LLM calls) |
 | `make dedup-report` | Calibration report: most similar pairs, similarity distribution, entity link counts |
-| `make pipeline` | The daily pipeline (LangGraph), paid: `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
+| `make pipeline` | The daily pipeline (LangGraph) in the backend container, paid (first run ≈ $0.25–0.60, then ≈ $0.08 a day): `ARGS="--skip collect"`, `ARGS="--force enrich,verify"` |
 | `make brief` | The daily brief only (1 synthesis + 1 verify call, once per UTC day; `ARGS="--force brief"`) |
 | `make battlecards` | Battlecards for due competitors (1 synthesis + 1 verify call each; `ARGS="--force battlecards"`) |
 | `make radar-backfill` | Competitor Radar discovery for the last 90 days: Hacker News, GitHub new repos, CNCF landscape copies (no LLM calls) |
@@ -73,17 +73,17 @@ Adding a competitor = add a block to `competitors.yaml`, then `make seed`.
 confidence, evidence quote, verification, embedding) · `signal_entities` · `insights` + `insight_signals` ·
 `feedback` (analyst actions) · `missions` + `mission_steps` · `capabilities` + `capability_matrix` ·
 `page_snapshots` · `watch_topics` · `pipeline_runs` · `llm_calls` (tokens, cost, latency, prompt version) ·
-`llm_cache` (validated LLM outputs and embeddings by content hash; also feeds demo mode) · `reports`
+`llm_cache` (validated LLM outputs and embeddings by content hash) · `reports`
 (stored briefs, battlecards, digests) · `radar_candidates` (discovered players: mentions, sources, metrics,
 score + breakdown, profile, status, merges) · `repo_star_snapshots` (GitHub stars per repo per day).
 Models: `backend/app/db/models/`.
 
-## Demo scope
+## Source scope
 
-The demo runs on **3 curated sources plus 2 watched pricing pages**; the full catalog stays in `config/`:
+The pipeline runs on **3 curated sources plus 2 watched pricing pages** (cost control); the full catalog stays in `config/`:
 **13 competitors** (plus JFrog itself) and **47 sources**, every other source set to `is_active: false`.
 
-| Source | Why it's in the demo |
+| Source | Why it's active |
 |---|---|
 | Sonatype Blog | Direct competitor in artifact management and supply-chain security (Nexus) |
 | GitHub Changelog | High-frequency changelog of a major platform: steady stream of concrete product changes |
@@ -91,7 +91,8 @@ The demo runs on **3 curated sources plus 2 watched pricing pages**; the full ca
 | Sonatype Pricing (page diff) | The closest competitor's price list: tiers, editions, consumption pricing |
 | GitHub Pricing (page diff) | Plans and add-ons (Advanced Security, Actions minutes, Packages storage) of the largest platform |
 
-To widen the scope, set `is_active: true` on a source (or remove the flag) and run `make seed`; nothing needs
+To widen the scope, set `is_active: true` on a source (or remove the flag) and restart the backend (`docker compose
+restart backend`; the config is re-applied at every start); nothing needs
 to be deleted or re-added. Signals already collected from inactive sources stay in the DB, but later
 pipeline stages (dedup, enrichment, verification) only process signals whose source is active
 (`app/pipeline/scope.py`).
@@ -125,42 +126,34 @@ vectors = embed(["..."]).vectors
 
 Task tiers (`bulk` / `synthesis` / `verify`) map to models in `config/llm_routing.yaml` (env overrides:
 `LLM_MODEL_*`). Each call is cached by content hash, logged to `llm_calls` with tokens/cost/latency, and checked
-against `LLM_DAILY_BUDGET_USD` (and a mission's budget). With `DEMO_MODE=true` nothing reaches a provider:
-responses come from `llm_cache`, and a miss raises `DemoCacheMiss`.
+against `LLM_DAILY_BUDGET_USD` (and a mission's budget).
 
-## Demo snapshot
+## Seed data
 
-Code: `backend/app/demo/`
+Code: `backend/app/seed/`
 
-The demo (`make demo`) restores `backend/app/demo/snapshot/` (`data.tar.gz` + `manifest.json`) into its own
-empty database. The snapshot is the dev DB exported with `make demo-snapshot`:
+`make seed` loads `backend/app/seed/data/` (`data.tar.gz` + `manifest.json`) into the running stack's database as
+normal data: signals with their enrichment, battlecards, the capability matrix, the radar, two finished research
+missions, past Ask conversations, reviews and the cost history (`llm_calls`). No LLM call is made, and the app
+reads the rows with the real clock (the Brief shows the latest available day with its date when nothing is newer).
 
-- one CSV per table (`COPY`), generated columns rebuilt on restore; the manifest records the as-of time (the latest
-  finished pipeline run), the migration and row counts. Restore refuses a database that already has data
-  (`--if-empty` skips quietly) or another migration ("re-export the snapshot");
-- stripped: `signals.raw_text`, `page_snapshots.text`, `mission_sources.excerpt` (the app never shows them and
-  demo mode makes no LLM calls), embeddings of signals outside the demo scope, and embedding cache rows that
-  duplicate `signals.embedding`. Restored rows are flagged `meta.snapshot_stripped`; the live pipeline never
-  re-processes them, and a pricing page restored without text starts a new baseline instead of a diff;
-- demo mode pins the app's "now" to the as-of time, so the Brief and "since yesterday" look the same on any day.
+- one CSV per table (`COPY`), generated columns rebuilt on load; the manifest records the as-of time (the latest
+  finished pipeline run), the migration and row counts. The load refuses a database that holds more than config
+  rows ("start over: `make down`, `docker compose down -v`, `make up`, `make seed`") or another migration
+  ("re-export"); afterwards it re-applies `config/`;
+- stripped: `signals.raw_text`, `page_snapshots.text`, `mission_sources.excerpt` (never shown) and embeddings of
+  signals outside the active sources; `llm_cache` is not loaded. Loaded rows are flagged `meta.snapshot_stripped`:
+  the pipeline never re-processes them, and a pricing page without text starts a new baseline instead of a diff.
 
-**Updating it** (after new data, a prompt change or a migration):
-
-```bash
-make demo-prime              # estimate: curated Ask questions (config/demo.yaml) not cached yet
-make demo-prime ARGS=--yes   # paid: ~$0.02 per uncached question, clock pinned to the as-of time
-make demo-snapshot           # export (AS_OF=… to override the as-of time)
-make demo-check              # restore into a throwaway DB, replay pages + every curated question + MCP, 0 provider calls
-```
-
-`make test` fails while the committed snapshot is at another migration than the code.
+**Updating it** (after new data or a migration): `make seed-export` (no LLM calls), then commit
+`backend/app/seed/data/`. `make test` fails while the committed seed is at another migration than the code.
 
 ## Development setup
 
 Backend with uv (Python 3.12), frontend with Node 20+:
 
 ```bash
-make db-up && make seed            # Postgres on :5432, entities / sources / capabilities from config/
+make db-up && make seed-config     # Postgres on :5432, entities / sources / capabilities from config/
 cd backend && uv run uvicorn app.main:app --reload    # API on :8000 (keys: uv run --env-file ../.env …)
 cd frontend && npm ci && npm start                    # http://localhost:4200, proxy to :8000
 make test && make lint                                # backend; frontend: npm run test:ci, npm run lint:tokens

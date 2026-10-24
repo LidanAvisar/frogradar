@@ -1,17 +1,20 @@
-"""Demo snapshot: export the dev DB as the committed demo dataset, and restore it into an empty DB.
+"""Seed data: load the committed intelligence snapshot into a fresh DB (no LLM calls) or export it.
 
-    python -m app.demo.snapshot export [--as-of ISO]   # make demo-snapshot
-    python -m app.demo.snapshot restore --if-empty     # container start (SNAPSHOT_RESTORE=if-empty)
-    python -m app.demo.snapshot info
+    python -m app.seed.snapshot load      # make seed: a fresh DB gets the collected intelligence
+    python -m app.seed.snapshot export [--as-of ISO]   # make seed-export (maintainers only)
+    python -m app.seed.snapshot info
 
-Format: backend/app/demo/snapshot/data.tar.gz (one CSV per table, from COPY) + manifest.json
-(as-of time, alembic revision, row counts). It lives under app/ so the backend image carries it.
+Format: backend/app/seed/data/data.tar.gz (one CSV per table, from COPY) + manifest.json (as-of
+time, alembic revision, row counts). It lives under app/ so the backend image carries it.
 
-Stripped on export (the app never shows them and demo mode makes no LLM calls; D25 / D77):
+Seeded rows are normal data: the app reads them with the real clock (D83). The Brief shows the
+latest available day with its date when nothing is newer (app/api/brief.py).
+
+Stripped on export (never shown, and the pipeline doesn't re-process seeded rows; D25 / D77):
 signals.raw_text, page_snapshots.text, mission_sources.excerpt → '' (rows flagged
-meta.snapshot_stripped where the table has meta); embeddings of signals outside the demo scope
-(Ask only searches in-scope signals); llm_cache rows of operation embed_signal (duplicates of
-signals.embedding). Everything the UI, Ask (cached answers) and MCP read is kept.
+meta.snapshot_stripped where the table has meta); embeddings of signals outside the active sources
+(Ask only searches in-scope signals). Not loaded: llm_cache (the seed carries intelligence and its
+history, not cached model responses) and alembic_version.
 """
 
 from __future__ import annotations
@@ -29,12 +32,15 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, text
 
-from app.core.clock import MANIFEST, SNAPSHOT_DIR
 from app.db.session import get_engine
 
+SNAPSHOT_DIR = Path(__file__).resolve().parent / "data"
+MANIFEST = SNAPSHOT_DIR / "manifest.json"
 DATA = SNAPSHOT_DIR / "data.tar.gz"
 FORMAT_VERSION = 1
-SKIP_TABLES = {"alembic_version"}
+SKIP_TABLES = {"alembic_version", "llm_cache"}  # never exported or loaded
+# Filled by the config seed (app.db.seed) at every start: replaced by the snapshot's own rows.
+CONFIG_TABLES = ("entities", "sources", "capabilities", "capability_matrix")
 
 # Column → SQL expression used on export instead of the column itself.
 _IN_SCOPE = (
@@ -51,13 +57,13 @@ REPLACE: dict[str, dict[str, str]] = {
     "page_snapshots": {"text": "''", "meta": _STRIPPED_META},
     "mission_sources": {"excerpt": "''"},
 }
-WHERE: dict[str, str] = {"llm_cache": "t.operation <> 'embed_signal'"}
+WHERE: dict[str, str] = {}
 STRIPPED = [
     "signals.raw_text",
     "page_snapshots.text",
     "mission_sources.excerpt",
-    "signals.embedding (outside the demo scope)",
-    "llm_cache (operation embed_signal)",
+    "signals.embedding (outside the active sources)",
+    "llm_cache (not exported)",
 ]
 
 
@@ -174,35 +180,45 @@ def export(engine: Engine | None = None, *, as_of: datetime | None = None,
     return manifest
 
 
-def _is_empty(conn) -> tuple[bool, dict[str, int]]:
-    n = {
-        t: conn.execute(text(f"SELECT count(*) FROM {t}")).scalar_one()
-        for t in ("signals", "entities", "sources")
-    }
-    return not any(n.values()), n
+def _non_config_rows(conn, tables: list[str]) -> dict[str, int]:
+    """Row counts of tables that hold more than config (a DB that is already in use)."""
+    out = {}
+    for table in tables:
+        if table in CONFIG_TABLES:
+            continue
+        n = conn.execute(text(f"SELECT count(*) FROM {_quote(table)}")).scalar_one()
+        if n:
+            out[table] = n
+    return out
 
 
-def restore(engine: Engine | None = None, *, if_empty: bool = True,
-            snapshot_dir: Path = SNAPSHOT_DIR) -> str:  # fmt: skip
-    """Load the snapshot into a migrated, empty DB. Returns a one-line report."""
+def load(engine: Engine | None = None, *, snapshot_dir: Path = SNAPSHOT_DIR,
+         sync_config: bool = True) -> str:  # fmt: skip
+    """Load the snapshot into a migrated DB that holds nothing but config rows (a fresh `make up`).
+    Refuses a DB that is already in use. Then re-applies config/ (competitors, sources,
+    capabilities may have changed since the export). Returns a one-line report."""
     engine = engine or get_engine()
     manifest_path, data_path = snapshot_dir / MANIFEST.name, snapshot_dir / DATA.name
     if not manifest_path.exists() or not data_path.exists():
-        raise SnapshotError(f"no snapshot in {snapshot_dir} (make demo-snapshot)")
+        raise SnapshotError(f"no seed data in {snapshot_dir}")
     manifest = json.loads(manifest_path.read_text())
+    tables = [t for t in manifest["tables"] if t not in SKIP_TABLES]
     with engine.begin() as conn:
         head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
         if head != manifest["alembic_revision"]:
             raise SnapshotError(
-                f"snapshot is at migration {manifest['alembic_revision']}, the DB at {head}: "
-                "re-export the snapshot (make demo-snapshot) after a schema change"
+                f"the seed data is at migration {manifest['alembic_revision']}, the DB at {head}: "
+                "re-export it (make seed-export) after a schema change"
             )
-        empty, counts = _is_empty(conn)
-        if not empty:
-            msg = f"DB not empty ({counts}), snapshot not restored"
-            if if_empty:
-                return msg
-            raise SnapshotError(msg)
+        in_use = _non_config_rows(conn, _tables(conn))
+        if in_use:
+            listed = ", ".join(f"{t} {n}" for t, n in sorted(in_use.items()))
+            raise SnapshotError(
+                f"the database already has data ({listed}); the seed only loads into a fresh one. "
+                "To start over (deletes this database): make down, then "
+                "docker compose down -v, make up, make seed"
+            )
+        conn.execute(text(f"TRUNCATE {', '.join(_quote(t) for t in CONFIG_TABLES)} CASCADE"))
         raw = conn.connection.dbapi_connection
         with raw.cursor() as cur:
             try:  # FK / trigger checks off while loading (superuser; compose's DB user is one)
@@ -211,7 +227,7 @@ def restore(engine: Engine | None = None, *, if_empty: bool = True,
             except Exception:  # noqa: BLE001 - not a superuser: rely on the FK order
                 cur.execute("ROLLBACK TO SAVEPOINT srr")
         with tarfile.open(data_path, "r:gz") as tar:
-            for table in manifest["tables"]:
+            for table in tables:
                 member = tar.extractfile(f"{table}.csv")
                 if member is None:
                     raise SnapshotError(f"{table}.csv missing from {data_path}")
@@ -224,7 +240,7 @@ def restore(engine: Engine | None = None, *, if_empty: bool = True,
                 ):
                     while chunk := member.read(1 << 20):
                         copy.write(chunk)
-        # Identity sequences continue after the restored ids.
+        # Identity sequences continue after the loaded ids.
         for table, col in conn.execute(
             text(
                 "SELECT table_name, column_name FROM information_schema.columns "
@@ -238,18 +254,27 @@ def restore(engine: Engine | None = None, *, if_empty: bool = True,
                 ),
                 {"t": table, "c": col},
             )
-    total = sum(manifest["row_counts"].values())
-    n = len(manifest["tables"])
-    return f"snapshot restored: {total} rows in {n} tables, as of {manifest['as_of']}"
+    if sync_config:
+        from sqlalchemy.orm import Session
+
+        from app.db.seed import seed
+
+        with Session(engine) as session, session.begin():
+            seed(session)
+    total = sum(n for t, n in manifest["row_counts"].items() if t in tables)
+    day = manifest["as_of"][:10]
+    return (
+        f"seed loaded: {total} rows in {len(tables)} tables, intelligence up to {day}. "
+        "Run `make pipeline` for today's news."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="python -m app.demo.snapshot")
+    p = argparse.ArgumentParser(prog="python -m app.seed.snapshot")
     sub = p.add_subparsers(dest="cmd", required=True)
-    e = sub.add_parser("export", help="dev DB → backend/app/demo/snapshot/")
+    sub.add_parser("load", help="seed data → this DB (migrated, nothing but config rows)")
+    e = sub.add_parser("export", help="this DB → backend/app/seed/data/ (maintainers)")
     e.add_argument("--as-of", help="ISO time (default: the latest finished pipeline run)")
-    r = sub.add_parser("restore", help="snapshot → this DB (must be migrated and empty)")
-    r.add_argument("--if-empty", action="store_true", help="skip quietly if the DB has data")
     sub.add_parser("info", help="print the manifest summary")
     args = p.parse_args(argv)
     try:
@@ -259,17 +284,17 @@ def main(argv: list[str] | None = None) -> int:
                 as_of = as_of.replace(tzinfo=UTC)
             m = export(as_of=as_of)
             print(
-                f"snapshot exported: {sum(m['row_counts'].values())} rows, "
+                f"seed data exported: {sum(m['row_counts'].values())} rows, "
                 f"{m['size_bytes'] / 1e6:.2f} MB, as of {m['as_of']}, migration "
                 f"{m['alembic_revision']}"
             )
-        elif args.cmd == "restore":
-            print(restore(if_empty=args.if_empty))
+        elif args.cmd == "load":
+            print(load())
         else:
             m = json.loads(MANIFEST.read_text())
             print(json.dumps({k: m[k] for k in m if k != "columns"}, indent=1))
     except SnapshotError as err:
-        print(f"snapshot: {err}", file=sys.stderr)
+        print(f"make seed: {err}", file=sys.stderr)
         return 1
     return 0
 

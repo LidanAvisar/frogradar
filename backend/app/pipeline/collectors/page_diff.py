@@ -81,7 +81,7 @@ class PageDiffCollector:
             if last is not None and last.content_hash == new.content_hash:
                 result.notes.append("unchanged")
                 return result
-            # A snapshot restored from the demo data has no text (D77): store a new baseline
+            # A page snapshot loaded from the seed data has no text (D77, D83): store a new baseline
             # instead of diffing the live page against an empty one.
             stripped = ref is not None and (
                 not ref.text or (ref.meta or {}).get("snapshot_stripped")

@@ -3,7 +3,7 @@
 40 signals, fixed seed, so the set is reproducible from the same DB:
 - hard cases: #50, #77, #1005, #1053, #1055 (known difficult items from earlier runs);
 - one more pricing diff (GitHub Pricing), so 3 page diffs in total;
-- in scope (demo sources): one triage-relevant item per stored category, one extra
+- in scope (active sources): one triage-relevant item per stored category, one extra
   feature_update, and 5 triage-irrelevant items;
 - out of scope (inactive sources, never processed): one item per category guessed from the title
   (keywords), GitHub releases (2 minor/major, 2 patch/pre-release), 3 press items without a category

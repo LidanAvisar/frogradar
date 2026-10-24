@@ -238,7 +238,7 @@ class LLMCall(Base):
 
 
 class LLMCache(Base):
-    """Validated LLM outputs and embeddings by content hash. Also the source for demo mode."""
+    """Validated LLM outputs and embeddings by content hash (identical calls cost $0)."""
 
     __tablename__ = "llm_cache"
 

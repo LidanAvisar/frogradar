@@ -11,7 +11,7 @@ from app.db.session import get_session
 
 
 def get_now() -> datetime:
-    """Request time (pinned in demo mode, app/core/clock.py); overridden in tests."""
+    """Request time (app/core/clock.py, the wall clock); overridden in tests."""
     return clock.now()
 
 

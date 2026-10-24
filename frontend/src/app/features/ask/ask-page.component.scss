@@ -157,3 +157,10 @@
     font-size: 24px;
   }
 }
+
+.notice {
+  padding: var(--fr-gap-sm) var(--fr-gap);
+  border-radius: var(--fr-radius-control);
+  background: var(--fr-claim-bg);
+  color: var(--fr-claim-fg);
+}

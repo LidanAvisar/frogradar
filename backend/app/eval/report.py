@@ -142,7 +142,7 @@ def render(r: dict[str, Any]) -> str:
         + f". Eval runs: pipeline #{r['run_ids']['pipeline']}, "
         f"verify with thinking {r['thinking']['alternative']} #{r['run_ids']['verify_alt']}.",
         "",
-        f"Set: {s['items']} signals ({s['in_scope']} in the demo scope, "
+        f"Set: {s['items']} signals ({s['in_scope']} in the active scope, "
         f"{s['items'] - s['in_scope']}"
         f" from inactive sources; {s['silver_relevant']} relevant per silver label) and "
         f"{s['pairs']} dedup pairs ({s['same_story_pairs']} same story).",

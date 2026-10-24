@@ -1,6 +1,6 @@
 """GET /api/brief – Morning Brief: top developments, what's new, pricing watch, pipeline."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
@@ -40,7 +40,7 @@ from app.api.schemas import (
 from app.core.catalog import load_discovery
 from app.db.enums import FetchMethod, ReportKind, Verification
 from app.db.models import Entity, PipelineRun, Report, Signal, Source, signal_entities
-from app.pipeline.scope import in_scope, not_discovery, not_mission
+from app.pipeline.scope import in_scope, not_discovery, not_mission, usable
 from app.pipeline.synthesis.inputs import display_title
 
 router = APIRouter(prefix="/api", tags=["brief"])
@@ -61,13 +61,20 @@ def get_brief(
     days: Annotated[int, Query(ge=1, le=90)] = 7,
     limit: Annotated[int, Query(ge=1, le=20)] = 4,
 ) -> BriefOut:
+    # Anchor: now, unless nothing ranks in the window (e.g. only older seed data, or the pipeline
+    # hasn't run for a while). Then the Brief is the latest available day, labelled with its date
+    # (stale=true), instead of an empty page or old news presented as today's (D83).
+    generated_at = now
+    as_of = _anchor(session, now, days)
+    stale = as_of != now
+    now = as_of  # every window below ends at the anchor
     since = now - timedelta(days=days)
 
     # Ranked: relevant, verified (supported or partial), impact × confidence (scope.ranked).
     ranked_rows = session.scalars(
         ranked(since, now).options(selectinload(Signal.source)).limit(limit + MAX_STORY_IDS)
     ).all()
-    story = _top_story(session, ranked_rows)
+    story = _top_story(session, ranked_rows, now)
     story_ids = set(story.signal_ids) if story else set()
     rest = [s for s in ranked_rows if s.id not in story_ids][:limit]
     developments = [
@@ -133,7 +140,9 @@ def get_brief(
     )
 
     return BriefOut(
-        generated_at=now,
+        generated_at=generated_at,
+        as_of=as_of,
+        stale=stale,
         window=BriefWindow(days=days, since=since),
         stats=BriefStats(
             new_signals=new_total,
@@ -151,12 +160,32 @@ def get_brief(
     )
 
 
-def _top_story(session: DbSession, ranked_rows: list[Signal]) -> TopStoryOut | None:
-    """The latest daily_brief's top story, if its required rows still check out (read-time:
-    every cited signal still usable); else the top-ranked signal (no suggested move)."""
+def _anchor(session: DbSession, now: datetime, days: int) -> datetime:
+    """`now`, or the event time of the newest rankable signal when none falls in the window."""
+    newest = session.scalar(
+        select(func.max(event_time())).where(
+            usable(),
+            not_mission(),
+            Signal.impact.is_not(None),
+            Signal.confidence.is_not(None),
+            event_time() <= now,
+        )
+    )
+    if newest is None or newest >= now - timedelta(days=days):
+        return now
+    return newest
+
+
+def _top_story(session: DbSession, ranked_rows: list[Signal], now: datetime) -> TopStoryOut | None:
+    """The daily_brief's top story from the last 24h (relative to the Brief's anchor), if its
+    required rows still check out (read-time: every cited signal still usable); else the
+    top-ranked signal (no suggested move). An older daily brief is never shown as today's."""
     report = session.scalar(
         select(Report)
-        .where(Report.kind == ReportKind.DAILY_BRIEF)
+        .where(
+            Report.kind == ReportKind.DAILY_BRIEF,
+            Report.created_at >= now - timedelta(hours=24),
+        )
         .order_by(Report.created_at.desc(), Report.id.desc())
         .limit(1)
     )

@@ -39,10 +39,6 @@ class StructuredOutputError(LLMError):
     """The model's output failed schema validation on every attempt."""
 
 
-class DemoCacheMiss(LLMError):
-    """DEMO_MODE is on and the response isn't in llm_cache (demo mode never calls a provider)."""
-
-
 class ProviderError(LLMError):
     """The provider call failed: a non-retryable error (auth, bad request) or retries ran out."""
 

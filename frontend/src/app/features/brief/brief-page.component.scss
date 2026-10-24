@@ -28,6 +28,16 @@
   font-weight: 500;
 }
 
+/* Stale Brief: the latest available day, not today. */
+.stale {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--fr-radius-control);
+  background: var(--fr-claim-bg);
+  color: var(--fr-claim-fg);
+  line-height: 1.4;
+}
+
 h1 {
   font-size: var(--fr-text-headline);
   line-height: var(--fr-lh-headline);

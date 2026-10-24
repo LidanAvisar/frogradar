@@ -16,7 +16,6 @@ from pydantic import BaseModel
 from app.core.llm.context import LLMContext, current_context, llm_context
 from app.core.llm.errors import (
     BudgetExceeded,
-    DemoCacheMiss,
     LLMError,
     MissionBudgetExceeded,
     ProviderError,
@@ -60,7 +59,6 @@ def embed(
 __all__ = [
     "TASKS",
     "BudgetExceeded",
-    "DemoCacheMiss",
     "EmbeddingResult",
     "LLMContext",
     "LLMError",

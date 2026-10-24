@@ -47,7 +47,7 @@ pricing: {}
 cost_estimates_usd:
   ask: 0.023       # new Ask question: synthesis answer + verify, measured $0.020–0.027 (repeats: $0)
   mission: 0.03    # research mission plan → report (two runs: $0.0296, $0.0298; hard cap per mission)
-  # Daily run on the demo scope: ~5 news items (triage $0.0003, enrich+verify $0.0033 when relevant),
+  # Daily run on the active sources: ~5 news items (triage $0.0003, enrich+verify $0.0033 when relevant),
   # ~15 discovery items (~$0.0006 avg), brief + check ~$0.025, two battlecards weekly (~$0.014/day),
   # radar profiles ~$0.01.
   daily_run: 0.08

@@ -33,7 +33,11 @@ export class MissionsPageComponent {
   private readonly router = inject(Router);
   private readonly prefs = inject(PreferencesService);
   private readonly statusSvc = inject(StatusService);
-  protected readonly demo = this.statusSvc.demo;
+  /** Missions are off or limited (e.g. no TAVILY_API_KEY: knowledge base only): the reason. */
+  protected readonly limitation = computed(() => {
+    const f = this.statusSvc.feature('missions');
+    return f && f.state !== 'enabled' ? f : null;
+  });
   protected readonly missionCost = computed(() => usdShort(this.statusSvc.costs()?.mission));
 
   protected readonly list = signal<ListState>({ status: 'loading' });

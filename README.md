@@ -20,14 +20,9 @@ research missions that an agent runs for them, and an MCP server for Claude and 
 - **It looks beyond the configured list.** The Competitor Radar finds new players nobody configured (Hacker News,
   new GitHub repos, the CNCF landscape) and ranks them with a transparent score.
 
-**Run it: one command, no API keys** (Docker with Compose ≥ 2.24)
+**Run it** (Docker with Compose ≥ 2.24, your Anthropic and OpenAI keys): [Quick start](#quick-start).
 
-```bash
-git clone https://github.com/LidanAvisar/frogradar.git && cd frogradar
-make demo          # → http://localhost:8080   (first build takes a few minutes)
-```
-
-![FrogRadar Morning Brief in demo mode](docs/screenshots/hero-brief.png)
+![FrogRadar Morning Brief](docs/screenshots/hero-brief.png)
 
 ---
 
@@ -39,43 +34,47 @@ make demo          # → http://localhost:8080   (first build takes a few minute
 
 ## Quick start
 
-**A) Demo – no API keys**
+You need Docker with Compose ≥ 2.24, an **Anthropic** key and an **OpenAI** key (`TAVILY_API_KEY` is optional).
 
 ```bash
-make demo          # Postgres + backend (demo mode) + web app → http://localhost:8080
-make demo-down     # stop          (make demo-reset: back to the pristine snapshot)
+git clone https://github.com/LidanAvisar/frogradar.git && cd frogradar
+cp .env.example .env   # add ANTHROPIC_API_KEY and OPENAI_API_KEY (optional: TAVILY_API_KEY, GITHUB_TOKEN)
+make up                # Postgres + backend + web app → http://localhost:8080 (first build takes a few minutes)
+make seed              # optional: load the intelligence collected so far (up to 21 Oct 2026), no LLM calls
+# open http://localhost:8080
+make pipeline          # today's news: collect → enrich → verify → brief → battlecards → radar (paid)
+make scheduler-up      # daily updates: the same run every day at 06:00 UTC (DAILY_RUN_CRON in .env)
 ```
 
-The demo restores a committed snapshot of real FrogRadar data (2.2 MB, as of 21 Oct 2026) into its own database
-and pins the app's "today" to that date, so the Brief looks the same whenever you open it. No model is called:
-the suggested Ask questions are answered from the LLM cache (the same code path as live), other questions get a
-"try one of these" reply, finished research missions are viewable, and analyst actions (approve / correct /
-reject, radar track / dismiss) work against the local demo database. A banner says it's a demo; **System status**
-in the sidebar shows what's on.
+- **Keys:** `make up` checks the two required keys first and stops with one message naming a missing key and
+  where to put it (`.env`). A missing optional key turns off only its feature, and the UI says so: without
+  `TAVILY_API_KEY`, research missions search FrogRadar's own data only; without `GITHUB_TOKEN`, GitHub is limited
+  to 60 requests/hour. Key values are never logged, returned by the API or sent to the web app.
+- **Seed:** `make seed` loads the committed intelligence (signals, battlecards, the radar, two finished missions,
+  past Ask conversations) as normal data, so every screen has content before the first pipeline run. It only loads
+  into a fresh database.
+- **Older data:** the app uses the real date. When nothing is newer than the last 7 days (for example only the
+  seed), the Brief shows the latest available day under the header *LATEST INTELLIGENCE · WEDNESDAY · 21 OCTOBER
+  2026* with the note *"Nothing newer yet: this is the latest available day (21 Oct 2026). Run the pipeline (make
+  pipeline) for today's news, or make scheduler-up for daily updates."* "Since yesterday" becomes "On 21 Oct
+  2026", and the top story is that day's.
+- **Daily updates** are the point of FrogRadar, and they cost money, so they're opt-in: `make scheduler-up` starts
+  the scheduler, `make scheduler-down` stops it. `make down` stops everything; `make status` shows keys, features
+  and today's spend.
 
-**B) Live – bring your own keys**
-
-```bash
-cp .env.example .env   # add the keys you have; every key is optional
-make live              # same stack with real providers → http://localhost:8081 (API :8000)
-make pipeline          # fresh data: collect → enrich → verify → brief → battlecards → radar (paid, ≈ $0.08/day)
-```
-
-`make live` fills an empty database from the same snapshot and prints which keys it found and which features are
-**enabled, degraded or off**: no `OPENAI_API_KEY` → no embeddings, so free-form Ask and dedup are off; no
-`TAVILY_API_KEY` → missions research FrogRadar's own data only; no `GITHUB_TOKEN` → GitHub at 60 requests/hour.
-Nothing crashes on a missing key: the app says what's missing (startup log, `make status`, System status).
-
-| Paid action | Measured cost | Guard |
+| Paid action | Estimated cost | Guard |
 |---|---|---|
+| First pipeline run (fills a fresh or seeded database; depends on how many items the feeds still list) | ≈ $0.25–0.60 | daily budget |
+| Each daily run after that (`make scheduler-up`) | ≈ $0.08 a day (≈ $2.50 a month) | daily budget |
 | A new Ask question | ≈ $0.02 (answer + second-model check; repeats are cached, $0) | daily budget |
 | A research mission | ≈ $0.03 | per-mission budget (default $0.30) + step and time limits |
-| A daily pipeline run (demo scope) | ≈ $0.08 | daily budget |
 
-`LLM_DAILY_BUDGET_USD` (default 2) caps the spend per UTC day; the UI shows today's spend next to it. **One
-provider only?** Route every tier to it with the `LLM_MODEL_*` overrides (example in `.env.example`); because the
-verifier is then the same model family as the writer, FrogRadar starts only with `ALLOW_SAME_FAMILY_VERIFY=true`
-and warns that accuracy checks are weaker.
+Estimates are averages of the 2,350 logged calls of this project (per operation: triage $0.0003, enrich + verify
+$0.0033, battlecard + check $0.048, daily brief + check $0.025). `LLM_DAILY_BUDGET_USD` (default $2) is a hard cap
+per UTC day, checked before every paid call; the UI shows today's spend next to it. **One provider only?** Route
+every tier to it with the `LLM_MODEL_*` overrides (see `.env.example`); because the verifier is then the same model
+family as the writer, FrogRadar starts only with `ALLOW_SAME_FAMILY_VERIFY=true` and warns that accuracy checks are
+weaker.
 
 Commands, configuration, the data model and development setup: [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
@@ -130,7 +129,7 @@ Pipeline internals: [docs/PIPELINE.md](docs/PIPELINE.md).
 
 ## Feature tour
 
-Screenshots are from the demo (`make demo`). More detail, the API and phone screenshots:
+Screenshots are from a seeded app (`make up` + `make seed`). More detail, the API and phone screenshots:
 [docs/FEATURES.md](docs/FEATURES.md).
 
 ### Morning Brief
@@ -194,7 +193,7 @@ two resources and two prompts, over stdio or token-gated HTTP. Built on the same
 every item with its source URL, never the collected article text. A Skill teaches Claude the CI team's workflows
 (morning brief, call prep, "is this new tool a threat?"). [More](docs/FEATURES.md#mcp-server-and-skill-frogradar-in-claude-cursor-and-other-mcp-clients)
 
-### System status and demo mode
+### System status
 
 ![System status](docs/screenshots/status-dialog.png)
 
@@ -243,7 +242,7 @@ example it stayed 2. Analyst reviews export as gold labels (`make eval-gold`).
 
 | | Cost |
 |---|---|
-| Daily pipeline on the demo scope (≈ 5 news items, ≈ 15 discovery items, brief, battlecards weekly) | **≈ $0.08** |
+| Daily pipeline on the active sources (≈ 5 news items, ≈ 15 discovery items, brief, battlecards weekly) | **≈ $0.08** |
 | A new Ask question / a research mission | ≈ $0.02 / ≈ $0.03 |
 | Full re-enrichment and re-verification of all 32 in-scope signals + brief + 2 battlecards (run 33) | $0.22 once |
 | Silver-label evaluation (labels + eval pass) | $0.93 once |
@@ -294,7 +293,7 @@ accepted but did not index it on Xray 3.157.
 | Intelligence | Daily brief, battlecards + capability matrix, Competitor Radar, research missions | Predict the next move, "time machine" (state of a competitor on a date), insight fusion across signals |
 | Analysts | Review queue, corrections as few-shot examples, AI vs Analyst scorecard | SSO and roles, undo, re-enrich neighbours of a new correction |
 | Delivery | Web app, MCP server + Skill | Slack digest and bot, sales-ready battlecard export |
-| Platform | Docker Compose, demo snapshot, JFrog CI with OIDC, Build Info and Xray build scan | Kubernetes (Helm) deployment from Artifactory, mission worker as its own service with resume |
+| Platform | Docker Compose with one `make up`, optional seed data, JFrog CI with OIDC, Build Info and Xray build scan | Kubernetes (Helm) deployment from Artifactory, mission worker as its own service with resume |
 | Hardening | Supply-chain cooldown, SSRF guard, budget guards, Xray build scan in CI | Newer base images (most image CVEs), Angular 20+ upgrade, filelock 4.2.1, DNS pinning in the SSRF guard, Xray policy as a CI gate |
 
 ## Challenges and pitfalls
@@ -309,8 +308,8 @@ accepted but did not index it on Xray 3.157.
 - **Vendor redesigns break page structure silently.** A live page where none of the configured sections match now
   fails the source instead of producing a misleading diff.
 - **Approximate vector search broke cached answers on a copy of the data.** HNSW results differed between the dev
-  database and a restored snapshot, so a demo question missed its cached answer. Ask retrieval is now exact and
-  deterministic, and `make demo-check` replays every demo question on a fresh restore.
+  database and a restored copy, so a repeated question missed its cached answer. Ask retrieval is now exact and
+  deterministic.
 - **Hidden reasoning tokens count against `max_tokens`** and cut outputs off; reasoning is now set explicitly per
   task and logged.
 
@@ -318,7 +317,7 @@ All pitfalls: [docs/DESIGN.md](docs/DESIGN.md#pitfalls-learned-the-hard-way).
 
 ## Design decisions
 
-The ones that shape the product (all 82, D1–D82, each with what we rejected: [docs/DESIGN.md](docs/DESIGN.md)):
+The ones that shape the product (all 83, D1–D83, each with what we rejected: [docs/DESIGN.md](docs/DESIGN.md)):
 
 - **The LLM proposes, code verifies.** Quotes, citations, prices, entity slugs and confidence are checked or computed
   in code; a model from another vendor checks the claims.
@@ -326,7 +325,7 @@ The ones that shape the product (all 82, D1–D82, each with what we rejected: [
   no feature has its own copy of the truth.
 - **Triage favours recall**; dedup favours precision (a duplicate shown twice is cheaper than a hidden launch).
 - **Collected text is analysis input only.** Users see a summary, a short quote and the link; `raw_text` never
-  leaves the server (tested on every endpoint and MCP tool) and is stripped from the demo snapshot.
+  leaves the server (tested on every endpoint and MCP tool) and is stripped from the seed data.
 - **Missions have a plan gate and hard limits** instead of an open-ended tool-calling loop. Approved findings are
   intelligence, not news: they feed battlecards, Ask and the signal feed but never rank in the Brief, and a finding
   that repeats an existing signal is linked to it instead of duplicated.
@@ -334,8 +333,9 @@ The ones that shape the product (all 82, D1–D82, each with what we rejected: [
   transparent formula, not an LLM "threat score".
 - **Everything configurable, nothing hidden:** competitors, sources, capabilities, model routing, score weights and
   thresholds in YAML; every LLM call logged with its prompt version and cost.
-- **Runnable out of the box:** a committed, stripped snapshot, demo mode on the real code path, and a key check
-  that degrades features instead of crashing.
+- **One mode, bring your own keys:** `make up` checks the two required keys and names a missing one; optional
+  keys only switch their feature off; `make seed` loads real intelligence without model calls, and the Brief says
+  when it shows an older day instead of pretending it's today.
 
 ## Security notes
 
@@ -356,9 +356,9 @@ The ones that shape the product (all 82, D1–D82, each with what we rejected: [
 ## Known limitations
 
 - **No authentication yet:** the analyst name is self-declared; write endpoints are open (local deployment only).
-- **Demo:** only the 7 suggested Ask questions work; rejecting a signal in the demo can turn one of them into the
-  demo message until `make demo-reset`. Missions can't be started.
-- **Small corpus:** the demo scope has 3 news sources and 2 pricing pages (43 signals shown), so Ask recall numbers are about
+- **Seeded rows have no full text:** the seed carries summaries, quotes and links but not article text, so the
+  pipeline never re-processes them; Ask and battlecards use their enrichment as usual.
+- **Small corpus:** the active scope has 3 news sources and 2 pricing pages (43 signals shown), so Ask recall numbers are about
   ranking, not scale; the eval uses silver labels from one model.
 - **Verifier strictness:** radar profile statements often come back "Partly verified"; a "what it means for JFrog"
   line can still predict a competitor's behaviour despite the prompt rule.
@@ -376,16 +376,16 @@ and Build Info): [LidanAvisar/jfrog_task – docs/STAGE2.md](https://github.com/
 
 | Document | What's in it |
 |---|---|
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | All `make` commands, configuration files, data model, demo scope, scheduler, LLM gateway, demo snapshot maintenance, development setup |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | All `make` commands, configuration files, data model, source scope, scheduler, LLM gateway, seed data maintenance, development setup |
 | [docs/PIPELINE.md](docs/PIPELINE.md) | Collectors, page diffs and the Wayback baseline, dedup and entity linking, triage / enrich / verify / confidence, synthesis, Competitor Radar |
 | [docs/FEATURES.md](docs/FEATURES.md) | Every screen and its API, analyst loop, Ask, research missions (with two paid runs), MCP server and Skill setup |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Eval set, silver labels, results v1 → v2, limits, gold labels |
-| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D82 and the full pitfalls list |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D83 and the full pitfalls list |
 
 ```
-backend/   FastAPI app (api, core, db, pipeline, agents, rag, mcp, demo) + tests
+backend/   FastAPI app (api, core, db, pipeline, agents, rag, mcp, seed) + tests
 frontend/  Angular app + nginx image
-config/    competitors, sources, capabilities, model routing, pipeline, discovery, demo questions (YAML)
+config/    competitors, sources, capabilities, model routing, pipeline, discovery (YAML)
 eval/      eval set and dedup pairs (ids, titles, URLs, labels; no article text) + results
 skills/    the FrogRadar CI-analyst Skill
 docs/      the documents above + screenshots

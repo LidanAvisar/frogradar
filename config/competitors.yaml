@@ -1,7 +1,8 @@
-# DEMO SCOPE: the demo runs on 3 curated sources (Sonatype Blog, GitHub Changelog, The New Stack)
+# ACTIVE SCOPE: the pipeline runs on 3 curated sources (Sonatype Blog, GitHub Changelog, The New Stack)
 # plus 2 page_diff sources (Sonatype Pricing, GitHub Pricing; URLs + robots.txt re-checked
 # 2026-10-21). Every other source below has `is_active: false`. Nothing is deleted: to enable a
-# source, set `is_active: true` (or remove the flag) and run `make seed`. See README "Demo scope".
+# source, set `is_active: true` (or remove the flag) and restart the
+# backend (`docker compose restart backend`; config is re-applied at start). See docs/OPERATIONS.md.
 #
 # Companies FrogRadar tracks, their products, and where to watch them.
 # Validated by app/core/catalog.py (CompetitorsFile). Loaded into the DB by `make seed`.

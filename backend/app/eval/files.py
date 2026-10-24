@@ -49,7 +49,7 @@ class LabelRow:
     source: str
     date: str
     url: str
-    in_scope: str  # y / n (demo scope at selection time)
+    in_scope: str  # y / n (active sources at selection time)
     stratum: str  # why it was picked (selection only; never shown to the labeler)
     relevant: str = ""  # y / n
     category: str = ""
