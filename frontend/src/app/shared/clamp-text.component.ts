@@ -1,19 +1,24 @@
 import { ChangeDetectionStrategy, Component, ElementRef, effect, input, signal, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 /**
  * Full text, never sliced: clamped to `lines` lines with CSS, plus a small "more" / "less" toggle
  * (a real button, keyboard-accessible) that appears only when the text actually overflows. The full
  * text is also the element's title, as a fallback. With `href` the text is an external link (opens in
- * a new tab); the toggle stays outside the link.
+ * a new tab), with `route` a link inside the app; the toggle stays outside the link.
  */
 @Component({
   selector: 'fr-clamp-text',
   standalone: true,
+  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (href(); as url) {
+    @if (route()) {
+      <a #box class="text internal" [class.clamped]="!expanded()" [style.--fr-clamp-lines]="lines()" [attr.title]="text()"
+         [routerLink]="route()">{{ text() }}</a>
+    } @else if (href()) {
       <a #box class="text" [class.clamped]="!expanded()" [style.--fr-clamp-lines]="lines()" [attr.title]="text()"
-         [href]="url" target="_blank" rel="noopener noreferrer">{{ text() }}</a>
+         [href]="href()" target="_blank" rel="noopener noreferrer">{{ text() }}</a>
     } @else {
       <span #box class="text" [class.clamped]="!expanded()" [style.--fr-clamp-lines]="lines()" [attr.title]="text()">{{ text() }}</span>
     }
@@ -36,6 +41,9 @@ import { ChangeDetectionStrategy, Component, ElementRef, effect, input, signal, 
       font: inherit; font-size: var(--fr-text-small); font-weight: 600; color: var(--fr-accent);
     }
     .toggle:hover { text-decoration: underline; }
+    /* In-app links take the surrounding text style (e.g. a source title), underlined on hover. */
+    .internal { color: inherit; text-decoration: none; }
+    .internal:hover { color: var(--fr-accent); text-decoration: underline; }
   `],
 })
 export class ClampTextComponent {
@@ -43,6 +51,8 @@ export class ClampTextComponent {
   readonly lines = input(3);
   /** Optional: render the text as an external link. */
   readonly href = input<string | null>(null);
+  /** Optional: render the text as a link inside the app (router path). */
+  readonly route = input<string | null>(null);
 
   protected readonly expanded = signal(false);
   protected readonly overflows = signal(false);

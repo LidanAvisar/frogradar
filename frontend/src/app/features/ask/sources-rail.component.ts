@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import type { AskSource } from '../../api/models';
 import { shortDate } from '../../core/format';
+import { ClampTextComponent } from '../../shared/clamp-text.component';
 
 const TYPE_LABELS: Record<string, string> = {
   pricing_page: 'Pricing page',
@@ -14,7 +15,7 @@ const TYPE_LABELS: Record<string, string> = {
 @Component({
   selector: 'fr-sources-rail',
   standalone: true,
-  imports: [RouterLink],
+  imports: [ClampTextComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 class="title">Sources</h2>
@@ -31,6 +32,9 @@ const TYPE_LABELS: Record<string, string> = {
         </div>
         @if (s.type === 'article' || s.type === 'pricing_page') {
           <a class="name" [href]="s.url" target="_blank" rel="noopener noreferrer">{{ s.title }}</a>
+        } @else if (s.type === 'battlecard') {
+          <!-- A battlecard item can be long: the full text, clamped to 2 lines with "more" (as in the matrix). -->
+          <fr-clamp-text class="name" [text]="s.title" [route]="s.url" [lines]="2" />
         } @else {
           <a class="name" [routerLink]="s.url">{{ s.title }}</a>
         }
