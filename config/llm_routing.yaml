@@ -46,7 +46,10 @@ pricing: {}
 # in the UI and in the README. Re-measure after changing models or prompts.
 cost_estimates_usd:
   ask: 0.023       # new Ask question: synthesis answer + verify, measured $0.020–0.027 (repeats: $0)
-  mission: 0.03    # research mission plan → report (two runs: $0.0296, $0.0298; hard cap per mission)
+  mission: 0.03    # research mission plan → report (three runs: $0.0296, $0.0298, $0.0352; hard cap per mission)
+  # Plan approval estimate = report + per sub-question × sub-questions (the plan is already paid):
+  mission_report: 0.012          # measured $0.0104–0.0128 (three runs)
+  mission_per_question: 0.004    # extract + verify, measured $0.0033–0.0046 per sub-question
   # Daily run on the active sources: ~5 news items (triage $0.0003, enrich+verify $0.0033 when relevant),
   # ~15 discovery items (~$0.0006 avg), brief + check ~$0.025, two battlecards weekly (~$0.014/day),
   # radar profiles ~$0.01.

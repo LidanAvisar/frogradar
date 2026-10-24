@@ -5,6 +5,8 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
 import type { MissionDetail, MissionFinding } from '../../api/models';
+import { StatusService } from '../../core/status.service';
+import { statusFixture } from '../../testing/status-fixture';
 import { MissionDetailPageComponent, POLL_MS } from './mission-detail-page.component';
 import { MissionsPageComponent } from './missions-page.component';
 
@@ -24,7 +26,8 @@ function mission(over: Partial<MissionDetail> = {}): MissionDetail {
     id: 5, title: 'Sonatype reachability', brief: 'Does Sonatype offer reachability analysis?', status: 'running',
     origin_kind: 'capability', origin_ref: { entity_id: 2, capability_id: 9 }, origin_label: 'Battlecard: Sonatype · Reachability',
     origin_link: '/battlecards/sonatype', scope_label: 'Sonatype', company_ids: [2], days: null, budget_usd: 0.3,
-    cost_usd: 0.06, max_steps: 12, steps_used: 4, findings_new: 1, findings_approved: 0, created_by: 'Dana',
+    cost_usd: 0.06, max_steps: 8, steps_used: 4, findings_new: 1, findings_approved: 0, created_by: 'Dana',
+    sub_questions_total: 2, sub_questions_researched: 1, partial: false, skipped: [],
     created_at: '2026-10-21T08:00:00Z', started_at: '2026-10-21T08:01:00Z', finished_at: null, error: null,
     plan: { sub_questions: [{ question: 'Is reachability in Lifecycle?', search_query: 'q', why: '' }, { question: 'Which languages?', search_query: 'q2', why: '' }], approved: true, approved_by: 'Dana', edited_by_analyst: false },
     steps: [
@@ -62,7 +65,7 @@ describe('MissionsPageComponent', () => {
     expect(pre.request.params.get('candidate')).toBe('11');
     pre.flush({ brief: "What does GitGuardian sell, and how does it overlap with JFrog's products?", origin_kind: 'radar_candidate',
                 origin_ref: { candidate_id: 11 }, origin_label: 'Radar candidate: GitGuardian', company_ids: [], days: null,
-                budget_usd: 0.3, max_steps: 12, max_budget_usd: 2, max_max_steps: 40 });
+                budget_usd: 0.3, max_budget_usd: 2 });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -75,7 +78,8 @@ describe('MissionsPageComponent', () => {
     expect(post.request.body.origin_kind).toBe('radar_candidate');
     expect(post.request.body.origin_ref).toEqual({ candidate_id: 11 });
     expect(post.request.body.budget_usd).toBe(0.3);
-    expect(post.request.body.max_steps).toBe(12);
+    expect(post.request.body.max_steps).toBeUndefined(); // the approved plan sets the step limit
+    expect(el.querySelector('#mission-steps')).toBeNull();
     post.flush(mission({ id: 8, status: 'queued' }));
     await fixture.whenStable();
     expect(router.url).toBe('/missions/8');
@@ -142,8 +146,13 @@ describe('MissionDetailPageComponent', () => {
     tick();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelectorAll('.draft textarea').length).toBe(2);
+    TestBed.inject(StatusService).status.set(statusFixture());
+    fixture.detectChanges();
+    expect(el.querySelector('.plan-estimate')?.textContent).toContain('2 sub-questions · 8 steps');
+    expect(el.querySelector('.plan-estimate')?.textContent).toContain('about $0.02 to finish (report + 2 × $0.004, measured)');
     el.querySelector<HTMLButtonElement>('[aria-label="Remove sub-question 2"]')!.click();
     fixture.detectChanges();
+    expect(el.querySelector('.plan-estimate')?.textContent).toContain('1 sub-questions · 4 steps');
     Array.from(el.querySelectorAll<HTMLButtonElement>('.plan-actions button')).find((b) => b.textContent?.includes('Approve plan'))!.click();
     const req = http.expectOne('/api/missions/5/plan');
     expect(req.request.body.sub_questions).toEqual([{ question: 'Is reachability in Lifecycle?', search_query: 'q', why: '' }]);
@@ -153,6 +162,26 @@ describe('MissionDetailPageComponent', () => {
     tick(POLL_MS);
     http.expectOne('/api/missions/5').flush(mission({ status: 'completed' }));
     tick(POLL_MS);
+  }));
+
+  it('a mission cut short says partial and lists the sub-questions that never ran', fakeAsync(() => {
+    let fixture!: View;
+    render().then((f) => (fixture = f));
+    tick();
+    const skipped = [{ n: 2, question: 'Which languages?' }];
+    http.expectOne('/api/missions/5').flush(mission({
+      status: 'completed', partial: true, sub_questions_researched: 1, skipped,
+      report: { summary: [], open_questions: [], stopped_reason: 'Step limit reached (4 steps).', generated: 'fallback', skipped },
+    }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const pill = el.querySelector('.chips .fr-pill')!;
+    expect(pill.textContent).toContain('Completed – partial');
+    expect(pill.className).toContain('tone-orange');
+    expect(el.querySelector('.notice--partial')?.textContent).toContain('1 of 2 sub-questions researched');
+    expect(el.querySelector('.notice--partial')?.textContent).toContain('Q2 Which languages?');
+    expect(el.querySelector('.not-researched')?.textContent).toContain('Q2: Which languages?');
+    expect(el.querySelector('.not-researched')?.textContent).toContain('Step limit reached');
   }));
 
   it('approves a finding optimistically and rolls back on error', fakeAsync(() => {

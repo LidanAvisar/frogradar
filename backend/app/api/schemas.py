@@ -739,7 +739,6 @@ class MissionCreateIn(BaseModel):
     brief: Annotated[str, Field(min_length=10, max_length=4000)]
     scope: MissionScopeIn = Field(default_factory=MissionScopeIn)
     budget_usd: Annotated[float, Field(gt=0, le=20)] | None = None
-    max_steps: Annotated[int, Field(ge=1, le=200)] | None = None
     origin_kind: MissionOriginOut = "manual"
     origin_ref: dict[str, int] = Field(default_factory=dict)
     analyst: Annotated[str, Field(max_length=100)] = ""
@@ -753,9 +752,7 @@ class MissionPrefillOut(BaseModel):
     company_ids: list[int]
     days: int | None
     budget_usd: float
-    max_steps: int
     max_budget_usd: float
-    max_max_steps: int
 
 
 class SubQuestionOut(BaseModel):
@@ -823,11 +820,19 @@ class MissionReportPointOut(BaseModel):
     finding_ids: list[int]
 
 
+class SkippedSubQuestionOut(BaseModel):
+    n: int = Field(description="Sub-question number in the plan (1-based)")
+    question: str
+
+
 class MissionReportOut(BaseModel):
     summary: list[MissionReportPointOut]
     open_questions: list[str]
     stopped_reason: str | None
     generated: Literal["llm", "fallback"]
+    skipped: list[SkippedSubQuestionOut] = Field(
+        default_factory=list, description="Sub-questions of the plan that never ran (D84)"
+    )
 
 
 class MissionOut(BaseModel):
@@ -844,8 +849,17 @@ class MissionOut(BaseModel):
     days: int | None
     budget_usd: float
     cost_usd: float
-    max_steps: int
+    max_steps: int = Field(description="Step limit: 4 per sub-question of the approved plan")
     steps_used: int
+    sub_questions_total: int = Field(description="Sub-questions in the plan (0 before planning)")
+    sub_questions_researched: int = Field(description="Sub-questions whose verify step ran")
+    partial: bool = Field(
+        description="Finished, but at least one sub-question never ran (budget, time, Stop, "
+        "step limit): never shown as a plain 'Completed' (D84)"
+    )
+    skipped: list[SkippedSubQuestionOut] = Field(
+        description="Sub-questions that never ran (finished missions only)"
+    )
     findings_new: int
     findings_approved: int
     created_by: str

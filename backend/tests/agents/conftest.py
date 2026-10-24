@@ -211,13 +211,28 @@ def make_mission(s: Session, cfg: MissionSettings, **kw: Any) -> Mission:
         "company_ids": [],
         "days": None,
         "budget_usd": 0.30,
-        "max_steps": 12,
         "cfg": cfg,
     }
     args.update(kw)
     m = create_mission(s, **args)
     s.commit()
     return m
+
+
+def approve(s: Session, m: Mission, questions: int | None = None,
+            max_steps: int | None = None) -> None:  # fmt: skip
+    """Approve the plan (only its first `questions` sub-questions if given). The step limit then
+    follows the plan (D84); `max_steps` forces a lower one, to test a cut-short mission."""
+    from app.agents.mission.service import approve_plan
+
+    s.refresh(m)
+    subs = None
+    if questions is not None:
+        subs = [dict(q) for q in m.plan["sub_questions"][:questions]]
+    approve_plan(s, m, subs, "Dana")
+    if max_steps is not None:
+        m.max_steps = max_steps
+    s.commit()
 
 
 def make_candidate(s: Session, name: str = "GitGuardian") -> RadarCandidate:

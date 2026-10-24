@@ -36,6 +36,8 @@ class CostEstimatesOut(BaseModel):
     ask: float
     mission: float
     daily_run: float
+    mission_report: float = Field(description="A mission's report (the plan-approval estimate)")
+    mission_per_question: float = Field(description="Extract + verify per mission sub-question")
 
 
 class StatusOut(BaseModel):

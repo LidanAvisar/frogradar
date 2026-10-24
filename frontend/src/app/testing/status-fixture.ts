@@ -12,7 +12,7 @@ export function statusFixture(over: Partial<SystemStatus> = {}): SystemStatus {
     warnings: [],
     spend_today_usd: 0.03,
     daily_budget_usd: 2,
-    cost_estimates_usd: { ask: 0.023, mission: 0.03, daily_run: 0.08 },
+    cost_estimates_usd: { ask: 0.023, mission: 0.03, daily_run: 0.08, mission_report: 0.012, mission_per_question: 0.004 },
     ...over,
   };
 }

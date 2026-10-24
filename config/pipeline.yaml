@@ -122,7 +122,8 @@ ask:
 missions:
   default_budget_usd: 0.30    # hard cap per mission (llm_calls.mission_id, checked before each call)
   max_budget_usd: 2.0         # the form can't ask for more
-  default_max_steps: 12       # counted: search / read / extract / verify rows (not plan, report)
+  # Step limit = 4 × the approved plan's sub-questions (search / read / extract / verify; D84),
+  # capped here. Budget, time and Stop are the real guards.
   max_max_steps: 40
   timeout_s: 600              # wall clock from the start of research
   kb_results: 3               # FrogRadar signals per sub-question (Ask retrieval)

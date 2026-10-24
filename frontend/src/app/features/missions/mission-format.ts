@@ -1,7 +1,12 @@
 import type { Tone } from '../../core/format';
 
-/** Labels and tones for mission status / origin (text always, color only as a second cue). */
-export function missionStatusInfo(status: string): { label: string; tone: Tone; live: boolean } {
+/**
+ * Labels and tones for mission status / origin (text always, color only as a second cue).
+ * `partial`: the mission ended with sub-questions that never ran – never shown as a plain
+ * "Completed" (D84).
+ */
+export function missionStatusInfo(status: string, partial = false): { label: string; tone: Tone; live: boolean } {
+  if (status === 'completed' && partial) return { label: 'Completed – partial', tone: 'orange', live: false };
   switch (status) {
     case 'queued':
       return { label: 'Queued', tone: 'neutral', live: true };

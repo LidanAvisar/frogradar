@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.agents.mission.progress import progress
 from app.agents.mission.runner import COUNTED_KINDS
 from app.agents.mission.service import (
     MissionInputError,
@@ -136,9 +137,14 @@ def _counts(session: Session, ids: list[int]) -> dict[int, dict[str, int]]:
     return out
 
 
+def _progress(m: Mission) -> Any:
+    return progress(m.status, (m.plan or {}).get("sub_questions") or [], m.steps)
+
+
 def _mission_out(session: Session, m: Mission, counts: dict[str, int]) -> dict[str, Any]:
     label, link = _origin(session, m)
     scope = m.scope or {}
+    done = _progress(m)
     return {
         "id": m.id, "title": m.title, "brief": m.brief, "status": m.status.value,
         "origin_kind": m.origin_kind.value, "origin_ref": m.origin_ref or {},
@@ -146,6 +152,8 @@ def _mission_out(session: Session, m: Mission, counts: dict[str, int]) -> dict[s
         "company_ids": list(scope.get("company_ids") or []), "days": scope.get("days"),
         "budget_usd": float(m.budget_usd), "cost_usd": float(m.cost_usd),
         "max_steps": m.max_steps, "steps_used": counts["steps"],
+        "sub_questions_total": done.total, "sub_questions_researched": len(done.researched),
+        "partial": done.partial, "skipped": done.skipped,
         "findings_new": counts["new"], "findings_approved": counts["approved"],
         "created_by": m.created_by, "created_at": m.created_at, "started_at": m.started_at,
         "finished_at": m.finished_at, "error": m.error,
@@ -214,6 +222,8 @@ def _detail(session: Session, m: Mission) -> MissionDetailOut:
             open_questions=m.report.get("open_questions") or [],
             stopped_reason=m.report.get("stopped_reason"),
             generated=m.report.get("generated") or "fallback",
+            # Stored by the runner since D84; computed for missions that ran before.
+            skipped=m.report.get("skipped") or _progress(m).skipped,
         )
     return MissionDetailOut(
         **_mission_out(session, m, counts),
@@ -272,8 +282,7 @@ def get_prefill(
     return MissionPrefillOut(
         brief=p.brief, origin_kind=p.origin_kind.value, origin_ref=p.origin_ref,
         origin_label=p.origin_label, company_ids=p.company_ids, days=p.days,
-        budget_usd=cfg.default_budget_usd, max_steps=cfg.default_max_steps,
-        max_budget_usd=cfg.max_budget_usd, max_max_steps=cfg.max_max_steps,
+        budget_usd=cfg.default_budget_usd, max_budget_usd=cfg.max_budget_usd,
     )  # fmt: skip
 
 
@@ -289,7 +298,6 @@ def post_mission(body: MissionCreateIn, session: DbSession, worker: Worker) -> M
             company_ids=body.scope.company_ids,
             days=body.scope.days,
             budget_usd=body.budget_usd,
-            max_steps=body.max_steps,
         )
     except MissionInputError as e:
         session.rollback()

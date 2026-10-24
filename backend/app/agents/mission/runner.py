@@ -16,9 +16,10 @@ Two LangGraph runs per mission, with the analyst in between:
 
 Every node writes one mission_steps row (kind, short summary, cost). Hard limits, checked before
 every counted step: the mission's budget (also enforced by the gateway: MissionBudgetExceeded),
-max_steps (search / read / extract / verify rows), the wall-clock timeout and the analyst's Stop.
-When a limit hits, the run jumps to the report, which then needs no LLM call (it lists the
-findings so far and the unanswered sub-questions).
+max_steps (search / read / extract / verify rows; set from the approved plan, D84), the wall-clock
+timeout and the analyst's Stop. When a limit hits, the run jumps to the report, which then needs no
+LLM call (it lists the findings so far and the unanswered sub-questions). A mission with a
+sub-question that never ran is reported as partial (report.skipped, and the API's `partial`).
 
 Page text is untrusted: it is always inside a hash-tagged delimiter (app.pipeline.prompting.delimit)
 and every prompt says never to follow instructions inside it.
@@ -35,6 +36,7 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.agents.mission.progress import PHASES, progress
 from app.agents.mission.schemas import Extraction, MissionPlan, MissionReport, Verdicts
 from app.agents.mission.web import FetchFn, SearchFn, SkipPage, UnsafeUrl, time_range
 from app.core import clock as app_clock
@@ -69,7 +71,6 @@ COUNTED_KINDS = (
     MissionStepKind.VERIFY,
 )
 
-PHASES = ("search", "read", "extract", "verify")
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 
 
@@ -183,6 +184,10 @@ class MissionRunner:
         self.s.commit()
         return step
 
+    def _steps(self) -> list[MissionStep]:
+        q = select(MissionStep).where(MissionStep.mission_id == self.mission_id)
+        return list(self.s.scalars(q))
+
     def counted_steps(self) -> int:
         return (
             self.s.scalar(
@@ -206,6 +211,8 @@ class MissionRunner:
                 f"Budget reached: ${spent:.4f} of ${m.budget_usd:.2f}.",
             )
         if self.counted_steps() >= m.max_steps:
+            # Only reachable if the plan needs more than the step cap: the mission ends as
+            # completed, but report.skipped / the API's `partial` say what didn't run.
             raise Stop(MissionStatus.COMPLETED, f"Step limit reached ({m.max_steps} steps).")
         if self._deadline is not None and self.tools.clock() >= self._deadline:
             raise Stop(MissionStatus.FAILED, f"Timed out after {m.timeout_s} s.")
@@ -679,13 +686,16 @@ class MissionRunner:
         if generated == "fallback":
             report = {"summary": [], "open_questions": notes[:6]}
         m = self.m
+        status = stop_status or MissionStatus.COMPLETED
+        done = progress(status, self.questions(), self._steps())
         m.report = {
             **report,
             "generated": generated,
             "stopped_reason": reason,
             "kept": len(kept),
+            "partial": done.partial,
+            "skipped": done.skipped,
         }
-        status = stop_status or MissionStatus.COMPLETED
         m.status = status
         m.finished_at = self.tools.clock()
         if status != MissionStatus.COMPLETED:

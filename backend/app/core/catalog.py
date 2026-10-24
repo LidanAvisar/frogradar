@@ -273,6 +273,8 @@ class CostEstimates(_Strict):
 
     ask: Annotated[float, Field(ge=0)] = 0.0  # one new Ask question (answer + verify)
     mission: Annotated[float, Field(ge=0)] = 0.0  # one research mission (plan → report)
+    mission_report: Annotated[float, Field(ge=0)] = 0.0  # a mission's report (synthesis)
+    mission_per_question: Annotated[float, Field(ge=0)] = 0.0  # extract + verify, per sub-question
     daily_run: Annotated[float, Field(ge=0)] = 0.0  # one daily pipeline run on the active sources
 
 
@@ -503,7 +505,6 @@ class MissionSettings(_Strict):
 
     default_budget_usd: Annotated[float, Field(gt=0, le=5)] = 0.30
     max_budget_usd: Annotated[float, Field(gt=0, le=20)] = 2.0
-    default_max_steps: Annotated[int, Field(ge=1, le=100)] = 12
     max_max_steps: Annotated[int, Field(ge=1, le=200)] = 40
     timeout_s: Annotated[int, Field(ge=30, le=7200)] = 600  # wall clock, from research start
     kb_results: Annotated[int, Field(ge=0, le=10)] = 3  # FrogRadar signals per sub-question

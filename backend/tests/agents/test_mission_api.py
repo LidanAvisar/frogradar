@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.mission.runner import MissionRunner, Tools
-from app.agents.mission.service import approve_plan
 from app.agents.mission.worker import get_worker
 from app.api.ask import get_llm
 from app.api.deps import get_now
@@ -39,7 +38,14 @@ from app.db.session import get_session
 from app.main import app
 from app.pipeline.scope import usable
 from app.rag.service import LLMFns
-from tests.agents.conftest import NOW, RAW_SENTINEL, ScriptedLLM, make_candidate, make_mission
+from tests.agents.conftest import (
+    NOW,
+    RAW_SENTINEL,
+    ScriptedLLM,
+    approve,
+    make_candidate,
+    make_mission,
+)
 from tests.pipeline.factories import FakeEmbed, ensure_capability, entity
 
 
@@ -67,11 +73,11 @@ def client(s: Session, worker: FakeWorker, llm: ScriptedLLM) -> Iterator[TestCli
     app.dependency_overrides.clear()
 
 
-def _finished(s: Session, cfg, tools: Tools, **kw: Any) -> Mission:  # noqa: ANN001
+def _finished(s: Session, cfg, tools: Tools, questions: int | None = None,
+              **kw: Any) -> Mission:  # noqa: ANN001  # fmt: skip
     m = make_mission(s, cfg, **kw)
     MissionRunner(s, m.id, tools, cfg).plan()
-    approve_plan(s, m, None, "Dana")
-    s.commit()
+    approve(s, m, questions)
     MissionRunner(s, m.id, tools, cfg).research()
     s.expire_all()
     return s.get(Mission, m.id)
@@ -89,7 +95,9 @@ def test_create_list_detail_shapes_and_worker_jobs(client, worker, s):
                                            "analyst": "Dana"})  # fmt: skip
     assert r.status_code == 201, r.text
     d = r.json()
-    assert d["status"] == "queued" and d["budget_usd"] == 0.30 and d["max_steps"] == 12
+    assert d["status"] == "queued" and d["budget_usd"] == 0.30
+    assert d["max_steps"] == 20  # provisional (5 sub-questions) until the plan is approved
+    assert d["partial"] is False and d["skipped"] == [] and d["sub_questions_total"] == 0
     assert d["scope_label"] == "Sonatype · last 180 days" and d["created_by"] == "Dana"
     assert d["plan"] is None and d["steps"] == [] and d["findings"] == []
     assert worker.jobs == [(d["id"], "plan")]
@@ -135,7 +143,7 @@ def test_detail_never_returns_page_text_and_labels_verification(client, s, cfg, 
         }
 
     llm.handlers["mission_verify"] = verdicts
-    m = _finished(s, cfg, tools, max_steps=4)
+    m = _finished(s, cfg, tools, questions=1)
     body = client.get(f"/api/missions/{m.id}").text
     listing = client.get("/api/missions").text
     assert RAW_SENTINEL not in body and RAW_SENTINEL not in listing
@@ -156,7 +164,7 @@ def test_approved_finding_becomes_a_usable_signal_linked_to_company_and_capabili
     sonatype = entity(s, "sonatype", "Sonatype")
     cap = ensure_capability(s, "reachability-analysis")
     s.commit()
-    m = _finished(s, cfg, tools, max_steps=4, origin_kind=MissionOrigin.CAPABILITY,
+    m = _finished(s, cfg, tools, questions=1, origin_kind=MissionOrigin.CAPABILITY,
                   origin_ref={"entity_id": sonatype.id, "capability_id": cap},
                   company_ids=[sonatype.id])  # fmt: skip
     (f,) = s.scalars(select(MissionFinding).where(MissionFinding.mission_id == m.id)).all()
@@ -230,7 +238,7 @@ def test_kb_finding_links_the_existing_signal_instead_of_duplicating(client, s, 
 def test_radar_mission_adds_mentions_and_refreshes_the_profile(client, s, cfg, tools, monkeypatch):
     cand = make_candidate(s)
     s.commit()
-    m = _finished(s, cfg, tools, max_steps=4, origin_kind=MissionOrigin.RADAR_CANDIDATE,
+    m = _finished(s, cfg, tools, questions=1, origin_kind=MissionOrigin.RADAR_CANDIDATE,
                   origin_ref={"candidate_id": cand.id})  # fmt: skip
     assert m.radar_candidate_id == cand.id and m.scope["company_names"] == ["GitGuardian"]
     (f,) = s.scalars(select(MissionFinding).where(MissionFinding.mission_id == m.id)).all()
@@ -282,7 +290,7 @@ def test_prefill_from_every_origin(client, s):
         p["brief"] == "What does StepSecurity sell, and how does it overlap with JFrog's products?"
     )
     assert p["origin_kind"] == "radar_candidate" and p["origin_ref"] == {"candidate_id": cand.id}
-    assert p["budget_usd"] == 0.3 and p["max_steps"] == 12
+    assert p["budget_usd"] == 0.3 and "max_steps" not in p
     p = client.get(f"/api/missions/prefill?entity={sonatype.id}&capability={cap}").json()
     assert p["brief"] == "Does Sonatype offer reachability-analysis?" and p["company_ids"] == [
         sonatype.id

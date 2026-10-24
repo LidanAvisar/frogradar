@@ -43,6 +43,12 @@
     background: var(--fr-impact-5-bg);
     color: var(--fr-impact-5-fg);
   }
+
+  /* A finished mission with sub-questions that never ran (D84). */
+  &--partial {
+    background: var(--fr-claim-bg);
+    color: var(--fr-claim-fg);
+  }
 }
 
 .tiles {

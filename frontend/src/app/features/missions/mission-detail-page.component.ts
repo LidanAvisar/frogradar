@@ -8,6 +8,7 @@ import { ApiService } from '../../core/api.service';
 import { errorMessage } from '../../core/api-error';
 import { dateTime, plural, relationInfo } from '../../core/format';
 import { PreferencesService } from '../../core/preferences.service';
+import { StatusService } from '../../core/status.service';
 import { ErrorStateComponent, EmptyStateComponent, SkeletonComponent } from '../../shared/states.component';
 import { VendorClaimTagComponent } from '../../shared/vendor-claim-tag.component';
 import { isLive, missionOriginLabel, missionStatusInfo, usd } from './mission-format';
@@ -37,6 +38,7 @@ export class MissionDetailPageComponent {
   protected readonly announcement = signal('');
   protected readonly planDraft = signal<PlanRow[]>([]);
   protected readonly planBusy = signal(false);
+  private readonly statusSvc = inject(StatusService);
   protected readonly actionError = signal('');
   protected readonly busyFinding = signal<number | null>(null);
   protected readonly radarRefresh = signal<RadarRefreshOut | null>(null);
@@ -46,7 +48,7 @@ export class MissionDetailPageComponent {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastStatus = '';
 
-  protected readonly status = computed(() => missionStatusInfo(this.m()?.status ?? ''));
+  protected readonly status = computed(() => missionStatusInfo(this.m()?.status ?? '', this.m()?.partial ?? false));
   protected readonly origin = missionOriginLabel;
   protected readonly usd = usd;
   protected readonly when = dateTime;
@@ -61,7 +63,19 @@ export class MissionDetailPageComponent {
   });
   protected readonly findingsNew = computed(() => (this.m()?.findings ?? []).filter((f) => f.status === 'new').length);
   protected readonly stepsPlanned = computed(() => 4 * (this.m()?.plan?.sub_questions.length ?? 0));
-  protected readonly draftSteps = computed(() => 4 * this.planDraft().filter((q) => q.question.trim().length >= 5).length);
+  protected readonly draftQuestions = computed(() => this.planDraft().filter((q) => q.question.trim().length >= 5).length);
+  protected readonly draftSteps = computed(() => 4 * this.draftQuestions());
+  /** Estimated cost to finish an approved plan: report + extract/verify per sub-question (measured). */
+  protected readonly draftCost = computed(() => {
+    const c = this.statusSvc.costs();
+    return c ? c.mission_report + this.draftQuestions() * c.mission_per_question : null;
+  });
+  protected readonly perQuestionCost = computed(() => this.statusSvc.costs()?.mission_per_question ?? null);
+  /** Sub-questions that never ran (finished missions only; from the report, else the API). */
+  protected readonly skipped = computed(() => {
+    const m = this.m();
+    return m?.report?.skipped?.length ? m.report.skipped : (m?.skipped ?? []);
+  });
   protected readonly logSteps = computed(() => [...(this.m()?.steps ?? [])].reverse());
   protected readonly approvedCount = computed(() => (this.m()?.findings ?? []).filter((f) => f.status === 'approved').length);
 
@@ -144,7 +158,7 @@ export class MissionDetailPageComponent {
 
   private apply(m: MissionDetail): void {
     if (this.lastStatus && this.lastStatus !== m.status) {
-      this.announcement.set(`Mission status: ${missionStatusInfo(m.status).label}.`);
+      this.announcement.set(`Mission status: ${missionStatusInfo(m.status, m.partial).label}.`);
     }
     if (m.status === 'awaiting_approval' && this.lastStatus !== 'awaiting_approval') {
       this.planDraft.set((m.plan?.sub_questions ?? []).map((q) => ({ question: q.question, search_query: q.search_query, why: q.why ?? '' })));

@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
+from app.agents.mission.progress import PROVISIONAL_QUESTIONS, steps_for
 from app.core.catalog import MissionSettings, load_discovery, load_llm_routing, load_pipeline
 from app.core.llm import llm_context
 from app.db.enums import (
@@ -168,7 +169,6 @@ def create_mission(
     company_ids: list[int],
     days: int | None,
     budget_usd: float | None,
-    max_steps: int | None,
     cfg: MissionSettings | None = None,
 ) -> Mission:
     cfg = cfg or load_pipeline().missions
@@ -178,9 +178,6 @@ def create_mission(
     budget = budget_usd if budget_usd is not None else cfg.default_budget_usd
     if not 0 < budget <= cfg.max_budget_usd:
         raise MissionInputError(f"Budget must be between $0.01 and ${cfg.max_budget_usd:.2f}.")
-    steps = max_steps if max_steps is not None else cfg.default_max_steps
-    if not 1 <= steps <= cfg.max_max_steps:
-        raise MissionInputError(f"Max steps must be between 1 and {cfg.max_max_steps}.")
     companies = []
     for cid in company_ids:
         c = _company_of(session, cid)
@@ -226,7 +223,8 @@ def create_mission(
         brief=brief[:4000],
         scope=scope,
         budget_usd=Decimal(str(round(budget, 2))),
-        max_steps=steps,
+        # Provisional until the plan is approved; then it follows the plan (D84).
+        max_steps=steps_for(PROVISIONAL_QUESTIONS, cfg),
         status=MissionStatus.QUEUED,
         created_by=(created_by.strip() or "analyst")[:100],
         origin_kind=origin_kind,
@@ -242,7 +240,7 @@ def create_mission(
 
 
 def approve_plan(session: Session, m: Mission, sub_questions: list[dict[str, str]] | None,
-                 analyst: str) -> None:  # fmt: skip
+                 analyst: str, cfg: MissionSettings | None = None) -> None:  # fmt: skip
     if m.status != MissionStatus.AWAITING_APPROVAL:
         raise MissionInputError(
             f"The plan can only be approved while awaiting approval ({m.status})."
@@ -265,6 +263,9 @@ def approve_plan(session: Session, m: Mission, sub_questions: list[dict[str, str
     plan["approved"] = True
     plan["approved_by"] = (analyst.strip() or "analyst")[:100]
     m.plan = plan
+    # The step limit follows the approved plan (search / read / extract / verify per
+    # sub-question); budget, time and Stop stay the real guards (D84).
+    m.max_steps = steps_for(len(plan.get("sub_questions") or []), cfg or load_pipeline().missions)
     m.status = MissionStatus.QUEUED
 
 

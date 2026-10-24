@@ -1106,12 +1106,24 @@
           "mission": {
             "title": "Mission",
             "type": "number"
+          },
+          "mission_per_question": {
+            "description": "Extract + verify per mission sub-question",
+            "title": "Mission Per Question",
+            "type": "number"
+          },
+          "mission_report": {
+            "description": "A mission's report (the plan-approval estimate)",
+            "title": "Mission Report",
+            "type": "number"
           }
         },
         "required": [
           "ask",
           "mission",
-          "daily_run"
+          "daily_run",
+          "mission_report",
+          "mission_per_question"
         ],
         "title": "CostEstimatesOut",
         "type": "object"
@@ -1690,19 +1702,6 @@
             ],
             "title": "Budget Usd"
           },
-          "max_steps": {
-            "anyOf": [
-              {
-                "maximum": 200.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Steps"
-          },
           "origin_kind": {
             "default": "manual",
             "enum": [
@@ -1828,6 +1827,7 @@
             "type": "integer"
           },
           "max_steps": {
+            "description": "Step limit: 4 per sub-question of the approved plan",
             "title": "Max Steps",
             "type": "integer"
           },
@@ -1865,6 +1865,11 @@
             "title": "Origin Ref",
             "type": "object"
           },
+          "partial": {
+            "description": "Finished, but at least one sub-question never ran (budget, time, Stop, step limit): never shown as a plain 'Completed' (D84)",
+            "title": "Partial",
+            "type": "boolean"
+          },
           "plan": {
             "anyOf": [
               {
@@ -1899,6 +1904,14 @@
           "scope_label": {
             "title": "Scope Label",
             "type": "string"
+          },
+          "skipped": {
+            "description": "Sub-questions that never ran (finished missions only)",
+            "items": {
+              "$ref": "#/components/schemas/SkippedSubQuestionOut"
+            },
+            "title": "Skipped",
+            "type": "array"
           },
           "started_at": {
             "anyOf": [
@@ -1941,6 +1954,16 @@
             "title": "Stop Requested",
             "type": "boolean"
           },
+          "sub_questions_researched": {
+            "description": "Sub-questions whose verify step ran",
+            "title": "Sub Questions Researched",
+            "type": "integer"
+          },
+          "sub_questions_total": {
+            "description": "Sub-questions in the plan (0 before planning)",
+            "title": "Sub Questions Total",
+            "type": "integer"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1962,6 +1985,10 @@
           "cost_usd",
           "max_steps",
           "steps_used",
+          "sub_questions_total",
+          "sub_questions_researched",
+          "partial",
+          "skipped",
           "findings_new",
           "findings_approved",
           "created_by",
@@ -2194,6 +2221,7 @@
             "type": "integer"
           },
           "max_steps": {
+            "description": "Step limit: 4 per sub-question of the approved plan",
             "title": "Max Steps",
             "type": "integer"
           },
@@ -2231,9 +2259,22 @@
             "title": "Origin Ref",
             "type": "object"
           },
+          "partial": {
+            "description": "Finished, but at least one sub-question never ran (budget, time, Stop, step limit): never shown as a plain 'Completed' (D84)",
+            "title": "Partial",
+            "type": "boolean"
+          },
           "scope_label": {
             "title": "Scope Label",
             "type": "string"
+          },
+          "skipped": {
+            "description": "Sub-questions that never ran (finished missions only)",
+            "items": {
+              "$ref": "#/components/schemas/SkippedSubQuestionOut"
+            },
+            "title": "Skipped",
+            "type": "array"
           },
           "started_at": {
             "anyOf": [
@@ -2265,6 +2306,16 @@
             "title": "Steps Used",
             "type": "integer"
           },
+          "sub_questions_researched": {
+            "description": "Sub-questions whose verify step ran",
+            "title": "Sub Questions Researched",
+            "type": "integer"
+          },
+          "sub_questions_total": {
+            "description": "Sub-questions in the plan (0 before planning)",
+            "title": "Sub Questions Total",
+            "type": "integer"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -2286,6 +2337,10 @@
           "cost_usd",
           "max_steps",
           "steps_used",
+          "sub_questions_total",
+          "sub_questions_researched",
+          "partial",
+          "skipped",
           "findings_new",
           "findings_approved",
           "created_by",
@@ -2394,14 +2449,6 @@
             "title": "Max Budget Usd",
             "type": "number"
           },
-          "max_max_steps": {
-            "title": "Max Max Steps",
-            "type": "integer"
-          },
-          "max_steps": {
-            "title": "Max Steps",
-            "type": "integer"
-          },
           "origin_kind": {
             "enum": [
               "manual",
@@ -2433,9 +2480,7 @@
           "company_ids",
           "days",
           "budget_usd",
-          "max_steps",
-          "max_budget_usd",
-          "max_max_steps"
+          "max_budget_usd"
         ],
         "title": "MissionPrefillOut",
         "type": "object"
@@ -2455,6 +2500,14 @@
               "type": "string"
             },
             "title": "Open Questions",
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Sub-questions of the plan that never ran (D84)",
+            "items": {
+              "$ref": "#/components/schemas/SkippedSubQuestionOut"
+            },
+            "title": "Skipped",
             "type": "array"
           },
           "stopped_reason": {
@@ -5114,6 +5167,25 @@
           "published_at"
         ],
         "title": "SinceYesterdayItem",
+        "type": "object"
+      },
+      "SkippedSubQuestionOut": {
+        "properties": {
+          "n": {
+            "description": "Sub-question number in the plan (1-based)",
+            "title": "N",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "question"
+        ],
+        "title": "SkippedSubQuestionOut",
         "type": "object"
       },
       "SourceKind": {

@@ -58,15 +58,9 @@
             <input id="mission-budget" class="fr-input" type="number" name="budget" min="0.01" step="0.05"
                    [max]="prefill()?.max_budget_usd ?? 2" [ngModel]="budget()" (ngModelChange)="budget.set(+$event)" />
           </div>
-          <div class="fr-field">
-            <label for="mission-steps">Max steps</label>
-            <input id="mission-steps" class="fr-input" type="number" name="steps" min="1" step="1"
-                   [max]="prefill()?.max_max_steps ?? 40" [ngModel]="maxSteps()" (ngModelChange)="maxSteps.set(+$event)"
-                   aria-describedby="steps-hint" />
-          </div>
         </div>
-        <p id="steps-hint" class="small muted">Each sub-question uses about 4 steps (search, read, extract, verify).
-          The agent stops at the budget, the step limit or 10 minutes, whichever comes first.
+        <p id="steps-hint" class="small muted">You approve the plan before research starts; each sub-question takes 4 steps
+          (search, read, extract, verify). The agent stops at the budget or after 10 minutes, whichever comes first.
           A typical mission costs about {{ missionCost() }} (measured); the budget is a hard cap.</p>
 
         @if (submitError()) { <p class="small error" role="alert">{{ submitError() }}</p> }
@@ -100,7 +94,7 @@
             @for (m of $any(list()).items; track m.id) {
               <li class="fr-panel mission">
                 <div class="top">
-                  <span [class]="'fr-pill tone-' + status(m.status).tone">{{ status(m.status).label }}</span>
+                  <span [class]="'fr-pill tone-' + status(m.status, m.partial).tone">{{ status(m.status, m.partial).label }}</span>
                   <span class="small muted">{{ origin(m.origin_kind) }} · {{ when(m.created_at) }} · {{ m.created_by }}</span>
                 </div>
                 <a class="title" [routerLink]="['/missions', m.id]">{{ m.title }}</a>

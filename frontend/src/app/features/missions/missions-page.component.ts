@@ -52,7 +52,6 @@ export class MissionsPageComponent {
   protected readonly companyIds = signal<number[]>([]);
   protected readonly days = signal<number | null>(null);
   protected readonly budget = signal(0.3);
-  protected readonly maxSteps = signal(12);
 
   protected readonly companies = toSignal(
     this.api.entities().pipe(
@@ -114,7 +113,6 @@ export class MissionsPageComponent {
         this.companyIds.set(p.company_ids);
         this.days.set(p.days ?? null);
         this.budget.set(p.budget_usd);
-        this.maxSteps.set(p.max_steps);
         setTimeout(() => this.briefField()?.nativeElement.focus());
       },
       error: () => this.prefillError.set('Could not load the starting point. You can still write a brief.'),
@@ -138,7 +136,6 @@ export class MissionsPageComponent {
       brief: this.brief().trim(),
       scope: { company_ids: this.companyIds(), days: this.days() },
       budget_usd: this.budget(),
-      max_steps: this.maxSteps(),
       origin_kind: p?.origin_kind ?? 'manual',
       origin_ref: p?.origin_ref ?? {},
       analyst: this.prefs.analystName(),

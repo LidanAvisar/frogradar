@@ -250,9 +250,12 @@ findings become intelligence.
   reach the report with the checker's note and their unconfirmed detail must not be repeated (v2, after run (a)
   below repeated one). Absence of evidence is an open question, never a finding.
 - **Limits:** every step writes a `mission_steps` row (kind, summary, cost). Before every counted step (search,
-  read, extract, verify): the mission budget (also enforced by the gateway, `MissionBudgetExceeded`), max steps,
-  a 10-minute wall clock and the analyst's Stop. A limit jumps to the report, written without another LLM call;
-  unverified findings are dropped. Page text is always inside a hash-tagged delimiter with a never-follow rule.
+  read, extract, verify): the mission budget (also enforced by the gateway, `MissionBudgetExceeded`), the step
+  limit (4 per sub-question of the approved plan, set at approval, capped at 40; D84), a 10-minute wall clock and
+  the analyst's Stop. A limit jumps to the report, written without another LLM call; unverified findings are
+  dropped. A mission that ends with sub-questions that never ran is shown as partial ("Completed – partial", or
+  "Budget reached" / "Stopped" / "Failed" with "N of M sub-questions researched") and lists them as "Not
+  researched". The plan-approval screen shows the steps and an estimated cost (report + per sub-question). Page text is always inside a hash-tagged delimiter with a never-follow rule.
 - **Runs in the background:** one in-process worker thread started with the API. On startup, missions left in
   planning / running are marked failed ("interrupted by a server restart"); queued ones are picked up again.
 - **Findings → intelligence:** Approve turns a finding into a signal (`mission_id`, source URL, statement as title,

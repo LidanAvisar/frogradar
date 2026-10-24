@@ -42,6 +42,12 @@
           </div>
         </header>
 
+        @if (mi.partial && !live()) {
+          <p class="notice notice--partial" role="status">
+            {{ mi.sub_questions_researched }} of {{ mi.sub_questions_total }} sub-questions researched. Not researched:
+            @for (q of skipped(); track q.n; let last = $last) { Q{{ q.n }} {{ q.question }}@if (!last) {; } }
+          </p>
+        }
         @if (mi.error && !live()) {
           <p class="notice" [class.notice--error]="mi.status === 'failed'" role="status">{{ mi.error }}</p>
         }
@@ -57,7 +63,7 @@
           </div>
           <div class="fr-panel tile">
             <div class="eyebrow">Steps</div>
-            <div class="value mono">{{ mi.steps_used }} <span class="of">of {{ stepsPlanned() || '–' }} planned · max {{ mi.max_steps }}</span></div>
+            <div class="value mono">{{ mi.steps_used }} <span class="of">of {{ stepsPlanned() || '–' }} planned</span></div>
           </div>
           <div class="fr-panel tile">
             <div class="eyebrow">Findings</div>
@@ -90,11 +96,11 @@
                   {{ planBusy() ? 'Approving…' : 'Approve plan and start' }}
                 </button>
               </div>
-              <p class="small muted">Starting the research makes paid LLM calls (about {{ usd(mi.budget_usd) }} at most: the budget is a hard cap).</p>
-              @if (draftSteps() > mi.max_steps) {
-                <p class="small notice" role="note">This plan needs about {{ draftSteps() }} steps but the limit is {{ mi.max_steps }}: the last
-                  sub-questions may not be researched. Remove one or start a new mission with more steps.</p>
-              }
+              <p class="small muted plan-estimate">
+                {{ draftQuestions() }} sub-questions · {{ draftSteps() }} steps (search, read, extract, verify each)
+                @if (draftCost() !== null) { · about {{ usd(draftCost()!) }} to finish (report + {{ draftQuestions() }} × {{ usd(perQuestionCost()!, 3) }}, measured) }
+                · hard cap {{ usd(mi.budget_usd) }}.
+              </p>
             } @else {
               <ol class="steps">
                 <li class="done">
@@ -186,6 +192,15 @@
               }
             }
 
+            @if (skipped().length && !live()) {
+              <article class="fr-panel open-question not-researched" aria-label="Sub-questions not researched">
+                <div class="eyebrow">Not researched</div>
+                <ul>
+                  @for (q of skipped(); track q.n) { <li>Q{{ q.n }}: {{ q.question }}</li> }
+                </ul>
+                @if (mi.report?.stopped_reason) { <p class="small muted">{{ mi.report?.stopped_reason }}</p> }
+              </article>
+            }
             @for (q of mi.report?.open_questions ?? []; track $index) {
               <article class="fr-panel open-question">
                 <div class="eyebrow">Open question</div>

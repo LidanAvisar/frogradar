@@ -163,7 +163,7 @@ What grows with more sources, and what keeps it in check (figures from `llm_call
   (average $0.00031) decides relevance before enrichment ($0.00112) and the other-vendor check ($0.00211); every
   validated output and embedding is cached by content hash, so a repeat costs $0.
 - **Hard limits.** `LLM_DAILY_BUDGET_USD` (default $2) is checked before every paid call; at the cap the run skips the
-  remaining LLM stages. Each mission has a budget (default $0.30), a step limit (12) and a 10-minute limit.
+  remaining LLM stages. Each mission has a budget (default $0.30), 4 steps per approved sub-question and a 10-minute limit.
 - **Indexes:** HNSW (pgvector, cosine) on `signals.embedding` for dedup, GIN for full text; Ask uses exact search on
   purpose, so a question always retrieves the same documents.
 
@@ -229,7 +229,7 @@ images to Artifactory with an immutable `<commit>-<run>.<attempt>` tag, publish 
 | Area | Now | Next |
 |---|---|---|
 | Sources | 3 news sources + 2 pricing pages active (47 configured), plus HN / GitHub / CNCF discovery | Enable the full catalog; G2 reviews, earnings calls, job postings |
-| Intelligence | Daily brief, battlecards + capability matrix, Competitor Radar, research missions | Predict the next move, "time machine" (state of a competitor on a date), insight fusion across signals |
+| Intelligence | Daily brief, battlecards + capability matrix, Competitor Radar, research missions | Predict the next move, "time machine" (state of a competitor on a date), insight fusion across signals; JFrog side of comparison missions answered from config/jfrog_capabilities.yaml (doc-linked) instead of web search |
 | Analysts | Review queue, corrections as few-shot examples, AI vs Analyst scorecard | SSO and roles, undo, re-enrich neighbours of a new correction |
 | Delivery | Web app, MCP server + Skill | Slack digest and bot, sales-ready battlecard export |
 | Platform | Docker Compose with one `make up`, optional seed data, JFrog CI with OIDC, Build Info and Xray build scan | Kubernetes (Helm) deployment from Artifactory, mission worker as its own service with resume |
@@ -252,7 +252,7 @@ All pitfalls: [docs/DESIGN.md](docs/DESIGN.md#pitfalls-learned-the-hard-way).
 
 ## Design decisions
 
-The ones that shape the product (all 83, each with what was rejected: [docs/DESIGN.md](docs/DESIGN.md)):
+The ones that shape the product (all 84, each with what was rejected: [docs/DESIGN.md](docs/DESIGN.md)):
 
 - **The LLM proposes, code verifies.** Quotes, citations, prices, entity slugs and confidence are checked or computed
   in code; a model from another vendor checks the claims.
@@ -296,5 +296,5 @@ and Build Info): [LidanAvisar/jfrog_task – docs/STAGE2.md](https://github.com/
 | [docs/PIPELINE.md](docs/PIPELINE.md) | Collectors, page diffs and the Wayback baseline, dedup and entity linking, triage / enrich / verify / confidence, synthesis, Competitor Radar |
 | [docs/FEATURES.md](docs/FEATURES.md) | Every screen and its API, analyst loop, Ask, research missions (with two paid runs), MCP server and Skill setup |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Eval set, silver labels, results v1 → v2, limits, gold labels |
-| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D83 and the full pitfalls list |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D84 and the full pitfalls list |
 | [docs/DOGFOODING.md](docs/DOGFOODING.md) | JFrog CI, `jf audit` and Xray build-scan results, platform setup notes |

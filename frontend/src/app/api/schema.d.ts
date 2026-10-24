@@ -967,6 +967,16 @@ export interface components {
             daily_run: number;
             /** Mission */
             mission: number;
+            /**
+             * Mission Per Question
+             * @description Extract + verify per mission sub-question
+             */
+            mission_per_question: number;
+            /**
+             * Mission Report
+             * @description A mission's report (the plan-approval estimate)
+             */
+            mission_report: number;
         };
         /** Coverage */
         Coverage: {
@@ -1193,8 +1203,6 @@ export interface components {
             brief: string;
             /** Budget Usd */
             budget_usd?: number | null;
-            /** Max Steps */
-            max_steps?: number | null;
             /**
              * Origin Kind
              * @default manual
@@ -1245,7 +1253,10 @@ export interface components {
             finished_at: string | null;
             /** Id */
             id: number;
-            /** Max Steps */
+            /**
+             * Max Steps
+             * @description Step limit: 4 per sub-question of the approved plan
+             */
             max_steps: number;
             /**
              * Origin Kind
@@ -1263,12 +1274,22 @@ export interface components {
             origin_ref: {
                 [key: string]: number;
             };
+            /**
+             * Partial
+             * @description Finished, but at least one sub-question never ran (budget, time, Stop, step limit): never shown as a plain 'Completed' (D84)
+             */
+            partial: boolean;
             plan: components["schemas"]["MissionPlanOut"] | null;
             /** Radar Candidate Id */
             radar_candidate_id: number | null;
             report: components["schemas"]["MissionReportOut"] | null;
             /** Scope Label */
             scope_label: string;
+            /**
+             * Skipped
+             * @description Sub-questions that never ran (finished missions only)
+             */
+            skipped: components["schemas"]["SkippedSubQuestionOut"][];
             /** Started At */
             started_at: string | null;
             /**
@@ -1282,6 +1303,16 @@ export interface components {
             steps_used: number;
             /** Stop Requested */
             stop_requested: boolean;
+            /**
+             * Sub Questions Researched
+             * @description Sub-questions whose verify step ran
+             */
+            sub_questions_researched: number;
+            /**
+             * Sub Questions Total
+             * @description Sub-questions in the plan (0 before planning)
+             */
+            sub_questions_total: number;
             /** Title */
             title: string;
         };
@@ -1361,7 +1392,10 @@ export interface components {
             finished_at: string | null;
             /** Id */
             id: number;
-            /** Max Steps */
+            /**
+             * Max Steps
+             * @description Step limit: 4 per sub-question of the approved plan
+             */
             max_steps: number;
             /**
              * Origin Kind
@@ -1379,8 +1413,18 @@ export interface components {
             origin_ref: {
                 [key: string]: number;
             };
+            /**
+             * Partial
+             * @description Finished, but at least one sub-question never ran (budget, time, Stop, step limit): never shown as a plain 'Completed' (D84)
+             */
+            partial: boolean;
             /** Scope Label */
             scope_label: string;
+            /**
+             * Skipped
+             * @description Sub-questions that never ran (finished missions only)
+             */
+            skipped: components["schemas"]["SkippedSubQuestionOut"][];
             /** Started At */
             started_at: string | null;
             /**
@@ -1390,6 +1434,16 @@ export interface components {
             status: "queued" | "planning" | "awaiting_approval" | "running" | "completed" | "failed" | "cancelled" | "budget_exceeded";
             /** Steps Used */
             steps_used: number;
+            /**
+             * Sub Questions Researched
+             * @description Sub-questions whose verify step ran
+             */
+            sub_questions_researched: number;
+            /**
+             * Sub Questions Total
+             * @description Sub-questions in the plan (0 before planning)
+             */
+            sub_questions_total: number;
             /** Title */
             title: string;
         };
@@ -1429,10 +1483,6 @@ export interface components {
             days: number | null;
             /** Max Budget Usd */
             max_budget_usd: number;
-            /** Max Max Steps */
-            max_max_steps: number;
-            /** Max Steps */
-            max_steps: number;
             /**
              * Origin Kind
              * @enum {string}
@@ -1454,6 +1504,11 @@ export interface components {
             generated: "llm" | "fallback";
             /** Open Questions */
             open_questions: string[];
+            /**
+             * Skipped
+             * @description Sub-questions of the plan that never ran (D84)
+             */
+            skipped?: components["schemas"]["SkippedSubQuestionOut"][];
             /** Stopped Reason */
             stopped_reason: string | null;
             /** Summary */
@@ -2379,6 +2434,16 @@ export interface components {
             title: string;
             /** Url */
             url: string;
+        };
+        /** SkippedSubQuestionOut */
+        SkippedSubQuestionOut: {
+            /**
+             * N
+             * @description Sub-question number in the plan (1-based)
+             */
+            n: number;
+            /** Question */
+            question: string;
         };
         /**
          * SourceKind
