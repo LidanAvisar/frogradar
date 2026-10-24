@@ -1,4 +1,4 @@
-"""FrogRadar MCP server (S16, D75): FrogRadar's intelligence for Claude, Cursor and other MCP clients.
+"""FrogRadar MCP server (S16, D75): FrogRadar's intelligence for any MCP client.
 
 Thin lenses on the existing read layer (app.api.*, app.pipeline.scope, app.rag) – no HTTP calls to
 our own API, no new intelligence logic. Tools return capped, source-linked models (app.mcp.shape);

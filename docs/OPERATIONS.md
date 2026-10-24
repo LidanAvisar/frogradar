@@ -4,6 +4,34 @@
 
 How to run, configure and maintain FrogRadar. Quick start: [README](../README.md#quick-start).
 
+## Running FrogRadar
+
+The commands are in the [README quick start](../README.md#quick-start). The details:
+
+- **Keys.** `make up` checks the two required keys first (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` with the default
+  routing) and stops with one message naming a missing key and where to put it, e.g. *"FrogRadar can't start:
+  missing OPENAI_API_KEY (for verify openai/gpt-5.4-mini, embedding openai/text-embedding-3-small). Add it to .env
+  in the repository root (copy .env.example to .env if you haven't), then run `make up` again."* A missing optional
+  key turns off only its feature, and the UI says so: without `TAVILY_API_KEY`, research missions search
+  FrogRadar's own data only; without `GITHUB_TOKEN`, GitHub is limited to 60 requests/hour; without `MCP_TOKEN`,
+  MCP over HTTP is off. Key values are never logged, returned by the API or sent to the web app.
+- **Seed.** `make seed` loads the committed intelligence (signals, battlecards, the radar, two finished missions,
+  past Ask conversations) as normal data, without LLM calls, so every screen has content before the first pipeline
+  run. It only loads into a fresh database (details: [Seed data](#seed-data)).
+- **Older data.** The app uses the real date. When nothing is newer than the last 7 days (for example only the
+  seed), the Brief shows the latest available day under the header *LATEST INTELLIGENCE · WEDNESDAY · 21 OCTOBER
+  2026* with the note *"Nothing newer yet: this is the latest available day (21 Oct 2026). Run the pipeline (make
+  pipeline) for today's news, or make scheduler-up for daily updates."* "Since yesterday" becomes "On 21 Oct
+  2026", and the top story is that day's. A daily brief older than a day is never shown as today's top story.
+- **Daily updates** cost money, so they're opt-in: `make scheduler-up` starts the scheduler (see
+  [Daily scheduler](#daily-scheduler)), `make scheduler-down` stops it. `make down` stops everything; `make status`
+  shows keys, features and today's spend.
+- **Budget.** `LLM_DAILY_BUDGET_USD` (default $2) is a hard cap per UTC day, checked before every paid call; the UI
+  shows today's spend next to it. Each research mission also has its own cap (default $0.30).
+- **One provider only?** Route every tier to it with the `LLM_MODEL_*` overrides (see `.env.example`); the required
+  keys follow the routing. Because the verifier is then the same model family as the writer, FrogRadar starts only
+  with `ALLOW_SAME_FAMILY_VERIFY=true` and warns that accuracy checks are weaker.
+
 ## Commands
 
 | Command | What it does |

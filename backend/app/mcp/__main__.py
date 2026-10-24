@@ -1,7 +1,7 @@
 """stdio transport: `python -m app.mcp` / `frogradar-mcp` / `make mcp`.
 
-For Claude Desktop, Cursor and the MCP Inspector on a laptop. stdout is the protocol, so all
-logging goes to stderr. Needs Postgres (`make db-up`); provider keys (for `ask` and the
+For MCP clients on a laptop (e.g. Claude Desktop) and the MCP Inspector. stdout is the protocol,
+so all logging goes to stderr. Needs Postgres (`make db-up`); provider keys (for `ask` and the
 search_intel query embedding) come from the environment, e.g. `uv run --env-file ../.env`.
 """
 

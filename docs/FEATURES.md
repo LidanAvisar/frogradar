@@ -295,7 +295,7 @@ statements come back partly verified); the worker is
 in-process (one mission at a time, no resume after a restart); the SSRF check resolves DNS separately from the
 HTTP client (a rebinding host could answer differently).
 
-## MCP server and Skill: FrogRadar in Claude, Cursor and other MCP clients
+## MCP server and Skill: FrogRadar in any MCP client
 
 Code: `backend/app/mcp/`, `skills/`
 
@@ -366,7 +366,7 @@ Set `MCP_TOKEN` in `.env` (e.g. `openssl rand -hex 32`) and restart the backend:
 `http://<host>:8000/mcp`. Every request needs `Authorization: Bearer <MCP_TOKEN>` (constant-time check, 401
 otherwise). Without `MCP_TOKEN` the route is not mounted and the backend logs an error; the rest of the API still
 starts. Add the host name clients use to `MCP_ALLOWED_HOSTS` (DNS-rebinding protection) when exposing it beyond
-localhost. Client config (Cursor and other clients that speak streamable HTTP):
+localhost. Client config (MCP clients that speak streamable HTTP):
 
 ```json
 {
