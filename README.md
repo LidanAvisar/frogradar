@@ -218,11 +218,22 @@ FrogRadar analyzes the software supply-chain market, so it is built and scanned 
 [GitHub Actions](.github/workflows/jfrog.yml) log in with **OIDC** (no stored credentials), push the backend and web
 images to Artifactory with an immutable `<commit>-<run>.<attempt>` tag, publish **Build Info** and run an **Xray build scan**.
 
-- **Run #5 (22 Oct 2026):** Build Info `frogradar/5`, 0 policy violations (no Xray watch or policy yet, so not a
-  gate). The vulnerabilities are in the base images: web 218 unique CVEs (15 Critical), backend 140 (3 Critical).
+- **Build scan:** 0 policy violations (no Xray watch or policy yet, so not a gate). Run #5 showed the vulnerabilities
+  were in the base images, so we fixed those: newer bases pinned by digest (each at least 14 days old), and the
+  unused curl, pip and nginx modules removed (D85). Same `jf docker scan`, linux/amd64, 24 Oct 2026:
+
+  | Image | Before: unique CVEs (Critical) | After |
+  |---|---|---|
+  | `frogradar-web` (nginx-unprivileged 1.29.3 → 1.31.5, Alpine 3.22 → 3.24) | 229 (17) | **6 (0)** |
+  | `frogradar-backend` (python 3.12 slim, Debian 12 → 13) | 140 (3) | **95 (0)** |
+
+  Remaining risk: web has 3 High (OpenSSL with no fix yet; zlib and pcre2 fixed in newer Alpine packages). Backend has
+  82 Debian 13 CVEs (20 High, 13 with a Debian fix that arrives with the next base image after the cooldown, from
+  4 Nov) and 13 in `filelock`, below.
 - **`jf audit` with contextual analysis:** backend 13 CVEs, all in transitive `filelock` 3.32.7 and needing a second
-  local user; frontend 4 Critical/High XSS CVEs in Angular 18 paths FrogRadar doesn't use (i18n, SVG). Secrets: 0.
-- **Next:** newer base images, Angular 20.3+, an Xray policy as a CI gate. Details: [docs/DOGFOODING.md](docs/DOGFOODING.md).
+  local user (fix 4.2.1 clears the cooldown on 31 Oct); frontend 4 Critical/High XSS CVEs in Angular 18 paths
+  FrogRadar doesn't use (i18n, SVG). Secrets: 0.
+- **Next:** filelock 4.2.1, Angular 20.3+, an Xray policy as a CI gate. Details: [docs/DOGFOODING.md](docs/DOGFOODING.md).
 
 ## Now / Next
 
@@ -233,7 +244,7 @@ images to Artifactory with an immutable `<commit>-<run>.<attempt>` tag, publish 
 | Analysts | Review queue, corrections as few-shot examples, AI vs Analyst scorecard | SSO and roles, undo, re-enrich neighbours of a new correction |
 | Delivery | Web app, MCP server + Skill | Slack digest and bot, sales-ready battlecard export |
 | Platform | Docker Compose with one `make up`, optional seed data, JFrog CI with OIDC, Build Info and Xray build scan | Kubernetes (Helm) deployment from Artifactory, mission worker as its own service with resume |
-| Hardening | Supply-chain cooldown, SSRF guard, budget guards, Xray build scan in CI | Newer base images (most image CVEs), Angular 20+ upgrade, filelock 4.2.1, DNS pinning in the SSRF guard, Xray policy as a CI gate |
+| Hardening | Supply-chain cooldown, SSRF guard, budget guards, Xray build scan in CI, base images pinned by digest with unused packages removed (0 Critical image CVEs) | Angular 20+ upgrade, filelock 4.2.1 (31 Oct), base-image refresh as fixes clear the cooldown, DNS pinning in the SSRF guard, Xray policy as a CI gate |
 
 ## Challenges and pitfalls
 
@@ -252,7 +263,7 @@ All pitfalls: [docs/DESIGN.md](docs/DESIGN.md#pitfalls-learned-the-hard-way).
 
 ## Design decisions
 
-The ones that shape the product (all 84, each with what was rejected: [docs/DESIGN.md](docs/DESIGN.md)):
+The ones that shape the product (all 85, each with what was rejected: [docs/DESIGN.md](docs/DESIGN.md)):
 
 - **The LLM proposes, code verifies.** Quotes, citations, prices, entity slugs and confidence are checked or computed
   in code; a model from another vendor checks the claims.
@@ -281,7 +292,8 @@ The ones that shape the product (all 84, each with what was rejected: [docs/DESI
 - **Small corpus:** 3 news sources and 2 pricing pages are active (43 visible signals in the seed), so Ask recall measures
   ranking, not scale; the eval uses silver labels from one model.
 - **Missions:** one in-process worker, no resume after a restart; the SSRF guard resolves DNS separately (rebinding).
-- **Angular 18** (out of support) and **older base images** (most build-scan CVEs); see [Dogfooding](#dogfooding-built-and-scanned-with-jfrog).
+- **Angular 18** (out of support) and `filelock` 3.32.7 (fix inside the 14-day cooldown until 31 Oct); the images still
+  carry 88 non-Critical OS CVEs, most without a fix yet; see [Dogfooding](#dogfooding-built-and-scanned-with-jfrog).
 
 ## Stage 2: JFrog security task
 
@@ -296,5 +308,5 @@ and Build Info): [LidanAvisar/jfrog_task – docs/STAGE2.md](https://github.com/
 | [docs/PIPELINE.md](docs/PIPELINE.md) | Collectors, page diffs and the Wayback baseline, dedup and entity linking, triage / enrich / verify / confidence, synthesis, Competitor Radar |
 | [docs/FEATURES.md](docs/FEATURES.md) | Every screen and its API, analyst loop, Ask, research missions (with two paid runs), MCP server and Skill setup |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Eval set, silver labels, results v1 → v2, limits, gold labels |
-| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D84 and the full pitfalls list |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D85 and the full pitfalls list |
 | [docs/DOGFOODING.md](docs/DOGFOODING.md) | JFrog CI, `jf audit` and Xray build-scan results, platform setup notes |
