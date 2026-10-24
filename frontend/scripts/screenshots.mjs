@@ -22,6 +22,10 @@ const askId = process.env.ASK_C ?? convs?.[0]?.id;
 const radar = await fetch(`${api}/api/radar?limit=1`).then((r) => r.json()).catch(() => null);
 const topId = radar?.items?.[0]?.id;
 
+// The GitGuardian profile shown in docs/PIPELINE.md (approved from the radar, so not in the open list).
+const approved = await fetch(`${api}/api/radar?status=approved&limit=200`).then((r) => r.json()).catch(() => null);
+const gitguardianId = approved?.items?.find((c) => c.name === 'GitGuardian')?.id;
+
 // The finished research mission shown in the README: the reachability one, else the newest.
 const missions = await fetch(`${api}/api/missions`).then((r) => r.json()).catch(() => []);
 const missionList = Array.isArray(missions) ? missions : (missions?.items ?? []);
@@ -31,6 +35,7 @@ const pages = [
   { name: 'brief', path: '/', ready: 'fr-signal-card, fr-empty-state, fr-error-state' },
   { name: 'radar', path: '/radar', ready: 'fr-radar-row, fr-empty-state, fr-error-state' },
   ...(topId ? [{ name: 'radar-detail', path: `/radar/${topId}`, ready: '.statements, fr-empty-state, fr-error-state' }] : []),
+  ...(gitguardianId ? [{ name: 'radar-gitguardian', path: `/radar/${gitguardianId}`, ready: '.statements, fr-empty-state, fr-error-state' }] : []),
   { name: 'battlecard-sonatype', path: '/battlecards/sonatype', ready: 'fr-capability-matrix, fr-empty-state, fr-error-state' },
   { name: 'signals-filtered', path: '/signals?since=7d&min_impact=4', ready: 'fr-signal-card, fr-empty-state, fr-error-state' },
   ...(askId ? [{ name: 'ask', path: `/ask?c=${askId}`, ready: 'fr-answer-card' }] : []),

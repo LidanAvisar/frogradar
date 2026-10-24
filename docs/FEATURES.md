@@ -398,11 +398,11 @@ Install:
 - **Claude Desktop / claude.ai:** `cd skills && zip -r frogradar-ci-analyst.zip frogradar-ci-analyst`, then
   upload the zip under Settings → Capabilities → Skills.
 
-**Verified with the MCP Inspector (2026-10-22, stdio, dev DB):** tools listed
-([screenshot](screenshots/mcp-inspector-tools.png)); `whats_new` returned 5 signals from the last day
-([screenshot](screenshots/mcp-whats-new.png)); `get_battlecard("sonatype")` 14 sources and the matrix in
-10.7 KB; `radar()` GitGuardian, PatchWave, Primod, Code Genome Project, Void, Vercel
-([screenshot](screenshots/mcp-radar.png)). One paid `ask`, $0.022 (Sonnet $0.018 + gpt-5.4-mini check
+**Verified with the MCP Inspector (screenshots retaken 2026-10-24, stdio, a fresh stack with the seed, no provider
+keys):** tools listed ([screenshot](screenshots/mcp-inspector-tools.png)); `whats_new` found nothing in the last day
+and widened to 7 days, 15 signals, saying so in its note ([screenshot](screenshots/mcp-whats-new.png));
+`get_battlecard("sonatype")` 17 sources and 10 matrix rows in 14.5 KB; `radar()` Ztrust, Akrites, PatchWave, Primod,
+Code Genome Project, Sonar ([screenshot](screenshots/mcp-radar.png)). Earlier (2026-10-22, dev DB), one paid `ask`, $0.022 (Sonnet $0.018 + gpt-5.4-mini check
 $0.004): "Does Sonatype offer reachability analysis, and how does it compare with JFrog's contextual analysis?"
 → yes, 5 cited points (Java/JVM, JavaScript, .NET; no container targets; call-path evidence Java only) and what it
 means for JFrog, built from the S15 mission findings and the regenerated battlecard
