@@ -9,7 +9,7 @@ quotes, citations, prices and confidence. The team reads the result as a Morning
 matrix, cited answers to questions, research missions run by an agent, and an MCP server for any MCP client (e.g.
 Claude Desktop).
 
-▶ **Video walkthrough (3–4 min):** *link coming*
+▶ **Video walkthrough (3–4 min):** https://canva.link/9tsroso8566xiiy
 
 ![FrogRadar Morning Brief](docs/screenshots/hero-brief.png)
 
