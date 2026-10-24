@@ -24,7 +24,7 @@ Claude Desktop).
 | Requirement | How FrogRadar does it | Where |
 |---|---|---|
 | Keep the CI team updated daily | A LangGraph pipeline (collect → dedup → triage → enrich → verify → brief → battlecards → radar) runs daily with `make scheduler-up`; the Morning Brief shows what changed | [Quick start](#quick-start), [Architecture](#architecture) |
-| Compare JFrog to its competitors | A battlecard per competitor (13 configured), a capability matrix over 39 capabilities, a pricing watch and the Competitor Radar | [Feature tour](#feature-tour) |
+| Compare JFrog to its competitors | A battlecard for each competitor with enough evidence (5+ signals about it; Sonatype and GitHub today), a capability matrix over 39 capabilities and a timeline for every competitor, a pricing watch and the Competitor Radar | [Feature tour](#feature-tour) |
 | Accurate | Verbatim quotes and citations checked in code, a verifier from another vendor, confidence computed in code, analyst corrections | [Accuracy](#how-accuracy-is-ensured), [Evaluation](#evaluation-results) |
 | Scalable | Sources and competitors in YAML, cheap triage before costly steps, a content-hash cache, hard budgets, pgvector indexes | [Scalability](#scalability) |
 | Runnable | `make up` with two API keys, optional seed data, images built and scanned with JFrog in CI | [Quick start](#quick-start), [Dogfooding](#dogfooding-built-and-scanned-with-jfrog) |
@@ -263,7 +263,7 @@ All pitfalls: [docs/DESIGN.md](docs/DESIGN.md#pitfalls-learned-the-hard-way).
 
 ## Design decisions
 
-The ones that shape the product (all 85, each with what was rejected: [docs/DESIGN.md](docs/DESIGN.md)):
+The ones that shape the product (all 86, each with what was rejected: [docs/DESIGN.md](docs/DESIGN.md)):
 
 - **The LLM proposes, code verifies.** Quotes, citations, prices, entity slugs and confidence are checked or computed
   in code; a model from another vendor checks the claims.
@@ -290,7 +290,8 @@ The ones that shape the product (all 85, each with what was rejected: [docs/DESI
 - **No authentication yet:** the analyst name is self-declared; write endpoints are open (local deployment only).
 - **Seeded rows have no full text**, so the pipeline never re-processes them (Ask and battlecards use their enrichment).
 - **Small corpus:** 3 news sources and 2 pricing pages are active (43 visible signals in the seed), so Ask recall measures
-  ranking, not scale; the eval uses silver labels from one model.
+  ranking, not scale; the eval uses silver labels from one model. Only Sonatype and GitHub reach the battlecard
+  threshold because 5 of 47 sources are active; enabling more sources fills the rest.
 - **Missions:** one in-process worker, no resume after a restart; the SSRF guard resolves DNS separately (rebinding).
 - **Angular 18** (out of support) and `filelock` 3.32.7 (fix inside the 14-day cooldown until 31 Oct); the images still
   carry 88 non-Critical OS CVEs, most without a fix yet; see [Dogfooding](#dogfooding-built-and-scanned-with-jfrog).
@@ -308,5 +309,5 @@ and Build Info): [LidanAvisar/jfrog_task – docs/STAGE2.md](https://github.com/
 | [docs/PIPELINE.md](docs/PIPELINE.md) | Collectors, page diffs and the Wayback baseline, dedup and entity linking, triage / enrich / verify / confidence, synthesis, Competitor Radar |
 | [docs/FEATURES.md](docs/FEATURES.md) | Every screen and its API, analyst loop, Ask, research missions (with two paid runs), MCP server and Skill setup |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Eval set, silver labels, results v1 → v2, limits, gold labels |
-| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D85 and the full pitfalls list |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design decisions D1–D86 and the full pitfalls list |
 | [docs/DOGFOODING.md](docs/DOGFOODING.md) | JFrog CI, `jf audit` and Xray build-scan results, platform setup notes |

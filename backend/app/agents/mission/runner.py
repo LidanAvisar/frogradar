@@ -421,7 +421,9 @@ class MissionRunner:
             since = self.tools.clock() - timedelta(days=int(days))
         f = Filters(entity_ids=tuple(entity_ids), since=since)
         with llm_context(mission_id=self.mission_id):
-            found = retrieve(self.s, question, f, embed=self.tools.embed, cfg=cfg)
+            found = retrieve(
+                self.s, question, f, embed=self.tools.embed, cfg=cfg, now=self.tools.clock()
+            )
         return [d for d in found.docs if d.type == "signal" and d.signal_id is not None][:k]
 
     def _source(self, kind: MissionSourceKind, url: str, title: str, excerpt: str,

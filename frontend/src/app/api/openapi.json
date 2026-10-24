@@ -635,6 +635,9 @@
       },
       "BattlecardListItem": {
         "properties": {
+          "evidence": {
+            "$ref": "#/components/schemas/CardEvidence"
+          },
           "generated_at": {
             "anyOf": [
               {
@@ -645,7 +648,7 @@
                 "type": "null"
               }
             ],
-            "description": "Latest card; null = no card yet",
+            "description": "Latest card; null = no card yet or not enough evidence for one",
             "title": "Generated At"
           },
           "name": {
@@ -669,7 +672,8 @@
           "name",
           "relationship",
           "signal_count",
-          "generated_at"
+          "generated_at",
+          "evidence"
         ],
         "title": "BattlecardListItem",
         "type": "object"
@@ -696,6 +700,10 @@
           },
           "entity": {
             "$ref": "#/components/schemas/BattlecardEntity"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/CardEvidence",
+            "description": "Below the minimum no card is shown (report_id null), even one built earlier"
           },
           "generated_at": {
             "anyOf": [
@@ -779,6 +787,7 @@
         },
         "required": [
           "entity",
+          "evidence",
           "report_id",
           "generated_at",
           "model",
@@ -955,6 +964,35 @@
           "segment"
         ],
         "title": "CapabilityRef",
+        "type": "object"
+      },
+      "CardEvidence": {
+        "description": "How much a battlecard can rest on (D86): signals ABOUT the company (it or one of its products\nis primary) in the last `lookback_days`, against the minimum a card needs.",
+        "properties": {
+          "enough": {
+            "title": "Enough",
+            "type": "boolean"
+          },
+          "lookback_days": {
+            "title": "Lookback Days",
+            "type": "integer"
+          },
+          "required": {
+            "title": "Required",
+            "type": "integer"
+          },
+          "signals_about": {
+            "title": "Signals About",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "signals_about",
+          "required",
+          "lookback_days",
+          "enough"
+        ],
+        "title": "CardEvidence",
         "type": "object"
       },
       "CitationRef": {
@@ -5780,7 +5818,7 @@
     },
     "/api/battlecards": {
       "get": {
-        "description": "Tracked competitors for the switcher: those with a card first (by signal count), then the\nrest (\"no card yet\").",
+        "description": "Tracked competitors for the switcher: those with a card first (by signal count), then the\nrest (no card yet, or not enough evidence for one).",
         "operationId": "list_battlecards_api_battlecards_get",
         "responses": {
           "200": {

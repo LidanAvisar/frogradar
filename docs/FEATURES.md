@@ -35,8 +35,8 @@ Read API (FastAPI, `backend/app/api/`, OpenAPI at `/docs`):
 | `POST /api/ask` | `{question, conversation_id?}` → cited answer points, what it means for JFrog, `not_enough_evidence`, 3 follow-ups, sources, retrieved count, cost |
 | `GET /api/ask/conversations`, `/{id}` | recent analyst conversations (`source=ui` default; `eval`, `all`); one conversation's turns as shown |
 | `POST /api/ask/turns/{id}/feedback` | Helpful / Something's wrong (reason + comment) → feedback row |
-| `GET /api/battlecards` | tracked competitors for the switcher: those with a card first, then "no card yet" |
-| `GET /api/entities/{slug}/battlecard` | latest battlecard, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
+| `GET /api/battlecards` | tracked competitors for the switcher: those with a card first, then the rest, each with its evidence count vs the card threshold (D86) |
+| `GET /api/entities/{slug}/battlecard` | latest battlecard (only with enough evidence, D86), evidence count vs threshold, capability matrix (JFrog vs competitor, evidence link, changed-recently flag), timeline, coverage counts |
 | `GET /api/self` | JFrog and its product names (from `competitors.yaml`) for highlighting |
 | `POST /api/signals/{id}/approve` · `/correct` · `/reject` | analyst review: `{analyst, comment?}`; correct adds `reason_code` + only the changed `category` / `impact` / `relevant` / `primary_entity`; reject adds `reason_code`; 409 on a conflicting state → updated signal with `review` |
 | `GET /api/review` | signals waiting for review (impact × confidence) + progress `{reviewed, total}` |
@@ -65,13 +65,16 @@ All three reuse the Brief's components and tokens; every claim links to its sour
   restores the previous view. The window is computed on the server with the Brief's clock, and unsupported
   summaries are hidden by default as in the Brief stats, so a tile's number equals the list total (tested).
   ![Signals filtered, 1440 px](screenshots/signals-filtered-1440.png)
-- **Battlecard (`/battlecards/:slug`; `/battlecards` opens the top competitor):** switcher (competitors without a
-  card are marked "no card yet"), relationship and segments, three tiles (positioning, latest move = newest
+- **Battlecard (`/battlecards/:slug`; `/battlecards` opens the top competitor):** switcher (competitors below the
+  card threshold are grouped under "Not enough evidence yet"), relationship and segments, three tiles (positioning, latest move = newest
   impact 4-5 signal, coverage), the capability matrix (JFrog level from config vs the competitor's level from
   evidence, each a symbol and a word, evidence link per cell, "Changed recently"; capabilities where the
   competitor's level is unknown are folded into "N capabilities without evidence yet", each with JFrog's level and
   an Investigate link that starts a research mission "Does <competitor> offer <capability>?"; scrolls inside its own box on phones), cited opportunities / blind spots / strengths / weaknesses with one
-  numbering across the card, and the strategy timeline newest first.
+  numbering across the card, and the strategy timeline newest first. A competitor with fewer than 5 signals about it
+  (last 180 days, D86) gets a "Not enough evidence on X yet" panel instead of the card: the count against the
+  threshold and what would fill it (an active source in `config/sources.yaml`, a research mission); the matrix and
+  timeline still show, each with its evidence.
   ![Sonatype battlecard, 1440 px](screenshots/battlecard-sonatype-1440.png)
 - **Radar (`/radar`, `/radar/:id`):** candidates by emergence score with status / JFrog relation / kind filters
   (in the URL), "what it is" and "why now" from the verified profile, the relation chip with the JFrog products
@@ -313,7 +316,7 @@ intelligence logic), built with the official MCP Python SDK (`MCPServer`, the SD
 | `whats_new(days=1, min_impact=3, company?)` | ranked signals: title, takeaway, impact, confidence, company, date, source url. An empty window widens to 7, then 30 days, and `note` says so ("No new signals in the last day; showing the last 7 days"), with `newest_signal_at` | free |
 | `search_intel(query, company?, days?)` | hybrid retrieval hits (signals, battlecard items, radar profiles): id, type, short text, url, score | free (one cached query embedding, no language model) |
 | `get_signal(id)` | summary, why JFrog cares, verified evidence quote, impact, confidence, source url | free |
-| `get_battlecard(company)` | positioning, strengths, weaknesses, opportunities and blind spots with numbered citations, capability matrix (JFrog vs competitor + evidence link), capabilities without evidence | free |
+| `get_battlecard(company)` | positioning, strengths, weaknesses, opportunities and blind spots with numbered citations, capability matrix (JFrog vs competitor + evidence link), capabilities without evidence; below the card threshold a `note` says why there is no card (D86) | free |
 | `pricing_changes(company?, days=90)` | verified before → after prices per pricing-page change, else summary + verified quote | free |
 | `radar(limit=10, relation?)` | new players: what it is, relation to JFrog + products, check label, score, why notable, app link | free |
 | `ask(question)` | the checked RAG answer (points with citations, what it means for JFrog, or not enough evidence) | **paid**, about $0.02 per new question; daily budget guard and LLM cache; stored as an `mcp` conversation |

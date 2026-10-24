@@ -82,7 +82,7 @@ export interface paths {
         /**
          * List Battlecards
          * @description Tracked competitors for the switcher: those with a card first (by signal count), then the
-         *     rest ("no card yet").
+         *     rest (no card yet, or not enough evidence for one).
          */
         get: operations["list_battlecards_api_battlecards_get"];
         put?: never;
@@ -795,9 +795,10 @@ export interface components {
         };
         /** BattlecardListItem */
         BattlecardListItem: {
+            evidence: components["schemas"]["CardEvidence"];
             /**
              * Generated At
-             * @description Latest card; null = no card yet
+             * @description Latest card; null = no card yet or not enough evidence for one
              */
             generated_at: string | null;
             /** Name */
@@ -819,6 +820,8 @@ export interface components {
             citations: components["schemas"]["CitationRef"][];
             coverage: components["schemas"]["Coverage"];
             entity: components["schemas"]["BattlecardEntity"];
+            /** @description Below the minimum no card is shown (report_id null), even one built earlier */
+            evidence: components["schemas"]["CardEvidence"];
             /** Generated At */
             generated_at: string | null;
             /** Matrix */
@@ -917,6 +920,21 @@ export interface components {
             segment: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * CardEvidence
+         * @description How much a battlecard can rest on (D86): signals ABOUT the company (it or one of its products
+         *     is primary) in the last `lookback_days`, against the minimum a card needs.
+         */
+        CardEvidence: {
+            /** Enough */
+            enough: boolean;
+            /** Lookback Days */
+            lookback_days: number;
+            /** Required */
+            required: number;
+            /** Signals About */
+            signals_about: number;
         };
         /** CitationRef */
         CitationRef: {

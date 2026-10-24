@@ -1,7 +1,7 @@
 """API test fixtures: a TestClient on the rolled-back test session, a pinned "now", row builders."""
 
 import hashlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from itertools import count
 from typing import Any
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.api.ask import require_ask_keys
 from app.api.deps import get_now
 from app.api.missions import require_mission_keys
+from app.core.catalog import load_pipeline
 from app.db.enums import (
     EntityReviewStatus,
     EntityType,
@@ -25,6 +26,7 @@ from app.db.enums import (
 from app.db.models import Entity, Signal, Source, signal_entities
 from app.db.session import get_session
 from app.main import app
+from app.pipeline.synthesis import battlecards as battlecards_step_module
 
 NOW = datetime(2026, 10, 21, 8, 0, tzinfo=UTC)
 # Appears in every raw_text; no API response may contain it.
@@ -146,3 +148,23 @@ class Builder:
 def build(db_session: Session, client: TestClient) -> Builder:
     # Depends on `client` so rows are built after the tables were emptied.
     return Builder(db_session)
+
+
+@pytest.fixture
+def card_threshold(monkeypatch: pytest.MonkeyPatch) -> Callable[[int], None]:
+    """Set battlecards.min_primary_signals for the API, Ask and MCP read paths (D86)."""
+
+    def set_min(n: int) -> None:
+        real = load_pipeline()
+        cards = real.synthesis.battlecards.model_copy(update={"min_primary_signals": n})
+        synthesis = real.synthesis.model_copy(update={"battlecards": cards})
+        patched = real.model_copy(update={"synthesis": synthesis})
+        monkeypatch.setattr(battlecards_step_module, "load_pipeline", lambda: patched)
+
+    return set_min
+
+
+@pytest.fixture(autouse=True)
+def _small_card_threshold(card_threshold: Callable[[int], None]) -> None:
+    # API test worlds have one or two signals per company; the threshold has its own tests.
+    card_threshold(1)

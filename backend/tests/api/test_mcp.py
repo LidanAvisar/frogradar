@@ -138,6 +138,16 @@ def test_get_battlecard_sections_citations_and_matrix(server, build):
     assert out["capabilities_without_evidence"] == ["Sbom"]  # its evidence is no longer usable
     assert out["app_url"].endswith("/battlecards/sonatype")
     assert "Unknown company" in error(server, "get_battlecard", company="acme")
+    assert out["note"] is None
+
+
+def test_get_battlecard_below_the_threshold_says_why(server, build, card_threshold):
+    _world(build)  # Sonatype: 2 signals about it
+    card_threshold(5)
+    out = call(server, "get_battlecard", company="sonatype")
+    assert out["generated_at"] is None and out["positioning"] is None and out["sources"] == []
+    assert out["note"].startswith("Not enough evidence on Sonatype yet: 2 of 5 signals")
+    assert [r["capability"] for r in out["matrix"]] == ["Package-Curation"]  # cells keep evidence
 
 
 def test_pricing_changes_verified_pairs_and_window(server, build):

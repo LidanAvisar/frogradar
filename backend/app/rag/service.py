@@ -153,7 +153,7 @@ def ask(
                 question, history, llm.complete, max_turns=cfg.history_turns
             )
             filters = infer_filters(session, standalone, now)
-            found = retrieve(session, standalone, filters, embed=llm.embed, cfg=cfg)
+            found = retrieve(session, standalone, filters, embed=llm.embed, cfg=cfg, now=now)
             if on_retrieval:
                 on_retrieval(found)
             if found.hits:

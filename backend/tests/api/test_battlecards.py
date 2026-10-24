@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.catalog import load_self_capabilities
 from app.db.enums import Relationship, ReportKind
-from app.db.models import Capability, CapabilityMatrix, Report
+from app.db.models import Capability, CapabilityMatrix, Entity, Report
 from tests.api.conftest import NOW
 
 
@@ -117,3 +117,49 @@ def test_battlecard_list_cards_first_then_no_card_yet(client, build):
         ("sonatype", True), ("github", False), ("snyk", False),
     ]  # fmt: skip
     assert data[0]["signal_count"] == 2 and data[1]["signal_count"] == 1
+
+
+# ---------- enough evidence for a card (D86) ----------
+
+
+def test_card_below_the_threshold_is_withheld_but_matrix_and_timeline_stay(
+    client, build, card_threshold
+):
+    fw, price, _, _ = _world(build)  # Sonatype: 2 usable signals about it (one via its product)
+    card_threshold(3)
+    data = client.get("/api/entities/sonatype/battlecard").json()
+    assert data["evidence"] == {
+        "signals_about": 2,
+        "required": 3,
+        "lookback_days": 180,
+        "enough": False,
+    }
+    assert data["report_id"] is None and data["generated_at"] is None
+    assert data["positioning"] is None and data["strengths"] == [] and data["citations"] == []
+    rows = {r["capability"]["slug"]: r for r in data["matrix"]}
+    assert rows["package-curation"]["competitor"]["level"] == "full"  # its own evidence link
+    assert {t["id"] for t in data["timeline"]} == {fw.id, price.id}
+
+    listed = {i["slug"]: i for i in client.get("/api/battlecards").json()}
+    assert listed["sonatype"]["generated_at"] is None
+    assert listed["sonatype"]["evidence"]["enough"] is False
+
+
+def test_card_at_the_threshold_is_shown(client, build, card_threshold):
+    fw, _, _, _ = _world(build)
+    card_threshold(2)
+    data = client.get("/api/entities/sonatype/battlecard").json()
+    assert data["evidence"]["enough"] is True and data["report_id"] is not None
+    assert data["positioning"]["signal_ids"] == [fw.id]
+
+
+def test_mentions_old_and_unusable_signals_do_not_count(client, build, card_threshold):
+    _world(build)
+    sonatype = build.s.scalar(select(Entity).where(Entity.slug == "sonatype"))
+    mention = build.signal("GitHub mentions Sonatype")
+    build.link(mention, sonatype, primary=False)
+    old = build.signal("Sonatype in March", hours_ago=24 * 200)  # outside the 180-day lookback
+    build.link(old, sonatype)
+    card_threshold(3)
+    data = client.get("/api/entities/sonatype/battlecard").json()
+    assert data["evidence"]["signals_about"] == 2 and data["report_id"] is None

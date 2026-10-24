@@ -143,6 +143,16 @@ def test_only_usable_signals_and_checked_battlecard_items(client, build, db_sess
     assert bc[0].url == "/battlecards/sonatype" and bc[0].cites == (w["text_only"].id,)
 
 
+def test_battlecard_items_need_enough_evidence(client, build, db_session, card_threshold):
+    _world(build, db_session)  # Sonatype: 1 usable signal about it (via its product Nexus)
+    card_threshold(2)
+    found = retrieve(
+        db_session, Q, infer_filters(db_session, Q, NOW), embed=_embed(), cfg=AskSettings(k=12),
+        now=NOW,
+    )  # fmt: skip
+    assert not [h for h in found.hits if h.doc.type == "battlecard"]
+
+
 def test_company_filter_applies_to_every_document_type(client, build, db_session):
     w = _world(build, db_session)
     q = "What did Nexus Repository change about the package firewall?"

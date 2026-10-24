@@ -2,8 +2,10 @@
 competitor's capability levels in capability_matrix.
 
 - Competitors: tracked, approved companies with relationship competitor or coopetition that have
-  at least `min_primary_signals` usable signals where the company or one of its products is
-  primary (a mention alone doesn't make a battlecard).
+  at least `min_primary_signals` usable signals of the last `lookback_days` where the company or
+  one of its products is primary (a mention alone doesn't make a battlecard). The API, Ask and MCP
+  apply the same rule when they read a card (`evidence_counts`, D86): a card built on less is not
+  shown, so a thin card never reads like a complete one.
 - Input: the competitor's usable signals of the last `lookback_days` (company or product linked,
   primary or mention), highest impact first, at most `max_signals`.
 - Due: no card yet, the last card is older than `refresh_days`, or an input signal with impact >=
@@ -22,10 +24,15 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.catalog import load_llm_routing, load_self_capabilities
+from app.core.catalog import (
+    BattlecardSettings,
+    load_llm_routing,
+    load_pipeline,
+    load_self_capabilities,
+)
 from app.core.llm import BudgetExceeded, load_prompt
 from app.db.enums import CapabilityLevel, EntityReviewStatus, EntityType, Relationship, ReportKind
 from app.db.models import Capability, CapabilityMatrix, Entity, Report, Signal, signal_entities
@@ -112,6 +119,32 @@ def input_signals(
     return list(signals), primary, all_linked
 
 
+def card_settings() -> BattlecardSettings:
+    return load_pipeline().synthesis.battlecards
+
+
+def evidence_counts(
+    session: Session, now: datetime, cfg: BattlecardSettings | None = None
+) -> dict[int, int]:
+    """Company id → usable signals of the last `lookback_days` where the company or one of its
+    products is primary (distinct signals). Companies without any are absent (= 0)."""
+    cfg = cfg or card_settings()
+    company = func.coalesce(Entity.parent_id, Entity.id)
+    rows = session.execute(
+        select(company, func.count(func.distinct(Signal.id)))
+        .select_from(signal_entities)
+        .join(Entity, Entity.id == signal_entities.c.entity_id)
+        .join(Signal, Signal.id == signal_entities.c.signal_id)
+        .where(
+            signal_entities.c.is_primary,
+            usable(),
+            event_time() >= now - timedelta(days=cfg.lookback_days),
+        )
+        .group_by(company)
+    ).all()
+    return {cid: n for cid, n in rows}
+
+
 def last_card(session: Session, entity_id: int) -> Report | None:
     return session.scalar(
         select(Report)
@@ -142,13 +175,14 @@ def battlecards_step(session: Session, ctx: RunContext) -> dict[str, Any]:
     since = ctx.now - timedelta(days=cfg.lookback_days)
     counts: dict[str, Any] = {"stored": 0, "not_due": 0, "not_eligible": 0, "failed": 0}
     errors: dict[str, str] = {}
+    about = evidence_counts(session, ctx.now, cfg)
     for comp in competitors(session):
         if ctx.only_entities and comp.slug not in ctx.only_entities:
             continue
-        signals, primary, _ = input_signals(session, comp, since, cfg.max_signals)
-        if len(primary) < cfg.min_primary_signals:
+        if about.get(comp.id, 0) < cfg.min_primary_signals:
             counts["not_eligible"] += 1
             continue
+        signals, _, _ = input_signals(session, comp, since, cfg.max_signals)
         reason = due_reason(last_card(session, comp.id), signals, ctx)
         if reason is None:
             counts["not_due"] += 1

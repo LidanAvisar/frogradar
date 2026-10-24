@@ -224,7 +224,7 @@ def build_server(
                 update={"k": min(12, cfg.max_docs), "max_docs": max(12, cfg.max_docs)}
             )
             try:
-                found = retrieve(s, query, f, embed=get_llm().embed, cfg=cfg)
+                found = retrieve(s, query, f, embed=get_llm().embed, cfg=cfg, now=t)
             except BudgetExceeded as e:
                 raise ToolError(
                     f"FrogRadar's LLM budget is reached; try again tomorrow ({e})."
@@ -319,6 +319,14 @@ def build_server(
                 r.capability.name for r in card.matrix if r.competitor.level == "unknown"
             ],  # fmt: skip
             app_url=f"{app_url}/battlecards/{card.entity.slug}",
+            note=None
+            if card.evidence.enough
+            else (
+                f"Not enough evidence on {card.entity.name} yet: {card.evidence.signals_about} of "
+                f"{card.evidence.required} signals about it in the last "
+                f"{card.evidence.lookback_days} days, so there is no battlecard. The matrix shows "
+                "what is known; search_intel finds the signals that mention it."
+            ),  # fmt: skip
         )
         return capped(out, "sources")
 
@@ -517,11 +525,13 @@ def build_server(
         from app.api.battlecards import list_battlecards
 
         with open_session() as s:
-            items = list_battlecards(s)
+            items = list_battlecards(s, clock())
             return _json_capped({"items": [
                 {"slug": i.slug, "name": i.name, "relationship": str(i.relationship),
                  "signals": i.signal_count, "generated_at": i.generated_at.isoformat()
-                 if i.generated_at else None, "app_url": f"{app_url}/battlecards/{i.slug}"}
+                 if i.generated_at else None,
+                 "signals_about": i.evidence.signals_about, "card_needs": i.evidence.required,
+                 "app_url": f"{app_url}/battlecards/{i.slug}"}
                 for i in items]})  # fmt: skip
 
     # ---------- prompts ----------

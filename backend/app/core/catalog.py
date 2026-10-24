@@ -466,7 +466,7 @@ class BattlecardSettings(_Strict):
     trigger_impact: Annotated[int, Field(ge=1, le=5)] = 4
     lookback_days: Annotated[int, Field(ge=7, le=730)] = 180
     max_signals: Annotated[int, Field(ge=1, le=100)] = 30
-    min_primary_signals: Annotated[int, Field(ge=1, le=50)] = 1
+    min_primary_signals: Annotated[int, Field(ge=1, le=50)] = 5
     changed_recently_days: Annotated[int, Field(ge=1, le=90)] = 14
 
 

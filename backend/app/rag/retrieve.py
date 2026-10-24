@@ -10,6 +10,7 @@ natural question and match almost nothing).
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import bindparam, cast, func, select, text
@@ -146,7 +147,13 @@ def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
 
 
 def retrieve(
-    session: Session, question: str, f: Filters, *, embed: EmbedFn, cfg: AskSettings
+    session: Session,
+    question: str,
+    f: Filters,
+    *,
+    embed: EmbedFn,
+    cfg: AskSettings,
+    now: datetime | None = None,
 ) -> Retrieval:
     qvec = embed([question]).vectors[0]
     conds = _signal_conditions(f)
@@ -183,7 +190,8 @@ def retrieve(
         ).all()
 
     # Battlecard items and radar profiles, filtered in code.
-    others = [d for d in (*battlecard_docs(session), *radar_docs(session)) if _keep_other(d, f)]
+    docs = (*battlecard_docs(session, now), *radar_docs(session))
+    others = [d for d in docs if _keep_other(d, f)]
     other_vec: list[tuple[str, float]] = []
     other_txt: list[tuple[str, float]] = []
     if others:

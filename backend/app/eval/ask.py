@@ -99,7 +99,7 @@ def run(
         with factory() as s:
             if retrieval_only:
                 f = infer_filters(s, q.question, now)
-                found = retrieve(s, q.question, f, embed=llm.embed, cfg=cfg)
+                found = retrieve(s, q.question, f, embed=llm.embed, cfg=cfg, now=now)
                 captured.append(found)
                 out = None
                 filters = f.as_dict()

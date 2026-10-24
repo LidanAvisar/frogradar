@@ -108,6 +108,7 @@ class Battlecard(BaseModel):
     matrix: list[MatrixItem] = Field(description="Capabilities with evidence for the competitor")
     capabilities_without_evidence: list[str]
     app_url: str
+    note: str | None = Field(None, description="Why there is no card (not enough evidence yet)")
     truncated: bool = False
 
 

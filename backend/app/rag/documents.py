@@ -14,10 +14,12 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
 from app.api.radar import _relation_source
+from app.core import clock
 from app.db.enums import ProfileStatus, RadarStatus, ReportKind
 from app.db.models import Entity, RadarCandidate, Report, Signal, Source, signal_entities
 from app.pipeline.radar.profile import KEYS as PROFILE_KEYS
 from app.pipeline.scope import event_time, usable
+from app.pipeline.synthesis.battlecards import card_settings, evidence_counts
 from app.pipeline.synthesis.schemas import SECTIONS
 
 DocType = Literal["article", "pricing_page", "battlecard", "radar"]
@@ -129,9 +131,11 @@ def signal_id_of(doc_id: str) -> int | None:
     return int(doc_id[4:]) if doc_id.startswith("sig:") and doc_id[4:].isdigit() else None
 
 
-def battlecard_docs(session: Session) -> list[Doc]:
-    """Items of each competitor's latest battlecard whose cited signals are all still usable
-    (the battlecard API's read-time rule)."""
+def battlecard_docs(session: Session, now: datetime | None = None) -> list[Doc]:
+    """Items of each competitor's latest battlecard whose cited signals are all still usable, for
+    competitors with enough evidence for a card (the battlecard API's read-time rules, D86)."""
+    about = evidence_counts(session, now or clock.now())
+    required = card_settings().min_primary_signals
     reports = session.scalars(
         select(Report)
         .where(Report.kind == ReportKind.BATTLECARD, Report.entity_id.is_not(None))
@@ -151,7 +155,7 @@ def battlecard_docs(session: Session) -> list[Doc]:
     out = []
     for r in reports:
         ent = entities.get(r.entity_id or -1)
-        if ent is None:
+        if ent is None or about.get(ent.id, 0) < required:
             continue
         family = frozenset([ent.id, *(e.id for e in entities.values() if e.parent_id == ent.id)])
         for section, idx, ids, text in _items(r.content):

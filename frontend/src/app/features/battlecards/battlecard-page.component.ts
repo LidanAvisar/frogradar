@@ -67,10 +67,21 @@ export class BattlecardPageComponent {
     () => this.card()?.entity.name ?? this.competitors().find((c) => c.slug === this.slug())?.name ?? '',
   );
   protected readonly withCard = computed(() => this.competitors().filter((c) => c.generated_at));
-  protected readonly withoutCard = computed(() => this.competitors().filter((c) => !c.generated_at));
+  /** Enough evidence, card not generated yet (the next run builds it). */
+  protected readonly pendingCard = computed(() => this.competitors().filter((c) => !c.generated_at && c.evidence.enough));
+  /** Below the evidence threshold (D86): grouped under one label. */
+  protected readonly thinEvidence = computed(() => this.competitors().filter((c) => !c.generated_at && !c.evidence.enough));
   protected readonly relationship = computed(() => relationshipInfo(this.card()?.entity.relationship));
   protected readonly segments = computed(() => (this.card()?.entity.segments ?? []).map(segmentLabel));
   protected readonly generated = computed(() => shortDate(this.card()?.generated_at));
+  /** "1 of 5 signals where AWS is the main subject (last 180 days)" (D86). */
+  protected readonly evidenceText = computed(() => {
+    const c = this.card();
+    if (!c) return '';
+    const e = c.evidence;
+    const signals = e.required === 1 ? 'signal' : 'signals';
+    return `${e.signals_about} of ${e.required} ${signals} where ${c.entity.name} is the main subject (last ${e.lookback_days} days)`;
+  });
 
   /** Citation numbers in reading order: positioning, opportunities, blind spots, strengths, weaknesses. */
   protected readonly sections = computed(() => {

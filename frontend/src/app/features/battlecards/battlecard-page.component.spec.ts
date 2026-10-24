@@ -12,6 +12,7 @@ const ref = (id: number) => ({ id, title: `Signal ${id}`, url: `https://x.test/$
 function card(overrides: Partial<Battlecard> = {}): Battlecard {
   return {
     entity: { slug: 'sonatype', name: 'Sonatype', relationship: 'competitor', segments: ['supply_chain_security'] },
+    evidence: { signals_about: 13, required: 5, lookback_days: 180, enough: true },
     report_id: 7,
     generated_at: '2026-10-21T08:00:00Z',
     model: 'm',
@@ -53,8 +54,10 @@ describe('BattlecardPageComponent', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/battlecards/sonatype', BattlecardPageComponent);
     http.expectOne('/api/battlecards').flush([
-      { slug: 'sonatype', name: 'Sonatype', relationship: 'competitor', signal_count: 13, generated_at: '2026-10-21T08:00:00Z' },
-      { slug: 'snyk', name: 'Snyk', relationship: 'competitor', signal_count: 0, generated_at: null },
+      { slug: 'sonatype', name: 'Sonatype', relationship: 'competitor', signal_count: 13, generated_at: '2026-10-21T08:00:00Z',
+        evidence: { signals_about: 13, required: 5, lookback_days: 180, enough: true } },
+      { slug: 'snyk', name: 'Snyk', relationship: 'competitor', signal_count: 0, generated_at: null,
+        evidence: { signals_about: 0, required: 5, lookback_days: 180, enough: false } },
     ]);
     http.expectOne('/api/entities/sonatype/battlecard').flush(c);
     harness.detectChanges();
@@ -72,7 +75,8 @@ describe('BattlecardPageComponent', () => {
     expect(tiles[2].textContent).toContain('13 signals tracked');
     // Citation numbers continue in reading order: positioning [1], opportunities [3] → 2, strengths [2, 1] → 3, 1.
     expect(Array.from(el.querySelectorAll('.list-card sup a')).map((a) => a.textContent)).toEqual(['2', '3', '1']);
-    expect(el.querySelector('.no-card')?.textContent).toContain('no card yet');
+    expect(el.querySelector('.thin-label')?.textContent).toContain('Not enough evidence yet');
+    expect(el.querySelector('.no-card')?.textContent?.trim()).toBe('Snyk');
   });
 
   it('shows levels as symbol + text, evidence links and Investigate for unknown cells', async () => {
@@ -132,10 +136,24 @@ describe('BattlecardPageComponent', () => {
     expect(row.querySelector('fr-clamp-text .text')?.getAttribute('title')).toContain('Artifactory docs: OCI repositories');
   });
 
-  it('shows an empty state for a competitor without a card', async () => {
-    const el = await render(card({ report_id: null, generated_at: null, positioning: null, strengths: [], opportunities_for_jfrog: [], citations: [] }));
-    expect(el.textContent).toContain('No battlecard for Sonatype yet');
+  const noCard = { report_id: null, generated_at: null, positioning: null, strengths: [], opportunities_for_jfrog: [], citations: [] };
+
+  it('explains a competitor without enough evidence for a card and what would fill it', async () => {
+    const el = await render(card({ ...noCard, evidence: { signals_about: 1, required: 5, lookback_days: 180, enough: false } }));
+    const panel = el.querySelector('.no-evidence')!;
+    expect(panel.querySelector('h2')?.textContent?.trim()).toBe('Not enough evidence on Sonatype yet');
+    expect(panel.textContent).toContain('A card is generated once signals build up: 1 of 5 signals where Sonatype is the main subject (last 180 days).');
+    expect(panel.textContent).toContain('What would fill it');
+    expect(panel.textContent).toContain('config/sources.yaml');
+    expect(panel.querySelector('a')?.getAttribute('href')).toBe('/missions?entity_slug=sonatype');
     expect(el.querySelector('#opp-heading')).toBeNull();
     expect(el.querySelector('fr-capability-matrix')).not.toBeNull();
+  });
+
+  it('says the next run builds the card when the evidence is there but no card exists yet', async () => {
+    const el = await render(card({ ...noCard, evidence: { signals_about: 6, required: 5, lookback_days: 180, enough: true } }));
+    expect(el.querySelector('.no-evidence')).toBeNull();
+    expect(el.textContent).toContain('No battlecard for Sonatype yet');
+    expect(el.textContent).toContain('the next daily pipeline run generates the card');
   });
 });

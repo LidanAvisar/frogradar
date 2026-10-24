@@ -91,15 +91,19 @@ def world(collect_db):
     return collect_db, ids
 
 
-def _ctx(factory, llm, force=frozenset()):
+def _ctx(factory, llm, force=frozenset(), min_primary=1):
     c = ctx(llm=llm, factory=factory, force=force)
     c.now = NOW
+    # The test world has one or two signals per company; the threshold has its own test.
+    cards = c.config.synthesis.battlecards.model_copy(update={"min_primary_signals": min_primary})
+    synthesis = c.config.synthesis.model_copy(update={"battlecards": cards})
+    c.config = c.config.model_copy(update={"synthesis": synthesis})
     return c
 
 
-def _step(factory, step, llm, force=frozenset()):
+def _step(factory, step, llm, force=frozenset(), min_primary=1):
     with factory.begin() as s:
-        return step(s, _ctx(factory, llm, force))
+        return step(s, _ctx(factory, llm, force, min_primary))
 
 
 def _reports(factory, kind):
@@ -216,6 +220,16 @@ def test_only_competitors_with_primary_signals_get_a_card(world):
     assert counts["stored"] == 2 and counts["not_eligible"] == 1  # chainguard: mention only
     assert sorted(slug for slug, _ in _cards(factory)) == ["github", "sonatype"]
     assert llm.count("battlecard") == 2 and llm.count("verify_synthesis") == 2
+
+
+def test_no_card_below_the_evidence_threshold(world):
+    factory, _ = world  # Sonatype and GitHub: 2 signals about each; Chainguard: a mention
+    llm = FakeLLM()
+    counts = _step(factory, battlecards_step, llm, min_primary=3)
+    assert counts["stored"] == 0 and counts["not_eligible"] == 3
+    assert _cards(factory) == [] and llm.count("battlecard") == 0
+    counts = _step(factory, battlecards_step, llm, min_primary=2)
+    assert counts["stored"] == 2 and counts["not_eligible"] == 1
 
 
 def _sonatype_card(ids, **overrides):

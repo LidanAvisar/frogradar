@@ -269,12 +269,25 @@ class BattlecardEntity(BaseModel):
     segments: list[str] = Field(default_factory=list)
 
 
+class CardEvidence(BaseModel):
+    """How much a battlecard can rest on (D86): signals ABOUT the company (it or one of its products
+    is primary) in the last `lookback_days`, against the minimum a card needs."""
+
+    signals_about: int
+    required: int
+    lookback_days: int
+    enough: bool
+
+
 class BattlecardListItem(BaseModel):
     slug: str
     name: str
     relationship: Relationship
     signal_count: int
-    generated_at: datetime | None = Field(description="Latest card; null = no card yet")
+    generated_at: datetime | None = Field(
+        description="Latest card; null = no card yet or not enough evidence for one"
+    )
+    evidence: CardEvidence
 
 
 class CapabilityRef(BaseModel):
@@ -327,6 +340,9 @@ class Coverage(BaseModel):
 
 class BattlecardOut(BaseModel):
     entity: BattlecardEntity
+    evidence: CardEvidence = Field(
+        description="Below the minimum no card is shown (report_id null), even one built earlier"
+    )
     report_id: int | None
     generated_at: datetime | None
     model: str | None

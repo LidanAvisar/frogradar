@@ -1,6 +1,10 @@
 """GET /api/entities/{slug}/battlecard – the latest battlecard of a competitor, its capability
 matrix (JFrog vs competitor), a timeline of its signals and coverage counts (D54).
 
+A card is shown only while the company has enough evidence (D86): `min_primary_signals` usable
+signals about it in the last `lookback_days`, the pipeline's own rule. Below that the card is
+withheld (also one built earlier); the matrix and timeline still show, each with its evidence.
+
 Read-time check: a card item is shown only while every signal it cites is still usable; a matrix
 level whose evidence signal is no longer usable is shown as unknown. JFrog's levels come from
 config (jfrog_capabilities.yaml), never from the LLM. The timeline is the signals themselves.
@@ -20,6 +24,7 @@ from app.api.schemas import (
     BattlecardListItem,
     BattlecardOut,
     CapabilityRef,
+    CardEvidence,
     CitationRef,
     CitedText,
     CompetitorLevel,
@@ -28,9 +33,10 @@ from app.api.schemas import (
     MatrixRow,
     TimelineItem,
 )
-from app.core.catalog import load_pipeline, load_self_capabilities
+from app.core.catalog import BattlecardSettings, load_pipeline, load_self_capabilities
 from app.db.enums import CapabilityLevel, EntityType, ReportKind
 from app.db.models import Capability, CapabilityMatrix, Entity, Report, Signal, signal_entities
+from app.pipeline.synthesis.battlecards import card_settings, evidence_counts
 from app.pipeline.synthesis.inputs import display_title
 from app.pipeline.synthesis.schemas import SECTIONS
 
@@ -41,9 +47,11 @@ HIGH_IMPACT = 4
 
 
 @router.get("/battlecards", response_model=list[BattlecardListItem])
-def list_battlecards(session: DbSession) -> list[BattlecardListItem]:
+def list_battlecards(session: DbSession, now: Now) -> list[BattlecardListItem]:
     """Tracked competitors for the switcher: those with a card first (by signal count), then the
-    rest ("no card yet")."""
+    rest (no card yet, or not enough evidence for one)."""
+    cfg = card_settings()
+    about = evidence_counts(session, now, cfg)
     latest = dict(
         session.execute(
             select(Entity.slug, func.max(Report.created_at))
@@ -52,17 +60,21 @@ def list_battlecards(session: DbSession) -> list[BattlecardListItem]:
             .group_by(Entity.slug)
         ).all()
     )
-    items = [
-        BattlecardListItem(
-            slug=e.slug,
-            name=e.name,
-            relationship=e.relationship,
-            signal_count=e.signal_count,
-            generated_at=latest.get(e.slug),
+    items = []
+    for e in list_entities(session):
+        if e.is_self:
+            continue
+        evidence = _evidence(about.get(e.id, 0), cfg)
+        items.append(
+            BattlecardListItem(
+                slug=e.slug,
+                name=e.name,
+                relationship=e.relationship,
+                signal_count=e.signal_count,
+                generated_at=latest.get(e.slug) if evidence.enough else None,
+                evidence=evidence,
+            )
         )
-        for e in list_entities(session)
-        if not e.is_self
-    ]
     # Stable sort keeps list_entities' order (signal count, then name) within each group.
     return sorted(items, key=lambda i: i.generated_at is None)
 
@@ -75,11 +87,17 @@ def get_battlecard(slug: str, session: DbSession, now: Now) -> BattlecardOut:
     if ent is None or ent.is_self:
         raise HTTPException(404, f"no competitor {slug!r}")
     entity_ids = [ent.id, *session.scalars(select(Entity.id).where(Entity.parent_id == ent.id))]
-    report = session.scalar(
-        select(Report)
-        .where(Report.kind == ReportKind.BATTLECARD, Report.entity_id == ent.id)
-        .order_by(Report.created_at.desc(), Report.id.desc())
-        .limit(1)
+    cfg = card_settings()
+    evidence = _evidence(evidence_counts(session, now, cfg).get(ent.id, 0), cfg)
+    report = (
+        session.scalar(
+            select(Report)
+            .where(Report.kind == ReportKind.BATTLECARD, Report.entity_id == ent.id)
+            .order_by(Report.created_at.desc(), Report.id.desc())
+            .limit(1)
+        )
+        if evidence.enough
+        else None
     )
     content: dict[str, Any] = report.content if report else {}
 
@@ -113,6 +131,7 @@ def get_battlecard(slug: str, session: DbSession, now: Now) -> BattlecardOut:
             relationship=ent.relationship,
             segments=list(ent.segments or []),
         ),
+        evidence=evidence,
         report_id=report.id if report else None,
         generated_at=report.created_at if report else None,
         model=report.model if report else None,
@@ -122,6 +141,15 @@ def get_battlecard(slug: str, session: DbSession, now: Now) -> BattlecardOut:
         matrix=final_matrix,
         timeline=_timeline(session, entity_ids),
         coverage=_coverage(session, entity_ids, final_matrix),
+    )
+
+
+def _evidence(n: int, cfg: BattlecardSettings) -> CardEvidence:
+    return CardEvidence(
+        signals_about=n,
+        required=cfg.min_primary_signals,
+        lookback_days=cfg.lookback_days,
+        enough=n >= cfg.min_primary_signals,
     )
 
 

@@ -170,7 +170,8 @@ Two pipeline nodes after `score`, on the synthesis model. The pattern: **the LLM
 - **Daily brief** (once per UTC day): the top 12 signals of the last 7 days → one top story: a plain title
   (≤ 90 chars, no claims about intent), what happened, why it matters for JFrog and a suggested move
   (`daily_brief.v3`). Title, what happened and why are required; a suggested move that fails a check is left out. Stored as a `reports` row (`daily_brief`).
-- **Battlecards** (per competitor with signals *about* it; weekly, or when a new impact ≥ 4 signal arrives):
+- **Battlecards** (per competitor with at least 5 usable signals *about* it in the last 180 days, D86; weekly, or
+  when a new impact ≥ 4 signal arrives; the API, Ask and MCP withhold a card below the threshold, also an older one):
   positioning, strengths, weaknesses, opportunities and blind spots for JFrog, plus capability levels. Stored as a
   `reports` row (`battlecard`); accepted levels go to `capability_matrix` with their evidence signal.
 - **Checks, in order:** (1) every sentence / item cites signal ids; one id that is unknown, not usable, outside the
