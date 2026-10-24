@@ -1,15 +1,14 @@
 {
  "format": 1,
- "as_of": "2026-10-21T17:33:26.753471+00:00",
- "exported_at": "2026-10-22T07:31:17+00:00",
- "alembic_revision": "0014",
+ "as_of": "2026-10-24T15:52:47.078767+00:00",
+ "exported_at": "2026-10-24T19:18:22+00:00",
+ "alembic_revision": "0015",
  "tables": [
   "ask_conversations",
   "capabilities",
   "entities",
   "feedback",
   "insights",
-  "llm_cache",
   "pipeline_runs",
   "watch_topics",
   "ask_turns",
@@ -88,20 +87,6 @@
    "status",
    "created_at",
    "updated_at"
-  ],
-  "llm_cache": [
-   "cache_key",
-   "kind",
-   "model",
-   "operation",
-   "prompt_version",
-   "response",
-   "tokens_in",
-   "tokens_out",
-   "cost_usd",
-   "hit_count",
-   "created_at",
-   "last_hit_at"
   ],
   "pipeline_runs": [
    "id",
@@ -365,37 +350,36 @@
   ]
  },
  "row_counts": {
-  "ask_conversations": 39,
+  "ask_conversations": 42,
   "capabilities": 39,
-  "entities": 43,
-  "feedback": 22,
+  "entities": 44,
+  "feedback": 33,
   "insights": 0,
-  "llm_cache": 1934,
-  "pipeline_runs": 50,
+  "pipeline_runs": 52,
   "watch_topics": 0,
-  "ask_turns": 42,
-  "radar_candidates": 71,
-  "repo_star_snapshots": 96,
-  "reports": 10,
+  "ask_turns": 45,
+  "radar_candidates": 91,
+  "repo_star_snapshots": 194,
+  "reports": 17,
   "sources": 50,
-  "missions": 2,
-  "page_snapshots": 12,
-  "llm_calls": 2350,
-  "mission_steps": 28,
-  "signals": 1472,
-  "capability_matrix": 56,
+  "missions": 5,
+  "page_snapshots": 14,
+  "llm_calls": 2638,
+  "mission_steps": 78,
+  "signals": 1540,
+  "capability_matrix": 61,
   "insight_signals": 0,
-  "mission_sources": 10,
-  "signal_capabilities": 439,
-  "signal_entities": 1167,
-  "mission_findings": 21
+  "mission_sources": 30,
+  "signal_capabilities": 527,
+  "signal_entities": 1429,
+  "mission_findings": 59
  },
  "stripped": [
   "signals.raw_text",
   "page_snapshots.text",
   "mission_sources.excerpt",
-  "signals.embedding (outside the demo scope)",
-  "llm_cache (operation embed_signal)"
+  "signals.embedding (outside the active sources)",
+  "llm_cache (not exported)"
  ],
- "size_bytes": 2210570
+ "size_bytes": 4302059
 }

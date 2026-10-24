@@ -22,6 +22,8 @@ from tests.pipeline.factories import FakeEmbed, vec
 pytestmark = pytest.mark.db
 
 Q = "Who launched a package firewall?"
+# Longer than the 60 characters titles used to be cut to.
+WEAKNESS = "Firewall only in the Pro+ and Enterprise editions, not in Nexus Repository Community."
 
 
 def _world(build, s):
@@ -63,9 +65,7 @@ def _world(build, s):
             model="m",
             created_at=NOW,
             content={
-                "weaknesses": [
-                    {"text": "Firewall only in Pro+ editions.", "signal_ids": [text_only.id]}
-                ],
+                "weaknesses": [{"text": WEAKNESS, "signal_ids": [text_only.id]}],
                 "strengths": [{"text": "Relies on a hidden one.", "signal_ids": [unsupported.id]}],
             },
         )
@@ -141,9 +141,7 @@ def test_only_usable_signals_and_checked_battlecard_items(client, build, db_sess
         "bc:sonatype:weaknesses:1"
     ]  # the item citing an unsupported signal is out
     assert bc[0].url == "/battlecards/sonatype" and bc[0].cites == (w["text_only"].id,)
-    assert (
-        bc[0].title == "Sonatype battlecard · Weakness: Firewall only in Pro+ editions."
-    )  # never cut
+    assert bc[0].title == f"Sonatype battlecard · Weakness: {WEAKNESS}"  # the whole item, never cut
 
 
 def test_battlecard_items_need_enough_evidence(client, build, db_session, card_threshold):

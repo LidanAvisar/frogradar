@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
@@ -117,3 +119,53 @@ def test_only_one_self_entity(db_session):
                 "VALUES ('company', 'B', 'b', true)"
             )
         )
+
+
+ITEM = "Counter Nexus Pro+/Enterprise block-at-entry claims with JFrog Curation's policy gate."
+CUT = "Sonatype battlecard · Opportunity for JFrog: Counter Nexus Pro+/Enterprise block-at-entry…"
+CARD_AT = "2026-10-24T15:52:29.211769Z"
+
+
+def _bc_source(date: str) -> dict:
+    return {"n": 2, "id": "bc:sonatype:opportunities_for_jfrog:2", "type": "battlecard",
+            "date": date, "url": "/battlecards/sonatype", "title": CUT}  # fmt: skip
+
+
+def test_0015_repairs_cut_battlecard_titles_in_stored_answers(make_database):
+    url = make_database()
+    cfg = alembic_config(url)
+    engine = create_engine(url)
+    content = {"opportunities_for_jfrog": [{"text": "First.", "signal_ids": [1]},
+                                           {"text": ITEM, "signal_ids": [2]}]}  # fmt: skip
+    answer = {"sources": [
+        _bc_source(CARD_AT),  # repaired from the card created at that time
+        _bc_source("2026-10-20T00:00:00Z"),  # no card at that time: kept as it was
+        {"n": 3, "id": "sig:5", "type": "article", "title": "An article…"},  # not a battlecard
+    ]}  # fmt: skip
+    try:
+        command.upgrade(cfg, "0014")
+        with engine.begin() as conn:
+            ent = conn.execute(text(
+                "INSERT INTO entities (type, name, slug, relationship) "
+                "VALUES ('company', 'Sonatype', 'sonatype', 'competitor') RETURNING id"
+            )).scalar_one()  # fmt: skip
+            conn.execute(
+                text("INSERT INTO reports (kind, entity_id, model, content, created_at) "
+                     "VALUES ('battlecard', :e, 'm', CAST(:c AS jsonb), :at)"),
+                {"e": ent, "c": json.dumps(content), "at": CARD_AT},
+            )  # fmt: skip
+            conv = conn.execute(
+                text("INSERT INTO ask_conversations (title) VALUES ('q') RETURNING id")
+            ).scalar_one()
+            conn.execute(
+                text("INSERT INTO ask_turns (conversation_id, position, question, "
+                     "standalone_question, answer) VALUES (:c, 1, 'q', 'q', CAST(:a AS jsonb))"),
+                {"c": conv, "a": json.dumps(answer)},
+            )  # fmt: skip
+        command.upgrade(cfg, "0015")
+        with engine.connect() as conn:
+            stored = conn.execute(text("SELECT answer FROM ask_turns")).scalar_one()
+        full = f"Sonatype battlecard · Opportunity for JFrog: {ITEM}"
+        assert [s["title"] for s in stored["sources"]] == [full, CUT, "An article…"]
+    finally:
+        engine.dispose()

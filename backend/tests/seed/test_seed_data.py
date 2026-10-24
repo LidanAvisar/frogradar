@@ -7,10 +7,12 @@ from datetime import UTC, datetime
 
 import pytest
 from alembic import command
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session
 
+from app.db.models import Signal
 from app.db.seed import seed
+from app.pipeline.scope import event_time, not_mission, usable
 from app.seed.snapshot import MANIFEST, SnapshotError, alembic_head, export, load
 from tests.conftest import alembic_config
 
@@ -189,7 +191,15 @@ def test_committed_seed_serves_every_screen_with_the_real_clock_and_no_llm_calls
     clock["now"] = datetime(2026, 12, 1, 9, 0, tzinfo=UTC)
     stale = client.get("/api/brief").json()
     assert stale["stale"] is True
-    assert stale["as_of"][:10] == as_of.date().isoformat()
+    # Anchored on the newest rankable signal (its publish date), not on the export time.
+    with engine.connect() as c:
+        newest = c.execute(
+            select(func.max(event_time())).select_from(Signal).where(
+                usable(), not_mission(), Signal.impact.is_not(None),
+                Signal.confidence.is_not(None),
+            )
+        ).scalar_one()  # fmt: skip
+    assert stale["as_of"][:10] == newest.date().isoformat() <= as_of.date().isoformat()
     assert stale["top_story"] and stale["developments"]  # the seed's Top 5, not an empty page
     assert stale["generated_at"].startswith("2026-12-01")
 

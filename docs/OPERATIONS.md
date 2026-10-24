@@ -15,14 +15,14 @@ The commands are in the [README quick start](../README.md#quick-start). The deta
   key turns off only its feature, and the UI says so: without `TAVILY_API_KEY`, research missions search
   FrogRadar's own data only; without `GITHUB_TOKEN`, GitHub is limited to 60 requests/hour; without `MCP_TOKEN`,
   MCP over HTTP is off. Key values are never logged, returned by the API or sent to the web app.
-- **Seed.** `make seed` loads the committed intelligence (signals, battlecards, the radar, two finished missions,
+- **Seed.** `make seed` loads the committed intelligence (signals, battlecards, the radar, five finished missions,
   past Ask conversations) as normal data, without LLM calls, so every screen has content before the first pipeline
   run. It only loads into a fresh database (details: [Seed data](#seed-data)).
 - **Older data.** The app uses the real date. When nothing is newer than the last 7 days (for example only the
-  seed), the Brief shows the latest available day under the header *LATEST INTELLIGENCE · WEDNESDAY · 21 OCTOBER
-  2026* with the note *"Nothing newer yet: this is the latest available day (21 Oct 2026). Run the pipeline (make
-  pipeline) for today's news, or make scheduler-up for daily updates."* "Since yesterday" becomes "On 21 Oct
-  2026", and the top story is that day's. A daily brief older than a day is never shown as today's top story.
+  seed), the Brief shows the latest available day under the header *LATEST INTELLIGENCE · FRIDAY · 23 OCTOBER
+  2026* (the newest publish date in the seed) with the note *"Nothing newer yet: this is the latest available day
+  (23 Oct 2026). Run the pipeline (make pipeline) for today's news, or make scheduler-up for daily updates."* "Since
+  yesterday" becomes "On 23 Oct 2026", and the top story is that day's. A daily brief older than a day is never shown as today's top story.
 - **Daily updates** cost money, so they're opt-in: `make scheduler-up` starts the scheduler (see
   [Daily scheduler](#daily-scheduler)), `make scheduler-down` stops it. `make down` stops everything; `make status`
   shows keys, features and today's spend.
@@ -161,7 +161,7 @@ against `LLM_DAILY_BUDGET_USD` (and a mission's budget).
 Code: `backend/app/seed/`
 
 `make seed` loads `backend/app/seed/data/` (`data.tar.gz` + `manifest.json`) into the running stack's database as
-normal data: signals with their enrichment, battlecards, the capability matrix, the radar, two finished research
+normal data: signals with their enrichment, battlecards, the capability matrix, the radar, five finished research
 missions, past Ask conversations, reviews and the cost history (`llm_calls`). No LLM call is made, and the app
 reads the rows with the real clock (the Brief shows the latest available day with its date when nothing is newer).
 
@@ -170,7 +170,7 @@ reads the rows with the real clock (the Brief shows the latest available day wit
   rows ("start over: `make down`, `docker compose down -v`, `make up`, `make seed`") or another migration
   ("re-export"); afterwards it re-applies `config/`;
 - stripped: `signals.raw_text`, `page_snapshots.text`, `mission_sources.excerpt` (never shown) and embeddings of
-  signals outside the active sources; `llm_cache` is not loaded. Loaded rows are flagged `meta.snapshot_stripped`:
+  signals outside the active sources; `llm_cache` is neither exported nor loaded. Loaded rows are flagged `meta.snapshot_stripped`:
   the pipeline never re-processes them, and a pricing page without text starts a new baseline instead of a diff.
 
 **Updating it** (after new data or a migration): `make seed-export` (no LLM calls), then commit

@@ -166,7 +166,7 @@ def battlecard_docs(session: Session, now: datetime | None = None) -> list[Doc]:
                 Doc(
                     id=f"bc:{ent.slug}:{section}:{idx}",
                     type="battlecard",
-                    title=f"{ent.name} battlecard · {label}: {_excerpt(text)}",
+                    title=f"{ent.name} battlecard · {label}: {text}",  # full item, never cut
                     text=f"{ent.name} battlecard, {label.lower()}: {text}",
                     url=f"/battlecards/{ent.slug}",
                     date=r.created_at,
@@ -176,10 +176,6 @@ def battlecard_docs(session: Session, now: datetime | None = None) -> list[Doc]:
                 )
             )
     return out
-
-
-def _excerpt(text: str, n: int = 60) -> str:
-    return text if len(text) <= n else text[: n - 1].rsplit(" ", 1)[0] + "…"
 
 
 def _items(content: dict[str, Any] | None) -> list[tuple[str, int, list[int], str]]:

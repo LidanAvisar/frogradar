@@ -39,7 +39,7 @@ You need Docker with Compose ≥ 2.24, an **Anthropic** key and an **OpenAI** ke
 git clone https://github.com/LidanAvisar/frogradar.git && cd frogradar
 cp .env.example .env   # add ANTHROPIC_API_KEY and OPENAI_API_KEY (optional: TAVILY_API_KEY, GITHUB_TOKEN)
 make up                # Postgres + backend + web app → http://localhost:8080 (first build takes a few minutes)
-make seed              # optional: load the intelligence collected so far (up to 21 Oct 2026), no LLM calls
+make seed              # optional: load the intelligence collected so far (up to 24 Oct 2026), no LLM calls
 # open http://localhost:8080
 make pipeline          # today's news: collect → enrich → verify → brief → battlecards → radar (paid)
 make scheduler-up      # daily updates: the same run every day at 06:00 UTC (DAILY_RUN_CRON in .env)
@@ -290,7 +290,7 @@ The ones that shape the product (all 86, each with what was rejected: [docs/DESI
 
 - **No authentication yet:** the analyst name is self-declared; write endpoints are open (local deployment only).
 - **Seeded rows have no full text**, so the pipeline never re-processes them (Ask and battlecards use their enrichment).
-- **Small corpus:** 3 news sources and 2 pricing pages are active (43 visible signals in the seed), so Ask recall measures
+- **Small corpus:** 3 news sources and 2 pricing pages are active (73 visible signals in the seed), so Ask recall measures
   ranking, not scale; the eval uses silver labels from one model. Only Sonatype and GitHub reach the battlecard
   threshold because 5 of 47 sources are active; enabling more sources fills the rest.
 - **Missions:** one in-process worker, no resume after a restart; the SSRF guard resolves DNS separately (rebinding).
