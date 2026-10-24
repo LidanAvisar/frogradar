@@ -51,6 +51,6 @@ cost_estimates_usd:
   mission_report: 0.012          # measured $0.0104–0.0128 (three runs)
   mission_per_question: 0.004    # extract + verify, measured $0.0033–0.0046 per sub-question
   # Daily run on the active sources: ~5 news items (triage $0.0003, enrich+verify $0.0033 when relevant),
-  # ~15 discovery items (~$0.0006 avg), brief + check ~$0.025, two battlecards weekly (~$0.014/day),
-  # radar profiles ~$0.01.
+  # ~15 discovery items (~$0.0006 avg), brief + check ~$0.025, two battlecards weekly (~$0.017/day: measured
+  # $0.061 per card incl. check), radar profiles ~$0.01. Sum ≈ $0.07, shown rounded up.
   daily_run: 0.08

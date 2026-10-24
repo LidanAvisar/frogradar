@@ -167,16 +167,17 @@ What grows with more sources, and what keeps it in check (figures from `llm_call
 - **Indexes:** HNSW (pgvector, cosine) on `signals.embedding` for dedup, GIN for full text; Ask uses exact search on
   purpose, so a question always retrieves the same documents.
 
-**Estimate for the whole catalog (all 47 sources active):** ≈ $0.14 a day (≈ $4 a month), against ≈ $0.08 today.
+**Estimate for the whole catalog (all 47 sources active):** ≈ $0.18 a day (≈ $5.50 a month), against an estimated
+≈ $0.08 a day on the 5 active sources. Prices per call are measured (`llm_calls` averages); daily volumes are estimates.
 **A measured catch-up run** (24 Oct 2026, 215 paid calls, 9.0 minutes, $0.34) was bigger than a normal day because it
 came three days after the last collection: 36 news items and 29 discovery items at once, plus 4 battlecards ($0.11).
 
-| Part | Basis | Per day |
+| Part | Volume (estimated) × price (measured) | Per day |
 |---|---|---|
-| News items | ≈ 8.1 items a day published by the 47 sources (22 Aug – 21 Oct 2026) × (triage + 61% relevant × (enrich + verify)) | ≈ $0.02 |
-| Battlecards | 13 competitors refreshed weekly × $0.039 (battlecard + check) | ≈ $0.07 |
-| Daily brief | brief + check | ≈ $0.03 |
-| Discovery and radar | unchanged by the source count | ≈ $0.02 |
+| News items | ≈ 8.1 items a day published by the 47 sources (counted 22 Aug – 21 Oct 2026) × (triage $0.00031 + 61% relevant × (enrich $0.00112 + verify $0.00211)) | ≈ $0.02 |
+| Battlecards | 13 competitors refreshed weekly, assuming each reaches the 5-signal threshold × $0.061 per card incl. check (measured 24 Oct, 23–24 input signals; smaller cards cost less) | ≈ $0.11 |
+| Daily brief | 1 brief + check ($0.026) | ≈ $0.03 |
+| Discovery and radar | unchanged by the source count (estimated on the active sources) | ≈ $0.02 |
 
 Pricing-page changes are rare (≈ $0.003 each). **Bottlenecks today:** sequential collection (1 s gap per host); one
 pipeline run at a time (advisory lock) from one scheduler; missions run one at a time on one in-process worker with no
@@ -205,10 +206,10 @@ correction (impact 2 → 1) changed the model's impact for its nearest neighbour
 
 | | Cost |
 |---|---|
-| Daily pipeline on the active sources (≈ 5 news items, ≈ 15 discovery items, brief, battlecards weekly; estimate) | ≈ $0.08 |
-| Measured catch-up run after three days without collection (24 Oct 2026: 36 news + 29 discovery items, 4 battlecards) | $0.34 |
-| A new Ask question (25 questions: $0.54) / a research mission (two runs: $0.0296, $0.0298) | ≈ $0.02 / ≈ $0.03 |
-| Silver-label evaluation (labels + eval pass) | $0.93 once |
+| Daily pipeline on the active sources (≈ 5 news items, ≈ 15 discovery items, brief, 2 battlecards weekly; estimated volume × measured prices) | ≈ $0.08 |
+| Catch-up run after three days without collection (measured, 24 Oct 2026: 36 news + 29 discovery items, 4 battlecards) | $0.34 |
+| A new Ask question (measured: 25 questions, $0.54) / a research mission (measured: two runs, $0.0296 and $0.0298) | ≈ $0.02 / ≈ $0.03 |
+| Silver-label evaluation (labels + eval pass; measured) | $0.93 once |
 
 Every call is logged with tokens, cost and latency (`llm_calls`); repeats cost $0. Whole catalog: [Scalability](#scalability).
 
